@@ -6,7 +6,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: CHANGE_ME
+      MYSQL_ROOT_PASSWORD: ${LAB_MYSQL_PASSWORD:?set LAB_MYSQL_PASSWORD in .env}
       MYSQL_DATABASE: dong_lab
       TZ: Asia/Shanghai
     command:
@@ -20,7 +20,7 @@ services:
       - mysql-data:/var/lib/mysql
       - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pCHANGE_ME"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${LAB_MYSQL_PASSWORD:?set LAB_MYSQL_PASSWORD in .env}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -35,7 +35,7 @@ services:
       - "6379:6379"
     command: >
       redis-server
-      --requirepass CHANGE_ME
+      --requirepass ${LAB_REDIS_PASSWORD:?set LAB_REDIS_PASSWORD in .env}
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --appendonly no
@@ -43,7 +43,7 @@ services:
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "CHANGE_ME", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${LAB_REDIS_PASSWORD:?set LAB_REDIS_PASSWORD in .env}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -57,7 +57,7 @@ services:
     ports:
       - "3307:3306"
     environment:
-      MARIADB_ROOT_PASSWORD: CHANGE_ME
+      MARIADB_ROOT_PASSWORD: ${LAB_MARIADB_PASSWORD:?set LAB_MARIADB_PASSWORD in .env}
       MARIADB_DATABASE: dong_lab_replica
       TZ: Asia/Shanghai
     volumes:
@@ -76,7 +76,7 @@ services:
       KAFKA_CFG_NODE_ID: 0
       KAFKA_CFG_PROCESS_ROLES: controller,broker
       KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://YOUR_PUBLIC_HOST:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://${LAB_PUBLIC_HOST:?set LAB_PUBLIC_HOST in .env}:9092
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@127.0.0.1:9093
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -108,12 +108,15 @@ services:
     ports:
       - "10911:10911"
       - "10909:10909"
-    command: sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf
+    command: >
+      sh -c "envsubst < /home/rocketmq/conf/broker.conf.template > /home/rocketmq/conf/broker.conf
+      && sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf"
     environment:
       JAVA_OPT_EXT: -Xms384m -Xmx384m -Xmn192m
+      LAB_PUBLIC_HOST: ${LAB_PUBLIC_HOST:?set LAB_PUBLIC_HOST in .env}
     volumes:
       - ./data/rocketmq:/home/rocketmq/store
-      - ./rocketmq/broker.conf:/home/rocketmq/conf/broker.conf:ro
+      - ./rocketmq/broker.conf:/home/rocketmq/conf/broker.conf.template:ro
     profiles: ["mq", "full"]
 
   elasticsearch:
@@ -128,7 +131,7 @@ services:
     environment:
       discovery.type: single-node
       ES_JAVA_OPTS: -Xms512m -Xmx512m
-      ELASTIC_PASSWORD: CHANGE_ME
+      ELASTIC_PASSWORD: ${LAB_ES_PASSWORD:?set LAB_ES_PASSWORD in .env}
       xpack.security.enabled: "true"
       xpack.security.http.ssl.enabled: "false"
       xpack.security.transport.ssl.enabled: "false"
@@ -148,8 +151,8 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: dong
-      MONGO_INITDB_ROOT_PASSWORD: CHANGE_ME
+      MONGO_INITDB_ROOT_USERNAME: ${LAB_MONGO_USERNAME:?set LAB_MONGO_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${LAB_MONGO_PASSWORD:?set LAB_MONGO_PASSWORD in .env}
     volumes:
       - mongo-data:/data/db
     mem_limit: 512m

@@ -42,3 +42,9 @@ build/
 
 ### local tooling ###
 .codebuddy/
+
+### secrets ###
+.env
+deploy/.env
+*.env
+!*.env.example

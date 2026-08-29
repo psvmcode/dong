@@ -473,12 +473,38 @@ lab:
 ```
 /opt/dong-lab/
 ├── docker-compose.yml    编排文件，含内存限制与健康检查
+├── .env                  密码与公网地址（不进版本库，由 .env.example 复制而来）
 ├── initdb/               主库建表 SQL，首次启动自动执行
 ├── initdb-replica/       从库建表 SQL
 ├── elasticsearch/        含 IK 插件的 Dockerfile
-├── rocketmq/             broker.conf，声明公网地址
+├── rocketmq/             broker.conf 模板，含 ${LAB_PUBLIC_HOST} 占位符
 └── lab.sh                启停脚本
 ```
+
+### 首次部署：配置 .env
+
+仓库不保存密码。部署前从模板复制一份并填写：
+
+```bash
+cd /opt/dong-lab
+cp deploy/.env.example .env
+vi .env
+```
+
+需要填写的变量：
+
+| 变量 | 说明 |
+|---|---|
+| `LAB_PUBLIC_HOST` | 服务器公网 IP 或域名，RocketMQ 与 Kafka 对外声明的地址 |
+| `LAB_MYSQL_USERNAME` / `LAB_MYSQL_PASSWORD` | MySQL 账号密码 |
+| `LAB_REDIS_PASSWORD` | Redis 密码 |
+| `LAB_MARIADB_USERNAME` / `LAB_MARIADB_PASSWORD` | MariaDB 账号密码 |
+| `LAB_ES_PASSWORD` | Elasticsearch 的 `elastic` 用户密码 |
+| `LAB_MONGO_USERNAME` / `LAB_MONGO_PASSWORD` | MongoDB 账号密码 |
+
+变量缺失时 compose 会直接拒绝启动并提示缺哪个，不会带着空密码跑起来。
+
+注意 MongoDB 密码若含 `@`，此处要填 **URL 编码后**的值（`@` → `%40`），原因见第九节第 12 条。
 
 ### 服务清单
 
@@ -613,7 +639,9 @@ springdoc 注册的资源模式 `/swagger-ui/**/*index.html` 被 Spring Framewor
 
 ### 12. 密码中的特殊字符
 
-MongoDB 密码 `CHANGE_ME` 含 `@`，在 URI 中必须编码为 `%40`，否则解析为两个 `@` 导致认证失败。
+MongoDB 密码若含 `@`（例如 `P@ssw0rd`），在连接 URI 中必须编码为 `%40`（`P%40ssw0rd`），否则 URI 被解析成两个 `@`，主机与认证信息错位，连接直接失败。
+
+现在密码统一放在 `.env` 的 `LAB_MONGO_PASSWORD`，**填编码后的值**。
 
 ### 13. IK 插件在容器重建后丢失
 
@@ -633,10 +661,12 @@ RUN bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsea
 broker 启动后注册到 namesrv 的是容器内网 IP（`172.18.0.5`），客户端拿到这个地址去连，必然超时。必须在 `broker.conf` 里显式声明对外地址：
 
 ```properties
-brokerIP1 = YOUR_PUBLIC_HOST
+brokerIP1 = ${LAB_PUBLIC_HOST}
 ```
 
-Kafka 是同一类问题，`KAFKA_CFG_ADVERTISED_LISTENERS` 必须填公网地址。
+该占位符由容器启动时用 `envsubst` 渲染，值取自 `.env`。
+
+Kafka 是同一类问题，`KAFKA_CFG_ADVERTISED_LISTENERS` 必须填公网地址，同样取自 `LAB_PUBLIC_HOST`。
 
 ### 15. RocketMQ 版本与存储卷权限
 
