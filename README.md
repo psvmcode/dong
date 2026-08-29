@@ -473,7 +473,9 @@ lab:
 ```
 /opt/dong-lab/
 ├── docker-compose.yml    编排文件，含内存限制与健康检查
-├── .env                  密码与公网地址（不进版本库，由 .env.example 复制而来）
+├── .env                  密码与公网地址（不进版本库，由 setup-env.sh 生成）
+├── .env.example          变量模板，进版本库
+├── setup-env.sh          交互式 .env 生成脚本
 ├── initdb/               主库建表 SQL，首次启动自动执行
 ├── initdb-replica/       从库建表 SQL
 ├── elasticsearch/        含 IK 插件的 Dockerfile
@@ -483,12 +485,17 @@ lab:
 
 ### 首次部署：配置 .env
 
-仓库不保存密码。部署前从模板复制一份并填写：
+仓库不保存密码。部署前用脚本生成 `.env`，密码交互式输入、不回显，生成的文件权限为 600 且已被 git 忽略：
 
 ```bash
 cd /opt/dong-lab
-cp deploy/.env.example .env
-vi .env
+./setup-env.sh
+```
+
+脚本会逐项提示，直接回车接受默认值。也可以手工从模板复制后编辑：
+
+```bash
+cp .env.example .env && chmod 600 .env && vi .env
 ```
 
 需要填写的变量：
