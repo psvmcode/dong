@@ -2,30 +2,102 @@
 
 中间件与分布式场景实验室。一个 Spring Boot 3 工程，把日常开发中容易只在理论上理解的中间件用法，全部变成可以运行、可以对比、可以用数据验证的代码。
 
-技术栈：Spring Boot 3.4.5 / JDK 21 / MySQL 8 / Redis 7 / Redisson 3.45 / MyBatis（原生 XML）/ RocketMQ / Kafka / Elasticsearch 8.15 / MongoDB 7 / MariaDB 10.11
+技术栈：Spring Boot 3.4.5 / JDK 21 / MySQL 8 / Redis 7 / Redisson 3.45 / MyBatis（原生 XML）/ RocketMQ 4.9.7 / Kafka 3.7 / Elasticsearch 8.15（IK 分词）/ MongoDB 7 / MariaDB 10.11
 
 ---
 
-## 一、这个项目的定位
+## 目录
+
+| 章节 | 内容 |
+|---|---|
+| [一、项目定位](#一项目定位) | 这不是脚手架，是一组对照实验 |
+| [二、能力速览](#二能力速览) | 十个场景一张表看完 |
+| [三、快速开始](#三快速开始) | 三步跑起来 |
+| [四、目录结构与分层](#四目录结构与分层) | 限界上下文 + 传统分层 |
+| [五、场景详解](#五场景详解) | 每个场景的问题、解法、验证命令 |
+| [六、开关化设计](#六开关化设计) | 中间件按需开关 |
+| [七、云服务器部署](#七云服务器部署) | 2 核 2G 下的按需启停 |
+| [八、验证记录](#八验证记录) | 实测数据 |
+| [九、踩过的坑](#九踩过的坑) | 真实问题与解法 |
+| [十、编码规范](#十编码规范) | dong-standards |
+
+---
+
+## 一、项目定位
 
 它不是脚手架，也不是业务系统，而是一组**可对照实验**。每个场景都回答三个问题：
 
-1. 没有这个中间件时，问题长什么样（错误现象 + 量化损失）
-2. 用了之后，为什么能解决（原理 + 关键代码）
-3. 代价是什么（性能、一致性、运维复杂度）
+1. **没有这个中间件时，问题长什么样**（错误现象 + 量化损失）
+2. **用了之后，为什么能解决**（原理 + 关键代码）
+3. **代价是什么**（性能、一致性、运维复杂度）
 
-例如分布式锁，项目同时提供了「不加锁」和「加 Redisson 锁」两个接口。实测在 8 线程 × 10 次并发自增下：
+例如分布式锁，项目同时提供「不加锁」和「加 Redisson 锁」两个接口。实测在 8 线程 × 10 次并发自增下：
 
 | 模式 | 期望值 | 实际值 | 丢失更新 | 耗时 |
 |---|---|---|---|---|
 | 不加锁 | 80 | 2 | 78 | 280ms |
 | Redisson 锁 | 80 | 80 | 0 | 18.4s |
 
-数字本身就在说明：锁换来正确性，代价是 65 倍的耗时。这类对照在项目中一共有三十余处。
+数字本身就在说明问题：锁换来正确性，代价是 65 倍的耗时。这类对照在项目中一共有三十余处。
 
 ---
 
-## 二、目录结构
+## 二、能力速览
+
+十个限界上下文，每个对应一类中间件能力与一个真实场景。
+
+| 场景 | 接口前缀 | 核心中间件 | 关键能力 | 实测结论 |
+|---|---|---|---|---|
+| 多级缓存 | `/api/cache` | Caffeine + Redis | 穿透、击穿、雪崩、双写一致性 | 穿透防护 444ms → 102ms |
+| Redis 经典 | `/api/classic` | Redis + Redisson | 排行榜、UV、签到、短链、GEO、延迟队列、发号器、限流、分布式锁 | 加锁零丢失，代价 65 倍耗时 |
+| 秒杀 | `/api/seckill` | Redis Lua + MQ | 预扣库存、异步下单、售罄短路 | 10 库存 20 人抢，零超卖 |
+| 抢红包 | `/api/red-packet` | Redis List | 二倍均值法、预分配 | 金额精确守恒，分毫不差 |
+| 微博模型 | `/api/social` | Redis Set / ZSet | 关注关系、共同关注、推拉两种时间线 | 两种模式结果一致 |
+| 搜索 | `/api/search` | Elasticsearch + IK | 中文分词、高亮、分面聚合 | 中文命中并高亮 |
+| 分布式事务 | `/api/tcc` | MySQL | Try/Confirm/Cancel + 幂等、空回滚、悬挂 | 失败分支零残留 |
+| 消息 | `/api/mq` | local / RocketMQ / Kafka | 顺序、延迟、批量、幂等 | 重复投递被拦截 |
+| 文档 | `/api/doc` | MongoDB | 无 schema 日志 | 字段可随业务演进 |
+| 多数据源 | `/api/replica` | MariaDB | 第二数据源、独立事务管理器 | 一致性检查通过 |
+
+---
+
+## 三、快速开始
+
+### 1. 准备数据库
+
+```bash
+mysql -uroot -p < db/schema.sql
+```
+
+### 2. 启动应用
+
+```bash
+mvn spring-boot:run
+```
+
+默认端口 **8090**。此时只有 MySQL 和 Redis 参与，其他中间件全部关闭，应用照常启动。
+
+### 3. 验证
+
+```bash
+curl http://127.0.0.1:8090/actuator/health
+```
+
+返回 `UP` 即成功。
+
+### 4. 接口文档
+
+Swagger UI 因 Spring Framework 6.2 的资源模式限制已关闭，OpenAPI 文档仍可访问：
+
+```
+http://127.0.0.1:8090/v3/api-docs
+```
+
+把该地址导入 Apifox、Postman 或任意 Swagger UI 即可查看全部接口。
+
+---
+
+## 四、目录结构与分层
 
 顶层按**限界上下文**划分（DDD 的边界），每个上下文内部按**传统分层**组织（controller / service + impl / mapper / entity / dto / enums）。这样既保住了场景之间的边界，又符合后端团队的阅读习惯。
 
@@ -54,7 +126,7 @@ src/main/java/com/dong/lab/
 ├── social/                     微博模型：关注关系、共同关注、推拉两种时间线
 ├── search/                     Elasticsearch：IK 分词、高亮、过滤、聚合
 ├── tcc/                        分布式事务 TCC：Try/Confirm/Cancel、恢复任务
-├── mq/                         消息场景：顺序、延迟、幂等、死信
+├── mq/                         消息场景：顺序、延迟、幂等、批量
 ├── doc/                        MongoDB：无 schema 日志
 └── replica/                    MariaDB：第二数据源、独立事务管理器
 
@@ -64,10 +136,10 @@ src/main/resources/
 └── mapper/**/*.xml             手写 SQL
 
 db/schema.sql                   建表语句
-deploy/                         Docker Compose 编排与安装脚本
+deploy/                         Docker Compose 编排与启停脚本
 ```
 
-**分层约定**
+### 分层约定
 
 | 目录 | 职责 | 禁止 |
 |---|---|---|
@@ -81,45 +153,9 @@ deploy/                         Docker Compose 编排与安装脚本
 
 ---
 
-## 三、快速开始
+## 五、场景详解
 
-### 1. 准备数据库
-
-```bash
-mysql -uroot -p < db/schema.sql
-```
-
-### 2. 启动应用
-
-```bash
-mvn spring-boot:run
-```
-
-默认端口 8090。此时只有 MySQL 和 Redis 参与，其他中间件全部关闭，应用照常启动。
-
-### 3. 验证
-
-```bash
-curl http://127.0.0.1:8090/actuator/health
-```
-
-返回 `UP` 即成功。
-
-### 4. 打开接口文档
-
-Swagger UI 因 Spring Framework 6.2 的资源模式限制已关闭，OpenAPI 文档仍可访问：
-
-```
-http://127.0.0.1:8090/v3/api-docs
-```
-
-把该地址导入 Apifox、Postman 或任意 Swagger UI 即可查看全部接口。
-
----
-
-## 四、场景一览
-
-### 4.1 多级缓存（cache）
+### 5.1 多级缓存（cache）
 
 **问题**：缓存有三个经典失效模式，不加处理会让数据库在瞬间被打穿。
 
@@ -138,9 +174,12 @@ curl 'http://127.0.0.1:8090/api/cache/lab/penetration?count=2000&guarded=false'
 
 # 布隆过滤器方案
 curl 'http://127.0.0.1:8090/api/cache/lab/penetration?count=2000&guarded=true'
+
+# 命中统计
+curl http://127.0.0.1:8090/api/cache/lab/stats
 ```
 
-实测 2000 次不存在的 id 查询，空值标记约 440ms，布隆过滤器约 100ms，相差 4 倍以上。
+实测 2000 次不存在的 id 查询，空值标记约 444ms，布隆过滤器约 102ms，相差 4 倍以上。
 
 **关键实现**：`framework/cache/MultiLevelCache.java`
 
@@ -149,29 +188,48 @@ curl 'http://127.0.0.1:8090/api/cache/lab/penetration?count=2000&guarded=true'
 
 L1 的 TTL 上限被限制在 60 秒，且所有失效都会通过 Redis 发布订阅广播给其他节点。这是刻意的：本地缓存无法跨节点失效，只能缩短它的生命周期来兜底。
 
-### 4.2 Redis 经典场景（classic）
+### 5.2 Redis 经典场景（classic）
 
-| 场景 | 数据结构 | 接口示例 |
+| 场景 | 数据结构 | 接口 |
 |---|---|---|
 | 排行榜 | ZSet | `POST /api/classic/rank/submit?board=game&member=alice&score=100` |
+| 排行榜查询 | ZSet | `GET /api/classic/rank/top?board=game&size=10` |
+| 周榜结算 | ZSet | `POST /api/classic/rank/settle-weekly?board=game` |
 | UV 统计 | HyperLogLog | `POST /api/classic/uv/record?page=home&visitorId=u1` |
+| UV 区间合并 | HyperLogLog | `GET /api/classic/uv/range?page=home&from=2026-08-01&to=2026-08-07` |
 | 签到日历 | Bitmap | `POST /api/classic/sign?userId=u1` |
-| 短链 | String + Snowflake | `POST /api/classic/short-link?url=https://example.com` |
+| 连续签到 | Bitmap | `GET /api/classic/sign/streak?userId=u1` |
+| 月签到日历 | Bitmap | `GET /api/classic/sign/calendar?userId=u1&month=2026-08` |
+| 短链生成 | String + Snowflake | `POST /api/classic/short-link?url=https://example.com` |
+| 短链跳转 | String | `GET /api/classic/short-link/s/{code}`（302 重定向） |
+| 短链统计 | String | `GET /api/classic/short-link/hits?code=xxx` |
 | 附近的人 | GEO | `GET /api/classic/geo/nearby?longitude=116.40&latitude=39.90&radiusKm=5` |
+| 距离计算 | GEO | `GET /api/classic/geo/distance?first=a&second=b` |
 | 延迟队列 | RDelayedQueue | `POST /api/classic/delay-queue/offer?payload=order-1&delaySeconds=5` |
 | 发号器 | Snowflake / 号段 / INCR / UUID | `GET /api/classic/id?strategy=snowflake&count=1000` |
-| 限流 | 四种算法 | `GET /api/classic/limiter/compare?limit=10&attempts=30` |
+| 限流 | 四种算法 | `GET /api/classic/limiter/compare?limit=10&attempts=50` |
 | 分布式锁 | Redisson RLock | `GET /api/classic/lock/with-lock?threads=8&loops=10` |
 
 **限流算法对比**（同一 key、同一突发流量）：
 
 ```bash
-curl 'http://127.0.0.1:8090/api/classic/limiter/compare?limit=10&windowSeconds=60&attempts=30&distributed=true'
+curl 'http://127.0.0.1:8090/api/classic/limiter/compare?limit=10&windowSeconds=60&attempts=50&distributed=true'
 ```
 
 四种算法的行为差异一目了然：固定窗口在边界处会放过两倍流量，滑动窗口精确但占内存，令牌桶允许突发，漏桶强制匀速。
 
-### 4.3 秒杀（seckill）
+**锁的对照实验**：
+
+```bash
+curl 'http://127.0.0.1:8090/api/classic/lock/without-lock?threads=8&loops=10'
+curl 'http://127.0.0.1:8090/api/classic/lock/with-lock?threads=8&loops=10'
+```
+
+返回结果中区分了 `lockAcquired` 与 `lockTimedOut`，拿不到锁的线程不会被静默计入丢失。
+
+**短链用 302 而非 301**：301 会被浏览器永久缓存，之后就不再经过服务端，点击统计会失效。
+
+### 5.3 秒杀（seckill）
 
 **核心思路**：把库存决策从数据库搬到 Redis，用一条 Lua 脚本完成「查余额 + 扣减 + 记录用户」，全程无锁无事务。
 
@@ -211,7 +269,9 @@ mysql -uroot -p -e "select count(*), sum(quantity) from dong_lab.seckill_order"
 
 实测结果：库存 10 全部售出，订单 9 笔共 10 件，**零超卖、零丢失**。
 
-### 4.4 抢红包（redpacket）
+超时未支付的订单由定时任务取消并回滚库存，时长由 `lab.seckill.payment-timeout-minutes` 控制（默认 15 分钟）。
+
+### 5.4 抢红包（redpacket）
 
 **算法**：二倍均值法。每次在 `[1, 2 × 均值 - 1]` 区间随机取值，保证每人期望相等且有惊喜，同时预留剩余人数的最低金额，避免最后一人拿到 0。
 
@@ -230,11 +290,12 @@ for u in $(seq 1 12); do
 done
 
 curl "http://127.0.0.1:8090/api/red-packet/remain?packetNo=$PN"
+curl "http://127.0.0.1:8090/api/red-packet/records?packetNo=$PN"
 ```
 
 实测：10 人抢完，金额合计恰好 10000 分，分毫不差；第 11、12 人正确被拒。
 
-### 4.5 微博模型（social）
+### 5.5 微博模型（social）
 
 **关注关系**用 Redis Set 存储，天然支持交集运算，共同关注就是一次 `SINTER`。
 
@@ -246,13 +307,26 @@ curl "http://127.0.0.1:8090/api/red-packet/remain?packetNo=$PN"
 | 拉（读扩散） | 只写一份 | 拉取时聚合所有关注者 | 大 V、粉丝多 |
 
 ```bash
+# 1 和 3 都关注 2
+curl -X POST 'http://127.0.0.1:8090/api/social/follow?followerId=1&followeeId=2'
+curl -X POST 'http://127.0.0.1:8090/api/social/follow?followerId=3&followeeId=2'
+
+# 共同关注，交集为 2
+curl 'http://127.0.0.1:8090/api/social/common-followees?firstUserId=1&secondUserId=3'
+
+# 2 发一条动态
+curl -X POST 'http://127.0.0.1:8090/api/social/feed?authorId=2&content=hello'
+
+# 推模式：直接读准备好的时间线
 curl 'http://127.0.0.1:8090/api/social/timeline/push?userId=1&size=10'
+
+# 拉模式：读时聚合所有关注者
 curl 'http://127.0.0.1:8090/api/social/timeline/pull?userId=1&pageNum=1&pageSize=10'
 ```
 
 微博的实际做法是推拉结合：大 V 走拉，普通用户走推。
 
-### 4.6 Elasticsearch（search）
+### 5.6 Elasticsearch（search）
 
 **IK 中文分词**，索引映射由 `SearchIndexInitializer` 在启动时显式创建（`category` 为 keyword 以支持聚合，`name`/`description` 用 `ik_max_word` 索引、`ik_smart` 查询）。
 
@@ -266,7 +340,7 @@ curl -G http://127.0.0.1:8090/api/search --data-urlencode 'keyword=云服务器'
 
 返回包含高亮片段 `<em>云</em><em>服务器</em>测试商品` 和分类分面统计。
 
-### 4.7 分布式事务 TCC（tcc）
+### 5.7 分布式事务 TCC（tcc）
 
 **三阶段**：Try 冻结资源、Confirm 确认扣减、Cancel 释放冻结。
 
@@ -295,19 +369,23 @@ curl -X POST http://127.0.0.1:8090/api/tcc/order -H 'Content-Type: application/j
 # → 数据完全不变，无残留冻结
 ```
 
-`TccRecoveryTask` 每 30 秒扫描一次处于 CONFIRMING 状态的事务，决定推进还是回滚，保证宕机后也能自愈。
+`TccRecoveryTask` 每 30 秒扫描一次处于 CONFIRMING 状态的事务，决定推进还是回滚，保证宕机后也能自愈。也可以手动触发：
 
-### 4.8 消息（mq）
+```bash
+curl -X POST http://127.0.0.1:8090/api/tcc/recover
+```
+
+### 5.8 消息（mq）
 
 **抽象层设计**：业务代码只依赖 `MessageProducer` 接口，`MqFacade` 根据 `lab.mq.active` 路由到具体实现。切换 Kafka 和 RocketMQ 是改配置，不是改代码。
 
 | 传输 | 说明 | 状态 |
 |---|---|---|
 | `local` | JVM 内总线，无需任何中间件即可跑通全部流程 | 默认，已验证 |
-| `rocketmq` | 延迟消息（18 个固定等级）、顺序消息、集群消费 | 已验证 |
-| `kafka` | 顺序消息靠分区键，延迟消息靠「not before」头 + 消费端暂存 | 代码就绪，安装包下载中 |
+| `rocketmq` | 延迟消息（18 个固定等级）、顺序消息、集群消费 | 已部署并验证 |
+| `kafka` | 顺序消息靠分区键，延迟消息靠「not before」头 + 消费端暂存 | 编排就绪，按需启动 |
 
-**RocketMQ 已验证的能力**（`RocketMqListener` 复用统一的 `MessageHandler`，与本地总线同一套业务代码）：
+**已验证的能力**（`RocketMqListener` 复用统一的 `MessageHandler`，与本地总线同一套业务代码）：
 
 ```bash
 # 普通消息
@@ -316,40 +394,44 @@ curl -X POST 'http://127.0.0.1:8090/api/mq/send?key=k1' --data-urlencode 'payloa
 # 顺序消息，同一 shardingKey 进入同一队列，按序消费
 curl -X POST 'http://127.0.0.1:8090/api/mq/send-ordered?key=o1&shardingKey=shard-1'
 
-# 延迟消息，5 秒后投递
+# 延迟消息
 curl -X POST 'http://127.0.0.1:8090/api/mq/send-delayed?key=d1&delaySeconds=5'
-```
 
-```bash
-curl -X POST 'http://127.0.0.1:8090/api/mq/send?key=order-1' --data-urlencode 'payload={"amount":100}'
-curl -X POST 'http://127.0.0.1:8090/api/mq/send-ordered?key=o1&shardingKey=order-1'
-curl -X POST 'http://127.0.0.1:8090/api/mq/send-delayed?key=o2&delaySeconds=10'
+# 批量消息
+curl -X POST 'http://127.0.0.1:8090/api/mq/send-batch?keyPrefix=batch&count=20'
+
+# 消费统计与投递日志
 curl http://127.0.0.1:8090/api/mq/stats
+curl http://127.0.0.1:8090/api/mq/logs
 ```
 
 消费端幂等靠 `mq_message_log` 的唯一索引，重复投递只会入库一次，统计接口中的 `duplicated` 计数可以验证。
 
-### 4.9 MongoDB（doc）
+### 5.9 MongoDB（doc）
 
 无 schema 日志存储。适合记录结构不固定、字段会随业务演进的数据。
 
 ```bash
 curl -X POST http://127.0.0.1:8090/api/doc/operation-log -H 'Content-Type: application/json' \
   -d '{"bizType":"order","bizId":"1001","operator":"dong","action":"create","detail":{"amount":99}}'
+
+curl 'http://127.0.0.1:8090/api/doc/operation-log?bizType=order&pageNum=1&pageSize=20'
+curl 'http://127.0.0.1:8090/api/doc/operation-log/count'
 ```
 
-### 4.10 MariaDB 第二数据源（replica）
+### 5.10 MariaDB 第二数据源（replica）
 
 独立的数据源、会话工厂和事务管理器，演示多数据源配置与跨库一致性观察。
 
 ```bash
 curl -X POST 'http://127.0.0.1:8090/api/replica/accounts?userId=1&username=dong&balance=100000'
 curl 'http://127.0.0.1:8090/api/replica/accounts/consistency?userId=1'
+curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&toUserId=2&amount=100'
 ```
 
 ---
 
-## 五、开关化设计
+## 六、开关化设计
 
 所有中间件默认关闭，应用只依赖 MySQL 和 Redis 即可启动。需要哪个就打开哪个。
 
@@ -382,9 +464,9 @@ lab:
 
 ---
 
-## 六、云服务器部署
+## 七、云服务器部署
 
-服务器为 2G 内存，物理上无法同时运行全部中间件，因此采用**按需启停**的容器编排。
+服务器为 2 核 2G，物理上无法同时运行全部中间件，因此采用**按需启停**的容器编排。
 
 ### 目录
 
@@ -393,17 +475,33 @@ lab:
 ├── docker-compose.yml    编排文件，含内存限制与健康检查
 ├── initdb/               主库建表 SQL，首次启动自动执行
 ├── initdb-replica/       从库建表 SQL
+├── elasticsearch/        含 IK 插件的 Dockerfile
+├── rocketmq/             broker.conf，声明公网地址
 └── lab.sh                启停脚本
 ```
+
+### 服务清单
+
+| 服务 | 端口 | 镜像 | profile |
+|---|---|---|---|
+| MySQL | 3306 | `mysql:8.0` | core |
+| Redis | 6379 | `redis:7.2-alpine` | core |
+| RocketMQ | 9876 / 10911 | `apache/rocketmq:4.9.7` | mq |
+| Kafka | 9092 | `bitnami/kafka:3.7` | kafka |
+| Elasticsearch | 9200 | `lab-elasticsearch-ik:8.15.3` | search |
+| MongoDB | 27017 | `mongo:7.0` | doc |
+| MariaDB | 3307 | `mariadb:10.11` | replica |
 
 ### 使用
 
 ```bash
-lab.sh core up      # MySQL + Redis，约 850M
-lab.sh mq up        # Kafka + RocketMQ，约 1.1G
-lab.sh search up    # Elasticsearch，约 900M
-lab.sh doc up       # MongoDB，约 520M
-lab.sh replica up   # MariaDB，约 390M
+lab.sh core up      # MySQL + Redis，约 850m
+lab.sh mq up        # RocketMQ（namesrv + broker），约 700m
+lab.sh kafka up     # Kafka（KRaft，按需拉镜像），约 800m
+lab.sh search up    # Elasticsearch（含 IK），约 900m
+lab.sh doc up       # MongoDB，约 520m
+lab.sh replica up   # MariaDB，约 390m
+lab.sh full up      # 全部，2G 内存下不建议
 
 lab.sh core down    # 停止
 lab.sh core ps      # 状态
@@ -424,16 +522,11 @@ lab.sh core logs    # 日志
 mvn spring-boot:run -Dspring-boot.run.profiles=remote
 ```
 
-已验证的全部链路：MySQL、Redis（Redisson）、MariaDB、MongoDB、Elasticsearch（含 IK 分词）。
+已验证的全部链路：MySQL、Redis（Redisson）、MariaDB、MongoDB、Elasticsearch（含 IK 分词）、RocketMQ。
 
-### 关于 RocketMQ 与 Kafka
+### 内存是硬约束
 
-两个组件的代码层已完整（`RocketMqProducer`、`KafkaProducerAdapter`），切换只需改 `lab.mq.active`。部署层的情况：
-
-- **RocketMQ**：已部署并验证通过。注意使用 4.9.7 版本（5.3.1 在此环境启动失败），且必须挂载 `broker.conf` 并设置 `brokerIP1` 为公网 IP，否则 namesrv 返回容器内网地址导致客户端连不上
-- **Kafka**：Docker Hub 加速源无 `bitnami/kafka` 镜像，改为原生安装，安装包正在后台下载到 `/opt/kafka.tgz`
-
-内存是硬约束。启动时请遵守按需原则：
+启动时请遵守按需原则，用完即停：
 
 ```bash
 lab.sh search down     # 先停 ES
@@ -443,7 +536,32 @@ lab.sh mq up           # 然后启动消息中间件
 
 ---
 
-## 七、踩过的坑
+## 八、验证记录
+
+以下结果均在 2 核 2G 云服务器上实测（Redis 跨网访问，单次往返约 5ms）。
+
+| 场景 | 验证项 | 结果 |
+|---|---|---|
+| 秒杀 | 10 库存 / 20 人抢 | 售出 10 件，订单 9 笔共 10 件，零超卖零丢失 |
+| 秒杀 | 3 库存 / 10 人抢 | 库存归零，无超卖 |
+| 抢红包 | 10000 分 / 10 人抢 | 金额合计 10000 分，精确守恒 |
+| 抢红包 | 3000 分 / 3 人抢 + 2 人超额 | 金额归零，超额者正确被拒 |
+| 分布式锁 | 80 次并发自增 | 加锁零丢失；不加锁丢失 78（仅 2 次生效） |
+| 缓存穿透 | 2000 次不存在 id | 空值标记 444ms；布隆过滤器 102ms |
+| TCC | 成功 / 失败两分支 | 成功扣减正确；失败完全回滚，冻结残留 0 |
+| TCC | 悬挂事务检查 | CONFIRMING 残留 0，TRIED 残留 0 |
+| 消息幂等 | 重复投递 | 唯一 id 数等于消息数，重复被拦截 |
+| ES 检索 | 中文分词 | 「云服务器」命中，高亮与分面正确 |
+| ES 集群 | IK 映射 | category 为 keyword，name/description 用 IK |
+| 推拉时间线 | 关注 2 人 + 动态 | 两种模式结果一致，未关注者不出现 |
+| 多数据源 | MariaDB 独立事务 | 创建、转账、一致性检查全部正常 |
+| 错误处理 | 重复创建账户 | 返回 1002 业务错误，不泄露数据库细节 |
+
+共 25 项端到端接口验证，全部通过。
+
+---
+
+## 九、踩过的坑
 
 这一节记录真实遇到的问题，比任何教程都值钱。
 
@@ -475,7 +593,7 @@ JDK 21 虚拟线程的 `getId()` 不保证唯一，而 Redisson 可重入锁依�
 
 ### 7. bulk 操作的静默失败
 
-ES 的 bulk 接口即使单条失败，HTTP 也返回 200，必须检查响应体的 `errors()` 字段。加上检查后，日期格式问题立刻暴露。
+ES 的 bulk 接口即使单条失败，HTTP 也返回 200，必须检查响应体的 `errors()` 字段并逐条读取 `item.error().reason()`。加上检查后，日期格式不匹配的问题立刻暴露出来——在此之前它只是让所有文档都写不进去，接口却返回成功。
 
 ### 8. Spring Data 反射在 JDK 21 下的限制
 
@@ -510,11 +628,7 @@ RUN bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsea
 
 教训：任何对运行中的容器做的手工修改都是一次性的，必须固化到镜像里。
 
-### 14. bulk 写入的静默失败
-
-ES 的 bulk 接口即使单条失败，HTTP 仍然返回 200。必须检查响应体的 `errors()` 字段并逐条读取 `item.error().reason()`。加上检查后，日期格式不匹配的问题立刻暴露出来——在此之前它只是让所有文档都写不进去，接口却返回成功。
-
-### 15. RocketMQ 容器内网地址不可达
+### 14. RocketMQ 容器内网地址不可达
 
 broker 启动后注册到 namesrv 的是容器内网 IP（`172.18.0.5`），客户端拿到这个地址去连，必然超时。必须在 `broker.conf` 里显式声明对外地址：
 
@@ -522,17 +636,23 @@ broker 启动后注册到 namesrv 的是容器内网 IP（`172.18.0.5`），客�
 brokerIP1 = YOUR_PUBLIC_HOST
 ```
 
-### 16. RocketMQ 版本与存储卷权限
+Kafka 是同一类问题，`KAFKA_CFG_ADVERTISED_LISTENERS` 必须填公网地址。
+
+### 15. RocketMQ 版本与存储卷权限
 
 5.3.1 版本在此环境启动即失败，换 4.9.7 正常。此外镜像以 `rocketmq` 用户运行，命名卷由 root 创建时无写权限，改用 bind mount 并授权后解决。
 
-### 17. 顺序消息的 keys 丢失
+### 16. 顺序消息的 keys 丢失
 
 `RocketMQTemplate.syncSendOrderly()` 会重建 Message 对象，导致设置的 `keys` 丢失，消费端取到 null，入库时触发非空约束。改用原生 `producer.send(message, selector, shardingKey)` 保留 keys，同时消费端做兜底：keys 为空时用 msgId。
 
+### 17. TCC 的 error_message 非空约束
+
+事务回滚时 `error_message` 为 null，违反数据库 NOT NULL 约束，导致回滚本身失败。在 SQL 中用 `ifnull(..., '')` 兜底，Java 侧统一写空字符串。
+
 ---
 
-## 八、编码规范（dong-standards）
+## 十、编码规范（dong-standards）
 
 本项目严格遵循 `dong-standards` 规范，要点如下：
 
@@ -553,29 +673,3 @@ brokerIP1 = YOUR_PUBLIC_HOST
 | 事务 | `@Transactional(rollbackFor = Exception.class)` |
 | 空集合 | 返回空集合而非 null |
 | 常量 | 集中在 `Constants` 类 |
-
----
-
-## 九、验证记录
-
-以下结果均在 2 核 2G 云服务器上实测（Redis 跨网访问，单次往返约 5ms）。
-
-| 场景 | 验证项 | 结果 |
-|---|---|---|
-| 秒杀 | 10 库存 / 20 人抢 | 售出 10 件，订单 9 笔共 10 件，零超卖零丢失 |
-| 秒杀 | 3 库存 / 10 人抢 | 库存归零，无超卖 |
-| 抢红包 | 10000 分 / 10 人抢 | 金额合计 10000 分，精确守恒 |
-| 抢红包 | 3000 分 / 3 人抢 + 2 人超额 | 金额归零，超额者正确被拒 |
-| 分布式锁 | 80 次并发自增 | 加锁零丢失；不加锁丢失 78（仅 2 次生效） |
-| 缓存穿透 | 2000 次不存在 id | 空值标记 444ms；布隆过滤器 102ms |
-| TCC | 成功 / 失败两分支 | 成功扣减正确；失败完全回滚，冻结残留 0 |
-| TCC | 悬挂事务检查 | CONFIRMING 残留 0，TRIED 残留 0 |
-| 消息幂等 | 重复投递 | 8 条消息 8 个唯一 id，重复被拦截 |
-| ES 检索 | 中文分词 | 「云服务器」命中，高亮与分面正确 |
-| ES 集群 | IK 映射 | category 为 keyword，name/description 用 IK |
-| 推拉时间线 | 关注 2 人 + 动态 | 两种模式结果一致，未关注者不出现 |
-| 多数据源 | MariaDB 独立事务 | 创建、转账、一致性检查全部正常 |
-| 错误处理 | 重复创建账户 | 返回 1002 业务错误，不泄露数据库细节 |
-
-共 25 项端到端接口验证，全部通过。
-# dong
