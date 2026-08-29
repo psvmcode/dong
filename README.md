@@ -131,13 +131,45 @@ src/main/java/com/dong/lab/
 └── replica/                    MariaDB：第二数据源、独立事务管理器
 
 src/main/resources/
-├── application.yml             本地配置，全部中间件默认关闭
-├── application-remote.yml      云服务器配置
+├── application.yml             配置入口：公共参数 + 环境开关
+├── application-local.yml       本地环境：连接信息与中间件开关
+├── application-remote.yml      云服务器环境：连接信息与中间件开关
 └── mapper/**/*.xml             手写 SQL
 
 db/schema.sql                   建表语句
 deploy/                         Docker Compose 编排与启停脚本
 ```
+
+### 配置文件结构
+
+配置按「**入口 + 公共 + 双环境**」拆成三份，避免同一份配置里堆满互相覆盖的开关。
+
+| 文件 | 角色 | 内容 |
+|---|---|---|
+| `application.yml` | 入口与公共 | `spring.profiles.active` 环境开关、Jackson、MyBatis、Actuator、日志、缓存策略、发号器、秒杀参数，以及各连接池与序列化器 |
+| `application-local.yml` | 本地环境 | 指向 `127.0.0.1` 的连接串、本地账号、中间件开关（默认全关）、`mq.active: local` |
+| `application-remote.yml` | 云服务器环境 | 由 `${LAB_*}` 环境变量注入的连接串、中间件开关（默认全开）、`mq.active: rocketmq` |
+
+公共部分只放**与部署位置无关**的参数，环境文件只回答三件事：连哪里、用什么账号、开哪些中间件。
+
+**切换环境**有两种方式。改入口文件的开关：
+
+```yaml
+spring:
+  profiles:
+    active: local          # 改成 remote 即切到云服务器
+```
+
+或者启动时覆盖（推荐，不用改文件）：
+
+```bash
+mvn spring-boot:run                                        # 默认 local
+mvn spring-boot:run -Dspring-boot.run.profiles=remote      # 切到云服务器
+```
+
+命令行 profile 优先级高于配置文件，因此两种方式并存时以命令行为准。
+
+`remote` 环境不含任何明文凭据，全部依赖环境变量，取值方式见第七节的 `.env` 配置。
 
 ### 分层约定
 
@@ -433,7 +465,9 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 
 ## 六、开关化设计
 
-所有中间件默认关闭，应用只依赖 MySQL 和 Redis 即可启动。需要哪个就打开哪个。
+中间件开关按环境区分：`local` 默认只启用 MySQL 与 Redis，应用可以零依赖启动；`remote` 默认全部启用。
+
+开关写在各自的环境文件中（`application-local.yml` / `application-remote.yml`），所以切环境就等于切一套开关，不需要逐项修改：
 
 ```yaml
 lab:

@@ -1,18 +1,15 @@
-server:
-  port: 8090
-  shutdown: graceful
-
 spring:
+  profiles:
+    # environment switch, local for the dev machine, remote for the cloud server
+    active: local
+
   application:
     name: dong-lab
+
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/dong_lab?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
-    username: root
-    password: root
-    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: dong-lab-hikari
       maximum-pool-size: 20
@@ -23,7 +20,6 @@ spring:
 
   data:
     redis:
-      host: 127.0.0.1
       port: 6379
       database: 0
       connect-timeout: 5s
@@ -34,16 +30,8 @@ spring:
           max-idle: 8
           min-idle: 2
           max-wait: 3s
-    mongodb:
-      uri: mongodb://127.0.0.1:27017/dong_lab
-
-  elasticsearch:
-    uris: 127.0.0.1:9200
-    username: elastic
-    password: elastic
 
   kafka:
-    bootstrap-servers: 127.0.0.1:9092
     producer:
       acks: all
       retries: 3
@@ -64,10 +52,13 @@ spring:
     time-zone: Asia/Shanghai
 
 rocketmq:
-  name-server: 127.0.0.1:9876
   producer:
     group: dong-lab-producer
     send-message-timeout: 5000
+
+server:
+  port: 8090
+  shutdown: graceful
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -110,9 +101,7 @@ lab:
     data-center-id: 1
 
   redisson:
-    address: redis://127.0.0.1:6379
     database: 0
-    password:
     connection-pool-size: 32
     connection-minimum-idle-size: 8
     timeout: 5000
@@ -129,28 +118,8 @@ lab:
     double-delete-delay: 500ms
     invalidation-channel: lab:cache:invalidate
 
-  mq:
-    active: local
-
   elasticsearch:
-    enabled: false
     index-prefix: dong_lab
-
-  mongodb:
-    enabled: false
-
-  kafka:
-    enabled: false
-
-  rocketmq:
-    enabled: false
-
-  mariadb:
-    enabled: false
-    url: jdbc:mariadb://127.0.0.1:3307/dong_lab_replica?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
-    driver-class-name: org.mariadb.jdbc.Driver
 
   seckill:
     timeout-task-enabled: true
