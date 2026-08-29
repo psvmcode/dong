@@ -92,8 +92,6 @@ management:
     health:
       show-details: always
   health:
-    # Both engines are optional and switched on per profile, so their indicators are
-    # dropped: a missing engine must not turn the whole application red.
     elasticsearch:
       enabled: false
     mongo:

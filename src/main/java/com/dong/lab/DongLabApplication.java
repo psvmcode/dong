@@ -17,8 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         MongoRepositoriesAutoConfiguration.class,
         ElasticsearchRestClientAutoConfiguration.class,
         ElasticsearchClientAutoConfiguration.class,
-        ElasticsearchDataAutoConfiguration.class,
-        org.springdoc.webmvc.ui.SwaggerConfig.class
+        ElasticsearchDataAutoConfiguration.class
 })
 public class DongLabApplication {
 

@@ -129,12 +129,13 @@ curl http://127.0.0.1:8090/actuator/health
 
 返回 `UP` 即成功。
 
-### 4. 打开接口文档
+### 5. 打开接口文档
 
 应用启动成功后会自动打印可用地址，无需记忆：
 
 ```
 ------------------------------------------------------------
+knife4j ui    http://127.0.0.1:8090/doc.html
 swagger ui    http://127.0.0.1:8090/swagger-ui/index.html
 swagger short http://127.0.0.1:8090/swagger-ui.html
 openapi json  http://127.0.0.1:8090/v3/api-docs
@@ -142,17 +143,20 @@ actuator      http://127.0.0.1:8090/actuator/health
 ------------------------------------------------------------
 ```
 
-在浏览器打开 `swagger ui` 那一行即可看到全部接口，共 88 个，可直接在线调试。
+在浏览器打开 `knife4j ui` 那一行即可，共 88 个接口，支持中文界面、搜索、在线调试与导出。
 
-三个入口的区别：
+几个入口的区别：
 
 | 地址 | 用途 |
 |---|---|
-| `/swagger-ui/index.html` | Swagger UI 页面，带搜索与在线调试 |
+| `/doc.html` | Knife4j 界面，中文、可搜索、支持导出，**推荐** |
+| `/swagger-ui/index.html` | 原生 Swagger UI，作为备选 |
 | `/swagger-ui.html` | 同上，自动跳转，便于记忆 |
-| `/v3/api-docs` | OpenAPI JSON，可导入 Apifox、Postman |
+| `/v3/api-docs` | OpenAPI 3.1 JSON，可导入 Apifox、Postman |
 
-**为什么不是 springdoc 自带的 UI**：springdoc 注册的 `/swagger-ui/**/*index.html` 这类模式被 Spring Framework 6.2 的路径解析器拒绝，会直接导致启动失败。本项目排除其 UI 配置，改用自建页面 `static/swagger-ui/index.html` 搭配 webjar 资源，规避该问题。详见第九节。
+两者共用同一份 `/v3/api-docs` 数据，用哪个都不会有信息差。
+
+**为什么这样组合**：Knife4j 的 starter 与其绑定的 springdoc 2.3.0 无法在 Spring Boot 3.4 上共存，而 springdoc 自带的 UI 又会注册 Spring 6.2 拒绝的路径模式。最终方案是引入 Knife4j 的纯静态资源包提供 `doc.html`，接口数据仍由 springdoc 2.9.0 生成，并移除 springdoc 中那个会注册非法路径的 bean。详见第九节。
 
 ---
 
@@ -223,6 +227,8 @@ spring:
 后缀 `[.properties]` 是必需的。Spring Boot 3.4.5 没有内置 dotenv 加载器，无法凭 `.env` 这个隐藏文件名判断格式；显式声明后，`KEY=VALUE` 的内容就能被 properties 加载器正确解析。
 
 变量缺失时应用直接启动失败并报 `Could not resolve placeholder 'LAB_XXX'`，不会静默回落到本地——这样可以避免"以为连的是线上、实际连到本地脏数据"的问题。取值方式见第七节的 `.env` 配置。
+
+Elasticsearch 与 MongoDB 的健康检查指示器是关闭的。它们是可选组件，一旦没启动，健康检查就会把整个应用标成 DOWN，而实际上主流程完全正常。关掉指示器后，只有真正影响主流程的 MySQL 与 Redis 才会决定 `/actuator/health` 的状态。
 
 ### 分层约定
 
@@ -752,27 +758,49 @@ ES 的 bulk 接口即使单条失败，HTTP 也返回 200，必须检查响应�
 
 springdoc 的 UI 配置会注册 `/swagger-ui/**/*index.html` 这类资源模式，Spring Framework 6.2 的路径解析器拒绝它（`No more pattern data allowed after ** pattern element`），**直接导致启动失败**。
 
-三种处理方式的实测结果：
+注册这段逻辑的是 `SwaggerConfig` 中的一个 bean。直接排除整个 `SwaggerConfig` 会连带丢掉 `/v3/api-docs/swagger-config` 端点，而 Knife4j 的界面依赖它。所以只移除那一个 bean：
 
-| 方式 | 结果 |
+```java
+@Bean
+public static BeanDefinitionRegistryPostProcessor springdocResourceConfigurerRemover() {
+    return registry -> {
+        if (registry.containsBeanDefinition("swaggerWebMvcConfigurer")) {
+            registry.removeBeanDefinition("swaggerWebMvcConfigurer");
+        }
+    };
+}
+```
+
+用的是 `BeanDefinitionRegistryPostProcessor` 而不是 `BeanFactoryPostProcessor`，因为 `removeBeanDefinition` 属于 `BeanDefinitionRegistry`，而 `ConfigurableListableBeanFactory` 并没有这个方法。
+
+### 12. Knife4j starter 与新版 springdoc 无法共存
+
+想用 Knife4j 的 `doc.html`，直觉是引入 `knife4j-openapi3-jakarta-spring-boot-starter`。实测走不通，两头堵死：
+
+| 组合 | 结果 |
 |---|---|
-| 升级 springdoc 2.8.17 → 2.9.0 | 无效，问题依旧 |
-| `spring.mvc.pathmatch.matching-strategy=ant_path_matcher` | 无效，该属性只作用于 `@RequestMapping`，管不到 `ResourceHandlerRegistry` |
-| 排除 `SwaggerConfig` + 自建页面 | **有效** |
+| starter 自带的 springdoc 2.3.0 | `NoSuchMethodError: ControllerAdviceBean.<init>(Object)`，该构造函数在 Spring 6.2 已移除 |
+| 强制覆盖为 springdoc 2.9.0 | `NoSuchMethodError: SpringDocConfigProperties.getGroupConfigs()`，Knife4j 按 `List` 编译，2.4.0 起 springdoc 改成了 `Set` |
 
-最终采用第三种：排除 `SwaggerConfig` 阻止非法注册，用 `static/swagger-ui/index.html` 自建页面加载 webjar 资源，并在 `SwaggerUiConfig` 中把 `/swagger-ui.html` 重定向过去。
+且 springdoc 2.4.0 之后就都是 `Set`，只有 2.3.0 是 `List`，所以不存在两者都满足的版本。
 
-自建页面有两个额外好处：不依赖 springdoc 的 `SwaggerIndexTransformer`，可以直接在页面里把 `url` 写成本项目的 `/v3/api-docs`（webjar 自带的 initializer 默认指向 petstore 示例）；同时启动完成时打印所有可用地址。
+**解法**：`knife4j-openapi3-ui` 是**纯静态资源包**（不含任何 class），只引入它即可 —— `doc.html` 页面由它提供，接口数据仍由 springdoc 2.9.0 生成，Java 层不再有交集。
 
-**注意版本号耦合**：页面里写死了 webjar 版本 `5.32.11`。升级 springdoc 时其传递依赖的 swagger-ui 版本可能变化，导致静态资源 404。`SwaggerUiConfig` 启动时会校验该版本是否存在，缺失则在日志中告警，按提示修改页面里的版本号即可。
+代价是失去 Knife4j 的后端增强（文档管理、全局参数等），核心的接口展示与在线调试不受影响。
 
-### 12. 密码中的特殊字符
+### 13. 自建 Swagger 页面的版本号耦合
+
+`static/swagger-ui/index.html` 里写死了 webjar 版本 `5.32.11`。升级 springdoc 时其传递依赖的 swagger-ui 版本可能变化，导致静态资源 404。`SwaggerUiConfig` 启动时会校验该版本是否存在，缺失则在日志中告警，按提示修改页面里的版本号即可。
+
+页面里直接把 `url` 写成本项目的 `/v3/api-docs`，不依赖 springdoc 的 `SwaggerIndexTransformer`（webjar 自带的 initializer 默认指向 petstore 示例）。
+
+### 14. 密码中的特殊字符
 
 MongoDB 密码若含 `@`（例如 `P@ssw0rd`），在连接 URI 中必须编码为 `%40`（`P%40ssw0rd`），否则 URI 被解析成两个 `@`，主机与认证信息错位，连接直接失败。
 
 现在密码统一放在 `.env` 的 `LAB_MONGO_PASSWORD`，**填编码后的值**。
 
-### 13. IK 插件在容器重建后丢失
+### 15. IK 插件在容器重建后丢失
 
 最初用 `docker exec` 在容器内手工安装 IK 插件，能正常工作。但 `docker compose down` 再 `up` 后容器被重建，插件消失，索引创建因找不到 `ik_max_word` 分析器而失败，集群状态变红。
 
@@ -785,7 +813,7 @@ RUN bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsea
 
 教训：任何对运行中的容器做的手工修改都是一次性的，必须固化到镜像里。
 
-### 14. RocketMQ 容器内网地址不可达
+### 16. RocketMQ 容器内网地址不可达
 
 broker 启动后注册到 namesrv 的是容器内网 IP（`172.18.0.5`），客户端拿到这个地址去连，必然超时。必须在 `broker.conf` 里显式声明对外地址：
 
@@ -797,15 +825,15 @@ brokerIP1 = ${LAB_PUBLIC_HOST}
 
 Kafka 是同一类问题，`KAFKA_CFG_ADVERTISED_LISTENERS` 必须填公网地址，同样取自 `LAB_PUBLIC_HOST`。
 
-### 15. RocketMQ 版本与存储卷权限
+### 17. RocketMQ 版本与存储卷权限
 
 5.3.1 版本在此环境启动即失败，换 4.9.7 正常。此外镜像以 `rocketmq` 用户运行，命名卷由 root 创建时无写权限，改用 bind mount 并授权后解决。
 
-### 16. 顺序消息的 keys 丢失
+### 18. 顺序消息的 keys 丢失
 
 `RocketMQTemplate.syncSendOrderly()` 会重建 Message 对象，导致设置的 `keys` 丢失，消费端取到 null，入库时触发非空约束。改用原生 `producer.send(message, selector, shardingKey)` 保留 keys，同时消费端做兜底：keys 为空时用 msgId。
 
-### 17. TCC 的 error_message 非空约束
+### 19. TCC 的 error_message 非空约束
 
 事务回滚时 `error_message` 为 null，违反数据库 NOT NULL 约束，导致回滚本身失败。在 SQL 中用 `ifnull(..., '')` 兜底，Java 侧统一写空字符串。
 
