@@ -8,7 +8,8 @@ usage: lab.sh <profile> [command]
 
 profiles:
   core      mysql + redis                            about 850m
-  mq        kafka + rocketmq                          about 1.1g
+  mq        rocketmq (namesrv + broker)               about 700m
+  kafka     kafka (kraft, image pulled on demand)     about 800m
   search    elasticsearch                             about 900m
   doc       mongodb                                   about 520m
   replica   mariadb                                   about 390m

@@ -1,8 +1,40 @@
 # 项目记忆
 
-## 当前项目：企业级 HR + 财务综合管理平台 (dong-platform)
+## 当前项目：dong-lab（中间件与分布式场景实验室）
 
-> 2026-07-30 由 ERP+CRM 平台整体转型而来（ERP/CRM 服务已全部删除），前后端全量重建并验证通过。
+> 2026-08-29 由 HR + 财务平台整体清空重建而来。旧项目已彻底删除（未备份，当时不是 git 仓库）。
+> 定位：一个 Spring Boot 工程，把中间件用法做成可运行、可对比、可量化验证的实验。
+> 详见根目录 README.md。
+
+### 技术选型
+- **后端**: Spring Boot 3.4.5 + JDK 21 + MyBatis 原生 XML（**不用 MyBatis-Plus**）
+- **中间件**: MySQL 8 / Redis 7 / Redisson 3.45 / RocketMQ 4.9.7 / Kafka /
+  Elasticsearch 8.15.3（含 IK）/ MongoDB 7 / MariaDB 10.11
+- **无前端**：纯后端接口工程
+
+### 架构与规范（用户明确要求）
+- 单 Maven 模块，顶层按限界上下文分，上下文内按传统分层
+  （controller / service+impl / mapper / entity / dto / enums）
+- **必须遵循 skill【dong-standards】**：禁止任何注释（含 Javadoc）、SQL 关键字全小写、
+  DDL 先行、属性与方法空行规则、文件末尾空行、Result 统一响应、状态用枚举落库为 int
+- 设计原理写进 README.md，不写进代码注释
+- 分布式锁用 **Redisson**（不要自研）
+
+### 运行
+- 本地：`mvn spring-boot:run`（端口 8090，MySQL/Redis 用 brew，root/root）
+- 远程：`mvn spring-boot:run -Dspring-boot.run.profiles=remote`（连 YOUR_PUBLIC_HOST）
+- 所有中间件开关化，默认全关，应用仅依赖 MySQL + Redis 即可启动
+
+### 云服务器 YOUR_PUBLIC_HOST（2核2G，CentOS 7）
+- 已停旧项目 6 个 Java 微服务，建 4G swap
+- Docker Compose 按需启停：`/opt/dong-lab/lab.sh <core|mq|kafka|search|doc|replica> <up|down>`
+- 统一密码 CHANGE_ME（Mongo URI 中需编码 %40）
+- 部署文件在本项目 deploy/ 目录
+
+### 用户偏好
+- 项目范围内的 Linux 命令直接执行，不需要逐条确认
+- 中间件全部装在这台云服务器上，**不要在本地装任何中间件**
+- 有不清楚的地方要二次确认；做完要反复检查直到完全没问题
 
 ### 技术选型
 - **后端**: Spring Boot 3.4.5 + Spring Cloud 2024.0.1 + JDK 21（未启用 Nacos，直连路由）

@@ -86,8 +86,7 @@ services:
       ALLOW_PLAINTEXT_LISTENER: "yes"
     volumes:
       - kafka-data:/bitnami/kafka
-    mem_limit: 768m
-    profiles: ["mq", "full"]
+    profiles: ["kafka", "full"]
 
   rocketmq-namesrv:
     image: apache/rocketmq:4.9.7
@@ -98,7 +97,6 @@ services:
     command: sh mqnamesrv
     environment:
       JAVA_OPT_EXT: -Xms256m -Xmx256m -Xmn128m
-    mem_limit: 384m
     profiles: ["mq", "full"]
 
   rocketmq-broker:
@@ -112,11 +110,10 @@ services:
       - "10909:10909"
     command: sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf
     environment:
-      JAVA_OPT_EXT: -Xms384m -Xmx384m -Xmn192m -XX:MaxMetaspaceSize=128m
+      JAVA_OPT_EXT: -Xms384m -Xmx384m -Xmn192m
     volumes:
-      - rocketmq-data:/home/rocketmq/store
+      - ./data/rocketmq:/home/rocketmq/store
       - ./rocketmq/broker.conf:/home/rocketmq/conf/broker.conf:ro
-    mem_limit: 896m
     profiles: ["mq", "full"]
 
   elasticsearch:
@@ -163,6 +160,5 @@ volumes:
   redis-data:
   mariadb-data:
   kafka-data:
-  rocketmq-data:
   es-data:
   mongo-data:

@@ -66,6 +66,9 @@ lab:
     password: CHANGE_ME
     database: 0
 
+  mq:
+    active: rocketmq
+
   elasticsearch:
     enabled: true
     index-prefix: dong_lab
@@ -73,10 +76,10 @@ lab:
   mongodb:
     enabled: true
 
-  kafka:
-    enabled: false
-
   rocketmq:
+    enabled: true
+
+  kafka:
     enabled: false
 
   mariadb:

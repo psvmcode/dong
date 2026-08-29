@@ -304,8 +304,21 @@ curl -X POST http://127.0.0.1:8090/api/tcc/order -H 'Content-Type: application/j
 | 传输 | 说明 | 状态 |
 |---|---|---|
 | `local` | JVM 内总线，无需任何中间件即可跑通全部流程 | 默认，已验证 |
-| `rocketmq` | 支持延迟消息（18 个固定等级）、顺序消息 | 代码就绪，容器已拉取，待启动 |
+| `rocketmq` | 延迟消息（18 个固定等级）、顺序消息、集群消费 | 已验证 |
 | `kafka` | 顺序消息靠分区键，延迟消息靠「not before」头 + 消费端暂存 | 代码就绪，安装包下载中 |
+
+**RocketMQ 已验证的能力**（`RocketMqListener` 复用统一的 `MessageHandler`，与本地总线同一套业务代码）：
+
+```bash
+# 普通消息
+curl -X POST 'http://127.0.0.1:8090/api/mq/send?key=k1' --data-urlencode 'payload={"seq":1}'
+
+# 顺序消息，同一 shardingKey 进入同一队列，按序消费
+curl -X POST 'http://127.0.0.1:8090/api/mq/send-ordered?key=o1&shardingKey=shard-1'
+
+# 延迟消息，5 秒后投递
+curl -X POST 'http://127.0.0.1:8090/api/mq/send-delayed?key=d1&delaySeconds=5'
+```
 
 ```bash
 curl -X POST 'http://127.0.0.1:8090/api/mq/send?key=order-1' --data-urlencode 'payload={"amount":100}'
@@ -417,7 +430,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=remote
 
 两个组件的代码层已完整（`RocketMqProducer`、`KafkaProducerAdapter`），切换只需改 `lab.mq.active`。部署层的情况：
 
-- **RocketMQ**：镜像 `apache/rocketmq:5.3.1` 已拉取，执行 `lab.sh mq up` 即可启动（需先停掉 ES 和 MongoDB 腾出内存）
+- **RocketMQ**：已部署并验证通过。注意使用 4.9.7 版本（5.3.1 在此环境启动失败），且必须挂载 `broker.conf` 并设置 `brokerIP1` 为公网 IP，否则 namesrv 返回容器内网地址导致客户端连不上
 - **Kafka**：Docker Hub 加速源无 `bitnami/kafka` 镜像，改为原生安装，安装包正在后台下载到 `/opt/kafka.tgz`
 
 内存是硬约束。启动时请遵守按需原则：
@@ -500,6 +513,22 @@ RUN bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsea
 ### 14. bulk 写入的静默失败
 
 ES 的 bulk 接口即使单条失败，HTTP 仍然返回 200。必须检查响应体的 `errors()` 字段并逐条读取 `item.error().reason()`。加上检查后，日期格式不匹配的问题立刻暴露出来——在此之前它只是让所有文档都写不进去，接口却返回成功。
+
+### 15. RocketMQ 容器内网地址不可达
+
+broker 启动后注册到 namesrv 的是容器内网 IP（`172.18.0.5`），客户端拿到这个地址去连，必然超时。必须在 `broker.conf` 里显式声明对外地址：
+
+```properties
+brokerIP1 = YOUR_PUBLIC_HOST
+```
+
+### 16. RocketMQ 版本与存储卷权限
+
+5.3.1 版本在此环境启动即失败，换 4.9.7 正常。此外镜像以 `rocketmq` 用户运行，命名卷由 root 创建时无写权限，改用 bind mount 并授权后解决。
+
+### 17. 顺序消息的 keys 丢失
+
+`RocketMQTemplate.syncSendOrderly()` 会重建 Message 对象，导致设置的 `keys` 丢失，消费端取到 null，入库时触发非空约束。改用原生 `producer.send(message, selector, shardingKey)` 保留 keys，同时消费端做兜底：keys 为空时用 msgId。
 
 ---
 

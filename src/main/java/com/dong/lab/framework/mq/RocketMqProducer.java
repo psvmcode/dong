@@ -41,7 +41,7 @@ public class RocketMqProducer implements MessageProducer {
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
         Message message = build(topic, key, payload);
         try {
-            rocketMqTemplate.syncSendOrderly(topic, message, shardingKey);
+            rocketMqTemplate.getProducer().send(message, new ShardingSelector(), shardingKey);
         } catch (Exception ex) {
             log.error("rocketmq ordered send failed topic={} key={}", topic, key, ex);
             throw new IllegalStateException("rocketmq ordered send failed", ex);
@@ -71,6 +71,23 @@ public class RocketMqProducer implements MessageProducer {
         Message message = new Message(topic, body.getBytes(StandardCharsets.UTF_8));
         message.setKeys(key);
         return message;
+    }
+
+    /**
+     * Selects the queue by the sharding key, the same key always lands on the same queue and is
+     * therefore consumed in the order it was sent.
+     */
+    private static final class ShardingSelector implements org.apache.rocketmq.client.producer.MessageQueueSelector {
+
+        @Override
+        public org.apache.rocketmq.common.message.MessageQueue select(
+                java.util.List<org.apache.rocketmq.common.message.MessageQueue> queues,
+                org.apache.rocketmq.common.message.Message message,
+                Object argument) {
+            int index = Math.floorMod(String.valueOf(argument).hashCode(), queues.size());
+            return queues.get(index);
+        }
+
     }
 
     private int delayLevel(Duration delay) {
