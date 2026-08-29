@@ -63,23 +63,43 @@
 
 ## 三、快速开始
 
-本项目**不在本地运行任何中间件**，全部连接云服务器。因此启动前必须先提供环境变量。
+本项目**不在本地运行任何中间件**，全部连接云服务器。启动前需要一份本机凭据文件。
 
-### 1. 生成环境变量文件
+### 1. 账号密码存在哪
 
-仓库不保存凭据，用脚本交互生成（密码不回显，文件权限 600）：
+全部凭据集中在一个文件：**`deploy/.env`**。它就躺在项目里，随时可以打开查看和修改。
 
-```bash
-./setup-env.sh
+```
+deploy/
+├── .env              ← 真实账号密码，本地可见，已被 git 忽略
+├── .env.example      ← 模板，进版本库，只含变量名和占位值
+├── setup-env.sh      ← 交互式生成 .env
+└── print-env.sh      ← 打印可粘贴到服务器的命令
 ```
 
-脚本位于 `deploy/`，也可手工从模板复制：
+`.env` 是点开头的隐藏文件，macOS 访达默认不显示，两种办法查看：
+
+```bash
+cat deploy/.env                    # 终端查看
+open -e deploy/.env                # 用文本编辑器打开
+```
+
+访达中按 `Cmd + Shift + .` 可切换显示隐藏文件。
+
+**安全边界在 `.gitignore`**：`*.env` 被忽略、`!*.env.example` 放行，所以 `.env` 永远不会被提交。可以随时自查：
+
+```bash
+git check-ignore -v deploy/.env    # 有输出即表示已被忽略
+git status --short                 # 不应出现 .env
+```
+
+若 `.env` 不存在，从模板复制后填入真实密码即可：
 
 ```bash
 cp deploy/.env.example deploy/.env && chmod 600 deploy/.env && vi deploy/.env
 ```
 
-详见第七节的变量说明。
+变量含义见第七节。MongoDB 密码若含 `@` 要填 URL 编码后的值（`@` → `%40`）。
 
 ### 2. 准备远程数据库
 
@@ -182,8 +202,10 @@ deploy/                         Docker Compose 编排与启停脚本
 ```yaml
 spring:
   config:
-    import: optional:file:./deploy/.env
+    import: optional:file:./deploy/.env[.properties]
 ```
+
+后缀 `[.properties]` 是必需的。Spring Boot 3.4.5 没有内置 dotenv 加载器，无法凭 `.env` 这个隐藏文件名判断格式；显式声明后，`KEY=VALUE` 的内容就能被 properties 加载器正确解析。
 
 变量缺失时应用直接启动失败并报 `Could not resolve placeholder 'LAB_XXX'`，不会静默回落到本地——这样可以避免"以为连的是线上、实际连到本地脏数据"的问题。取值方式见第七节的 `.env` 配置。
 

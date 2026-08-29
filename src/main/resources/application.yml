@@ -1,6 +1,6 @@
 spring:
   config:
-    import: optional:file:./deploy/.env
+    import: optional:file:./deploy/.env[.properties]
 
   application:
     name: dong-lab
