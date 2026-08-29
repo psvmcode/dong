@@ -89,16 +89,17 @@ cp deploy/.env.example deploy/.env && chmod 600 deploy/.env && vi deploy/.env
 mysql -h <host> -uroot -p < db/schema.sql
 ```
 
-### 3. 加载环境变量并启动
+### 3. 启动
 
 ```bash
-set -a && source deploy/.env && set +a
 mvn spring-boot:run
 ```
 
 默认端口 **8090**。
 
-环境变量缺失时应用会**直接启动失败**并提示缺少哪个变量，不会静默回落到本地地址。
+`application.yml` 通过 `spring.config.import` 自动读取 `deploy/.env`，**不需要手动 source**。
+
+环境变量缺失时应用会**直接启动失败**并提示 `Could not resolve placeholder 'LAB_XXX'`，不会静默回落到本地地址。
 
 ### 4. 验证
 
@@ -176,7 +177,15 @@ deploy/                         Docker Compose 编排与启停脚本
 
 环境专属的部分一律走环境变量，配置文件里不含任何明文凭据，也不含任何 `127.0.0.1` 地址。
 
-变量缺失时应用直接启动失败并提示缺哪个，不会静默回落到本地——这样可以避免"以为连的是线上、实际连到本地脏数据"的问题。取值方式见第七节的 `.env` 配置。
+文件顶部这行让配置自动读取 `deploy/.env`，启动前无需手动 `source`：
+
+```yaml
+spring:
+  config:
+    import: optional:file:./deploy/.env
+```
+
+变量缺失时应用直接启动失败并报 `Could not resolve placeholder 'LAB_XXX'`，不会静默回落到本地——这样可以避免"以为连的是线上、实际连到本地脏数据"的问题。取值方式见第七节的 `.env` 配置。
 
 ### 分层约定
 
@@ -597,7 +606,6 @@ lab.sh core logs    # 日志
 ### 连接远程环境
 
 ```bash
-set -a && source deploy/.env && set +a
 mvn spring-boot:run
 ```
 
@@ -606,7 +614,6 @@ mvn spring-boot:run
 由于配置默认启用全部中间件，若云端只起了一部分，需要把未启动的组件临时关掉，否则应用会卡在连接失败上：
 
 ```bash
-set -a && source deploy/.env && set +a
 mvn spring-boot:run -Dspring-boot.run.arguments="--lab.mongodb.enabled=false --lab.elasticsearch.enabled=false --lab.rocketmq.enabled=false"
 ```
 

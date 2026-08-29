@@ -1,4 +1,7 @@
 spring:
+  config:
+    import: optional:file:./deploy/.env
+
   application:
     name: dong-lab
 
