@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.redpacket.mapper.RedPacketMapper">
+
+    <resultMap id="redPacketMap" type="com.dong.lab.redpacket.entity.RedPacket">
+        <id column="id" property="id"/>
+        <result column="packet_no" property="packetNo"/>
+        <result column="sponsor_id" property="sponsorId"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="remain_amount" property="remainAmount"/>
+        <result column="remain_count" property="remainCount"/>
+        <result column="packet_type" property="packetType" javaType="com.dong.lab.redpacket.enums.RedPacketType"/>
+        <result column="status" property="status" javaType="com.dong.lab.redpacket.enums.RedPacketStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="recordMap" type="com.dong.lab.redpacket.entity.RedPacketRecord">
+        <id column="id" property="id"/>
+        <result column="packet_no" property="packetNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="amount" property="amount"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectByPacketNo" resultMap="redPacketMap">
+        select id, packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count, packet_type, status,
+               create_time, update_time
+        from red_packet
+        where packet_no = #{packetNo}
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.redpacket.entity.RedPacket"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into red_packet (packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count,
+                                packet_type, status)
+        values (#{packetNo}, #{sponsorId}, #{totalAmount}, #{totalCount}, #{remainAmount}, #{remainCount},
+                #{packetType}, #{status})
+    </insert>
+
+    <update id="updateStatus">
+        update red_packet
+        set status = #{status}
+        where packet_no = #{packetNo}
+    </update>
+
+    <update id="decreaseRemain">
+        update red_packet
+        set remain_amount = remain_amount - #{amount},
+            remain_count  = remain_count - #{count}
+        where packet_no = #{packetNo}
+    </update>
+
+    <select id="selectRecords" resultMap="recordMap">
+        select id, packet_no, user_id, amount, create_time
+        from red_packet_record
+        where packet_no = #{packetNo}
+        order by id asc
+    </select>
+
+    <insert id="insertRecord" parameterType="com.dong.lab.redpacket.entity.RedPacketRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into red_packet_record (packet_no, user_id, amount)
+        values (#{packetNo}, #{userId}, #{amount})
+    </insert>
+
+    <select id="countRecord" resultType="java.lang.Integer">
+        select count(1)
+        from red_packet_record
+        where packet_no = #{packetNo}
+          and user_id = #{userId}
+    </select>
+
+</mapper>

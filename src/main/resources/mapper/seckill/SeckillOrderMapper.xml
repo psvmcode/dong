@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.seckill.mapper.SeckillOrderMapper">
+
+    <resultMap id="orderMap" type="com.dong.lab.seckill.entity.SeckillOrder">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="activity_id" property="activityId"/>
+        <result column="product_id" property="productId"/>
+        <result column="user_id" property="userId"/>
+        <result column="quantity" property="quantity"/>
+        <result column="amount" property="amount"/>
+        <result column="status" property="status" javaType="com.dong.lab.seckill.enums.SeckillOrderStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="orderColumns">
+        id, order_no, activity_id, product_id, user_id, quantity, amount, status, create_time, update_time
+    </sql>
+
+    <select id="selectByOrderNo" resultMap="orderMap">
+        select
+        <include refid="orderColumns"/>
+        from seckill_order
+        where order_no = #{orderNo}
+    </select>
+
+    <select id="countByActivityAndUser" resultType="java.lang.Integer">
+        select count(1)
+        from seckill_order
+        where activity_id = #{activityId}
+          and user_id = #{userId}
+    </select>
+
+    <select id="selectTimeoutCandidates" resultMap="orderMap">
+        select
+        <include refid="orderColumns"/>
+        from seckill_order
+        where status = #{status}
+          and create_time &lt;= date_sub(now(), interval #{minutes} minute)
+        limit 200
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.seckill.entity.SeckillOrder"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into seckill_order (order_no, activity_id, product_id, user_id, quantity, amount, status)
+        values (#{orderNo}, #{activityId}, #{productId}, #{userId}, #{quantity}, #{amount}, #{status})
+    </insert>
+
+    <update id="updateStatus">
+        update seckill_order
+        set status = #{status}
+        where order_no = #{orderNo}
+    </update>
+
+</mapper>

@@ -1,0 +1,65 @@
+package com.dong.lab.tcc.service.impl;
+
+import com.dong.lab.common.constant.Constants;
+import com.dong.lab.common.exception.BusinessException;
+import com.dong.lab.tcc.mapper.TccParticipantMapper;
+import com.dong.lab.tcc.service.TccParticipant;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class TccAccountParticipant implements TccParticipant {
+
+    private final TccParticipantMapper tccParticipantMapper;
+
+    @Override
+    public String branchId() {
+        return "account";
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void tryPhase(String xid, Map<String, Object> payload) {
+        Long userId = longValue(payload, "userId");
+        long amount = longValue(payload, "amount");
+
+        if (Boolean.TRUE.equals(payload.get("forceFailure"))) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account try phase failed on purpose");
+        }
+
+        int updated = tccParticipantMapper.freezeAccount(userId, amount);
+        if (updated == 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "balance not enough for try phase");
+        }
+        log.info("account try xid={} user={} amount={}", xid, userId, amount);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmPhase(String xid, Map<String, Object> payload) {
+        Long userId = longValue(payload, "userId");
+        long amount = longValue(payload, "amount");
+        tccParticipantMapper.confirmAccount(userId, amount);
+        log.info("account confirm xid={} user={} amount={}", xid, userId, amount);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelPhase(String xid, Map<String, Object> payload) {
+        Long userId = longValue(payload, "userId");
+        long amount = longValue(payload, "amount");
+        tccParticipantMapper.cancelAccount(userId, amount);
+        log.info("account cancel xid={} user={} amount={}", xid, userId, amount);
+    }
+
+    private long longValue(Map<String, Object> payload, String key) {
+        return Long.parseLong(String.valueOf(payload.get(key)));
+    }
+
+}

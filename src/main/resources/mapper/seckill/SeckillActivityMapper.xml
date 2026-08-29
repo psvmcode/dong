@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.seckill.mapper.SeckillActivityMapper">
+
+    <resultMap id="activityMap" type="com.dong.lab.seckill.entity.SeckillActivity">
+        <id column="id" property="id"/>
+        <result column="product_id" property="productId"/>
+        <result column="title" property="title"/>
+        <result column="total_stock" property="totalStock"/>
+        <result column="available_stock" property="availableStock"/>
+        <result column="unit_price" property="unitPrice"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="status" property="status" javaType="com.dong.lab.seckill.enums.SeckillActivityStatus"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="activityColumns">
+        id, product_id, title, total_stock, available_stock, unit_price, start_time, end_time, status, version,
+        create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="activityMap">
+        select
+        <include refid="activityColumns"/>
+        from seckill_activity
+        where id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="activityMap">
+        select
+        <include refid="activityColumns"/>
+        from seckill_activity
+        order by id desc
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.seckill.entity.SeckillActivity"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into seckill_activity (product_id, title, total_stock, available_stock, unit_price, start_time, end_time,
+                                      status)
+        values (#{productId}, #{title}, #{totalStock}, #{availableStock}, #{unitPrice}, #{startTime}, #{endTime},
+                #{status})
+    </insert>
+
+    <update id="updateStatus">
+        update seckill_activity
+        set status  = #{status},
+            version = version + 1
+        where id = #{id}
+          and version = #{expectedVersion}
+    </update>
+
+    <update id="updateAvailableStock">
+        update seckill_activity
+        set available_stock = #{availableStock}
+        where id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.tcc.mapper.TccParticipantMapper">
+
+    <resultMap id="inventoryMap" type="com.dong.lab.tcc.entity.TccInventory">
+        <id column="id" property="id"/>
+        <result column="product_id" property="productId"/>
+        <result column="available" property="available"/>
+        <result column="frozen" property="frozen"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="accountMap" type="com.dong.lab.tcc.entity.TccAccount">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="balance" property="balance"/>
+        <result column="frozen" property="frozen"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="orderMap" type="com.dong.lab.tcc.entity.TccOrder">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="xid" property="xid"/>
+        <result column="user_id" property="userId"/>
+        <result column="product_id" property="productId"/>
+        <result column="quantity" property="quantity"/>
+        <result column="amount" property="amount"/>
+        <result column="status" property="status" javaType="com.dong.lab.tcc.enums.TccOrderStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectInventory" resultMap="inventoryMap">
+        select id, product_id, available, frozen, create_time, update_time
+        from tcc_inventory
+        where product_id = #{productId}
+    </select>
+
+    <insert id="insertInventory" parameterType="com.dong.lab.tcc.entity.TccInventory"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into tcc_inventory (product_id, available, frozen)
+        values (#{productId}, #{available}, #{frozen})
+    </insert>
+
+    <update id="freezeInventory">
+        update tcc_inventory
+        set available = available - #{quantity},
+            frozen    = frozen + #{quantity}
+        where product_id = #{productId}
+          and available &gt;= #{quantity}
+    </update>
+
+    <update id="confirmInventory">
+        update tcc_inventory
+        set frozen = frozen - #{quantity}
+        where product_id = #{productId}
+          and frozen &gt;= #{quantity}
+    </update>
+
+    <update id="cancelInventory">
+        update tcc_inventory
+        set available = available + #{quantity},
+            frozen    = frozen - #{quantity}
+        where product_id = #{productId}
+          and frozen &gt;= #{quantity}
+    </update>
+
+    <select id="selectAccount" resultMap="accountMap">
+        select id, user_id, balance, frozen, create_time, update_time
+        from tcc_account
+        where user_id = #{userId}
+    </select>
+
+    <insert id="insertAccount" parameterType="com.dong.lab.tcc.entity.TccAccount"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into tcc_account (user_id, balance, frozen)
+        values (#{userId}, #{balance}, #{frozen})
+    </insert>
+
+    <update id="freezeAccount">
+        update tcc_account
+        set balance = balance - #{amount},
+            frozen  = frozen + #{amount}
+        where user_id = #{userId}
+          and balance &gt;= #{amount}
+    </update>
+
+    <update id="confirmAccount">
+        update tcc_account
+        set frozen = frozen - #{amount}
+        where user_id = #{userId}
+          and frozen &gt;= #{amount}
+    </update>
+
+    <update id="cancelAccount">
+        update tcc_account
+        set balance = balance + #{amount},
+            frozen  = frozen - #{amount}
+        where user_id = #{userId}
+          and frozen &gt;= #{amount}
+    </update>
+
+    <select id="selectOrderByXid" resultMap="orderMap">
+        select id, order_no, xid, user_id, product_id, quantity, amount, status, create_time, update_time
+        from tcc_order
+        where xid = #{xid}
+    </select>
+
+    <insert id="insertOrder" parameterType="com.dong.lab.tcc.entity.TccOrder"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into tcc_order (order_no, xid, user_id, product_id, quantity, amount, status)
+        values (#{orderNo}, #{xid}, #{userId}, #{productId}, #{quantity}, #{amount}, #{status})
+    </insert>
+
+    <update id="updateOrderStatus">
+        update tcc_order
+        set status = #{status}
+        where xid = #{xid}
+    </update>
+
+</mapper>

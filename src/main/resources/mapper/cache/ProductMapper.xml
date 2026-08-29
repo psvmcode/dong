@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.cache.mapper.ProductMapper">
+
+    <resultMap id="productMap" type="com.dong.lab.cache.entity.Product">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="category" property="category"/>
+        <result column="price" property="price"/>
+        <result column="stock" property="stock"/>
+        <result column="status" property="status" javaType="com.dong.lab.cache.enums.ProductStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, name, category, price, stock, status, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="productMap">
+        select
+        <include refid="columns"/>
+        from product
+        where id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="productMap">
+        select
+        <include refid="columns"/>
+        from product
+        order by id asc
+    </select>
+
+    <select id="selectByPage" resultMap="productMap">
+        select
+        <include refid="columns"/>
+        from product
+        order by id asc
+        limit #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="java.lang.Long">
+        select count(1) from product
+    </select>
+
+    <select id="selectAllIds" resultType="java.lang.Long">
+        select id from product order by id asc
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.cache.entity.Product"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into product (name, category, price, stock, status)
+        values (#{name}, #{category}, #{price}, #{stock}, #{status})
+    </insert>
+
+    <update id="update" parameterType="com.dong.lab.cache.entity.Product">
+        update product
+        set name     = #{name},
+            category = #{category},
+            price    = #{price},
+            stock    = #{stock}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from product where id = #{id}
+    </delete>
+
+</mapper>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.social.mapper.SocialFeedMapper">
+
+    <resultMap id="feedMap" type="com.dong.lab.social.entity.SocialFeed">
+        <id column="id" property="id"/>
+        <result column="feed_id" property="feedId"/>
+        <result column="author_id" property="authorId"/>
+        <result column="content" property="content"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.dong.lab.social.entity.SocialFeed"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into social_feed (feed_id, author_id, content, like_count)
+        values (#{feedId}, #{authorId}, #{content}, #{likeCount})
+    </insert>
+
+    <select id="selectByFeedId" resultMap="feedMap">
+        select id, feed_id, author_id, content, like_count, create_time
+        from social_feed
+        where feed_id = #{feedId}
+    </select>
+
+    <select id="selectByAuthor" resultMap="feedMap">
+        select id, feed_id, author_id, content, like_count, create_time
+        from social_feed
+        where author_id = #{authorId}
+        order by feed_id desc
+    </select>
+
+    <select id="selectByAuthors" resultMap="feedMap">
+        select id, feed_id, author_id, content, like_count, create_time
+        from social_feed
+        where author_id in
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        order by feed_id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <update id="increaseLikeCount">
+        update social_feed
+        set like_count = like_count + 1
+        where feed_id = #{feedId}
+    </update>
+
+</mapper>

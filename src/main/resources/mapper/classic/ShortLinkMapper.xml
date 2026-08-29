@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.classic.mapper.ShortLinkMapper">
+
+    <resultMap id="shortLinkMap" type="com.dong.lab.classic.entity.ShortLink">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="origin_url" property="originUrl"/>
+        <result column="hit_count" property="hitCount"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectByCode" resultMap="shortLinkMap">
+        select id, code, origin_url, hit_count, create_time
+        from short_url
+        where code = #{code}
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.classic.entity.ShortLink"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into short_url (code, origin_url, hit_count)
+        values (#{code}, #{originUrl}, #{hitCount})
+    </insert>
+
+    <update id="increaseHitCount">
+        update short_url
+        set hit_count = hit_count + 1
+        where code = #{code}
+    </update>
+
+</mapper>

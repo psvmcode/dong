@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.tcc.mapper.TccTransactionMapper">
+
+    <resultMap id="transactionMap" type="com.dong.lab.tcc.entity.TccTransaction">
+        <id column="id" property="id"/>
+        <result column="xid" property="xid"/>
+        <result column="status" property="status" javaType="com.dong.lab.tcc.enums.TccTransactionStatus"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="branchMap" type="com.dong.lab.tcc.entity.TccBranch">
+        <id column="id" property="id"/>
+        <result column="xid" property="xid"/>
+        <result column="branch_id" property="branchId"/>
+        <result column="status" property="status" javaType="com.dong.lab.tcc.enums.TccBranchStatus"/>
+        <result column="payload" property="payload"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="next_retry_time" property="nextRetryTime"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByXid" resultMap="transactionMap">
+        select id, xid, status, expire_time, retry_count, create_time, update_time
+        from tcc_transaction
+        where xid = #{xid}
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.tcc.entity.TccTransaction"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into tcc_transaction (xid, status, expire_time, retry_count)
+        values (#{xid}, #{status}, #{expireTime}, #{retryCount})
+    </insert>
+
+    <update id="updateStatus">
+        update tcc_transaction
+        set status = #{status}
+        where xid = #{xid}
+    </update>
+
+    <select id="selectByStatus" resultMap="transactionMap">
+        select id, xid, status, expire_time, retry_count, create_time, update_time
+        from tcc_transaction
+        where status = #{status}
+        order by create_time asc
+        limit #{limit}
+    </select>
+
+    <select id="selectBranch" resultMap="branchMap">
+        select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
+               update_time
+        from tcc_branch
+        where xid = #{xid}
+          and branch_id = #{branchId}
+    </select>
+
+    <insert id="insertBranch" parameterType="com.dong.lab.tcc.entity.TccBranch"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into tcc_branch (xid, branch_id, status, payload, error_message, next_retry_time, retry_count)
+        values (#{xid}, #{branchId}, #{status}, #{payload}, #{errorMessage}, #{nextRetryTime}, #{retryCount})
+    </insert>
+
+    <update id="updateBranchStatus">
+        update tcc_branch
+        set status        = #{status},
+            error_message = ifnull(#{errorMessage}, '')
+        where xid = #{xid}
+          and branch_id = #{branchId}
+    </update>
+
+    <select id="selectBranches" resultMap="branchMap">
+        select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
+               update_time
+        from tcc_branch
+        where xid = #{xid}
+        order by id asc
+    </select>
+
+    <select id="selectRetryableBranches" resultMap="branchMap">
+        select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
+               update_time
+        from tcc_branch
+        where status = #{status}
+          and next_retry_time &lt;= now()
+        limit #{limit}
+    </select>
+
+    <delete id="clearAll">
+        delete from tcc_transaction
+    </delete>
+
+</mapper>

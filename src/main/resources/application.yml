@@ -1,0 +1,157 @@
+server:
+  port: 8090
+  shutdown: graceful
+
+spring:
+  application:
+    name: dong-lab
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/dong_lab?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: dong-lab-hikari
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 10000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      connect-timeout: 5s
+      timeout: 5s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3s
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/dong_lab
+
+  elasticsearch:
+    uris: 127.0.0.1:9200
+    username: elastic
+    password: elastic
+
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: dong-lab-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    listener:
+      ack-mode: manual
+
+  jackson:
+    default-property-inclusion: non_null
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: dong-lab-producer
+    send-message-timeout: 5000
+
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.dong.lab
+  type-handlers-package: com.dong.lab
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,beans
+  endpoint:
+    health:
+      show-details: always
+  health:
+    # Both engines are optional and switched on per profile, so their indicators are
+    # dropped: a missing engine must not turn the whole application red.
+    elasticsearch:
+      enabled: false
+    mongo:
+      enabled: false
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: info
+    com.dong.lab: info
+
+lab:
+  snowflake:
+    worker-id: 1
+    data-center-id: 1
+
+  redisson:
+    address: redis://127.0.0.1:6379
+    database: 0
+    password:
+    connection-pool-size: 32
+    connection-minimum-idle-size: 8
+    timeout: 5000
+
+  cache:
+    l1-enabled: true
+    l2-enabled: true
+    l1-max-size: 10000
+    default-ttl: 10m
+    null-value-ttl: 60s
+    ttl-jitter-ratio: 0.1
+    rebuild-lease: 5s
+    rebuild-wait: 1s
+    double-delete-delay: 500ms
+    invalidation-channel: lab:cache:invalidate
+
+  mq:
+    active: local
+
+  elasticsearch:
+    enabled: false
+    index-prefix: dong_lab
+
+  mongodb:
+    enabled: false
+
+  kafka:
+    enabled: false
+
+  rocketmq:
+    enabled: false
+
+  mariadb:
+    enabled: false
+    url: jdbc:mariadb://127.0.0.1:3307/dong_lab_replica?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: org.mariadb.jdbc.Driver
+
+  seckill:
+    timeout-task-enabled: true
+    payment-timeout-minutes: 15

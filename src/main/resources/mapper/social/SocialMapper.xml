@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.social.mapper.SocialRelationMapper">
+
+    <insert id="insert" parameterType="com.dong.lab.social.entity.SocialRelation"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into social_relation (follower_id, followee_id)
+        values (#{followerId}, #{followeeId})
+    </insert>
+
+    <delete id="delete">
+        delete from social_relation
+        where follower_id = #{followerId}
+          and followee_id = #{followeeId}
+    </delete>
+
+    <select id="countByFollowerAndFollowee" resultType="java.lang.Integer">
+        select count(1)
+        from social_relation
+        where follower_id = #{followerId}
+          and followee_id = #{followeeId}
+    </select>
+
+    <select id="selectFollowees" resultType="java.lang.Long">
+        select followee_id
+        from social_relation
+        where follower_id = #{followerId}
+    </select>
+
+    <select id="selectFollowers" resultType="java.lang.Long">
+        select follower_id
+        from social_relation
+        where followee_id = #{followeeId}
+    </select>
+
+    <select id="countFollowees" resultType="java.lang.Long">
+        select count(1)
+        from social_relation
+        where follower_id = #{followerId}
+    </select>
+
+    <select id="countFollowers" resultType="java.lang.Long">
+        select count(1)
+        from social_relation
+        where followee_id = #{followeeId}
+    </select>
+
+</mapper>
