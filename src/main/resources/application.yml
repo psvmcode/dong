@@ -1,8 +1,4 @@
 spring:
-  profiles:
-    # environment switch, local for the dev machine, remote for the cloud server
-    active: local
-
   application:
     name: dong-lab
 
@@ -10,6 +6,10 @@ spring:
     timeout-per-shutdown-phase: 20s
 
   datasource:
+    url: jdbc:mysql://${LAB_PUBLIC_HOST}:3306/dong_lab?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${LAB_MYSQL_USERNAME}
+    password: ${LAB_MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: dong-lab-hikari
       maximum-pool-size: 20
@@ -20,7 +20,9 @@ spring:
 
   data:
     redis:
+      host: ${LAB_PUBLIC_HOST}
       port: 6379
+      password: ${LAB_REDIS_PASSWORD}
       database: 0
       connect-timeout: 5s
       timeout: 5s
@@ -30,8 +32,16 @@ spring:
           max-idle: 8
           min-idle: 2
           max-wait: 3s
+    mongodb:
+      uri: mongodb://${LAB_MONGO_USERNAME}:${LAB_MONGO_PASSWORD}@${LAB_PUBLIC_HOST}:27017/dong_lab?authSource=admin
+
+  elasticsearch:
+    uris: ${LAB_PUBLIC_HOST}:9200
+    username: elastic
+    password: ${LAB_ES_PASSWORD}
 
   kafka:
+    bootstrap-servers: ${LAB_PUBLIC_HOST}:9092
     producer:
       acks: all
       retries: 3
@@ -52,6 +62,7 @@ spring:
     time-zone: Asia/Shanghai
 
 rocketmq:
+  name-server: ${LAB_PUBLIC_HOST}:9876
   producer:
     group: dong-lab-producer
     send-message-timeout: 5000
@@ -101,6 +112,8 @@ lab:
     data-center-id: 1
 
   redisson:
+    address: redis://${LAB_PUBLIC_HOST}:6379
+    password: ${LAB_REDIS_PASSWORD}
     database: 0
     connection-pool-size: 32
     connection-minimum-idle-size: 8
@@ -118,8 +131,28 @@ lab:
     double-delete-delay: 500ms
     invalidation-channel: lab:cache:invalidate
 
+  mq:
+    active: rocketmq
+
   elasticsearch:
+    enabled: true
     index-prefix: dong_lab
+
+  mongodb:
+    enabled: true
+
+  kafka:
+    enabled: false
+
+  rocketmq:
+    enabled: true
+
+  mariadb:
+    enabled: true
+    url: jdbc:mariadb://${LAB_PUBLIC_HOST}:3307/dong_lab_replica?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${LAB_MARIADB_USERNAME}
+    password: ${LAB_MARIADB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
 
   seckill:
     timeout-task-enabled: true
