@@ -39,3 +39,6 @@ build/
 ._*
 .Spotlight-V100
 .Trashes
+
+### local tooling ###
+.codebuddy/
