@@ -529,7 +529,8 @@ lab:
 ├── docker-compose.yml    编排文件，含内存限制与健康检查
 ├── .env                  密码与公网地址（不进版本库，由 setup-env.sh 生成）
 ├── .env.example          变量模板，进版本库
-├── setup-env.sh          交互式 .env 生成脚本
+├── setup-env.sh          服务器上交互式生成 .env
+├── print-env.sh          本地执行，打印可粘贴到服务器的命令
 ├── initdb/               主库建表 SQL，首次启动自动执行
 ├── initdb-replica/       从库建表 SQL
 ├── elasticsearch/        含 IK 插件的 Dockerfile
@@ -546,7 +547,17 @@ cd /opt/dong-lab
 ./setup-env.sh
 ```
 
-脚本会逐项提示，直接回车接受默认值。也可以手工从模板复制后编辑：
+脚本会逐项提示，直接回车接受默认值。
+
+若服务器无法直接拿到本仓库的脚本（例如只允许粘贴命令、不能传文件），可在**本地**运行 `print-env.sh`，它会打印出一段可直接粘贴到服务器执行的命令：
+
+```bash
+./print-env.sh                      # 本地执行，密码不回显、不落盘
+```
+
+把输出整段复制到服务器执行即可生成同样的 `.env`。MongoDB 密码会自动做 URL 编码（`@` → `%40`），无需手工处理。
+
+也可以手工从模板复制后编辑：
 
 ```bash
 cp .env.example .env && chmod 600 .env && vi .env
