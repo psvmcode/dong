@@ -129,15 +129,30 @@ curl http://127.0.0.1:8090/actuator/health
 
 返回 `UP` 即成功。
 
-### 4. 接口文档
+### 4. 打开接口文档
 
-Swagger UI 因 Spring Framework 6.2 的资源模式限制已关闭，OpenAPI 文档仍可访问：
+应用启动成功后会自动打印可用地址，无需记忆：
 
 ```
-http://127.0.0.1:8090/v3/api-docs
+------------------------------------------------------------
+swagger ui    http://127.0.0.1:8090/swagger-ui/index.html
+swagger short http://127.0.0.1:8090/swagger-ui.html
+openapi json  http://127.0.0.1:8090/v3/api-docs
+actuator      http://127.0.0.1:8090/actuator/health
+------------------------------------------------------------
 ```
 
-把该地址导入 Apifox、Postman 或任意 Swagger UI 即可查看全部接口。
+在浏览器打开 `swagger ui` 那一行即可看到全部接口，共 88 个，可直接在线调试。
+
+三个入口的区别：
+
+| 地址 | 用途 |
+|---|---|
+| `/swagger-ui/index.html` | Swagger UI 页面，带搜索与在线调试 |
+| `/swagger-ui.html` | 同上，自动跳转，便于记忆 |
+| `/v3/api-docs` | OpenAPI JSON，可导入 Apifox、Postman |
+
+**为什么不是 springdoc 自带的 UI**：springdoc 注册的 `/swagger-ui/**/*index.html` 这类模式被 Spring Framework 6.2 的路径解析器拒绝，会直接导致启动失败。本项目排除其 UI 配置，改用自建页面 `static/swagger-ui/index.html` 搭配 webjar 资源，规避该问题。详见第九节。
 
 ---
 
@@ -735,7 +750,21 @@ ES 的 bulk 接口即使单条失败，HTTP 也返回 200，必须检查响应�
 
 ### 11. springdoc 与 Spring Framework 6.2
 
-springdoc 注册的资源模式 `/swagger-ui/**/*index.html` 被 Spring Framework 6.2 拒绝，导致启动失败。排除 `SwaggerConfig` 自动配置，OpenAPI 文档仍可正常生成。
+springdoc 的 UI 配置会注册 `/swagger-ui/**/*index.html` 这类资源模式，Spring Framework 6.2 的路径解析器拒绝它（`No more pattern data allowed after ** pattern element`），**直接导致启动失败**。
+
+三种处理方式的实测结果：
+
+| 方式 | 结果 |
+|---|---|
+| 升级 springdoc 2.8.17 → 2.9.0 | 无效，问题依旧 |
+| `spring.mvc.pathmatch.matching-strategy=ant_path_matcher` | 无效，该属性只作用于 `@RequestMapping`，管不到 `ResourceHandlerRegistry` |
+| 排除 `SwaggerConfig` + 自建页面 | **有效** |
+
+最终采用第三种：排除 `SwaggerConfig` 阻止非法注册，用 `static/swagger-ui/index.html` 自建页面加载 webjar 资源，并在 `SwaggerUiConfig` 中把 `/swagger-ui.html` 重定向过去。
+
+自建页面有两个额外好处：不依赖 springdoc 的 `SwaggerIndexTransformer`，可以直接在页面里把 `url` 写成本项目的 `/v3/api-docs`（webjar 自带的 initializer 默认指向 petstore 示例）；同时启动完成时打印所有可用地址。
+
+**注意版本号耦合**：页面里写死了 webjar 版本 `5.32.11`。升级 springdoc 时其传递依赖的 swagger-ui 版本可能变化，导致静态资源 404。`SwaggerUiConfig` 启动时会校验该版本是否存在，缺失则在日志中告警，按提示修改页面里的版本号即可。
 
 ### 12. 密码中的特殊字符
 

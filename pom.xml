@@ -28,7 +28,7 @@
         <redisson.version>3.45.0</redisson.version>
         <rocketmq-spring.version>2.3.6</rocketmq-spring.version>
         <mybatis-spring.version>3.0.4</mybatis-spring.version>
-        <springdoc.version>2.8.17</springdoc.version>
+        <springdoc.version>2.9.0</springdoc.version>
     </properties>
 
     <dependencies>
