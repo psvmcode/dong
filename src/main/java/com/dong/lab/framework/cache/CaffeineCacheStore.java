@@ -9,6 +9,12 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * L1 本地缓存，进程内持有，不跨节点共享。
+ *
+ * <p>踩坑提醒：JDK 21 之后 Caffeine 反射访问内部字段会触发模块权限告警，
+ * 因此这里只存 CacheEntry 包装对象，避免框架去猜测泛型类型。
+ */
 public class CaffeineCacheStore implements CacheStore {
 
     private final Cache<String, CacheEntry> cache;
@@ -26,6 +32,11 @@ public class CaffeineCacheStore implements CacheStore {
         return "caffeine";
     }
 
+    /**
+     * 三种结果必须区分清楚，不能只用 null 表示异常：
+     * Miss 是完全没查到、Empty 是查到空值标记、Hit 是真正命中。
+     * 混淆 Miss 和 Empty 会让防穿透统计失真。
+     */
     @Override
     public <T> CacheLookup<T> lookup(String key, Class<T> type) {
         CacheEntry entry = cache.getIfPresent(key);
@@ -91,6 +102,10 @@ public class CaffeineCacheStore implements CacheStore {
         return type.isInstance(value) ? (T) value : JsonUtils.fromJson(JsonUtils.toJson(value), type);
     }
 
+    /**
+     * 按 entry 自身记录的过期时间计算，而不是全局固定 ttl。
+     * 这样每一条缓存都能有各自的生命周期，抖动策略才能生效。
+     */
     private static final class EntryExpiry implements Expiry<String, CacheEntry> {
 
         @Override

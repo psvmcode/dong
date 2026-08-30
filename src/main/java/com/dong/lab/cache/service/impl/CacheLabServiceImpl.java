@@ -21,6 +21,10 @@ public class CacheLabServiceImpl implements CacheLabService {
 
     private final CacheStats cacheStats;
 
+    /**
+     * 用不存在的 id 打量请求，对比两种防穿透手段的耗时与拦截效果。
+     * id 取 9000000 到 9999999 之间，这个区间在数据库中一定不存在。
+     */
     @Override
     public Map<String, Object> penetration(int count, boolean guarded) {
         long before = cacheStats.snapshot().penetrationBlocked();

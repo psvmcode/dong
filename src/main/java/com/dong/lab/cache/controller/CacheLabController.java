@@ -22,10 +22,14 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 缓存实验室。提供可量化对比的实验入口，
+ * 核心是穿透实验，其余接口用于观察多级缓存的运行状态。
+ */
 @RestController
 @RequestMapping("/api/cache/lab")
 @RequiredArgsConstructor
-@Tag(name = "cache-lab")
+@Tag(name = "缓存实验室")
 public class CacheLabController {
 
     private final CacheLabService cacheLabService;
@@ -41,42 +45,58 @@ public class CacheLabController {
     private final ObjectProvider<RedisCacheStore> l2Provider;
 
     @GetMapping("/stats")
-    @Operation(summary = "hit ratio per level")
+    @Operation(summary = "查看各层级缓存命中率")
     public Result<CacheStats.CacheStatsSnapshot> stats() {
         return Result.success(cacheStats.snapshot());
     }
 
     @PostMapping("/stats/reset")
+    @Operation(summary = "重置缓存统计数据")
     public Result<Void> reset() {
         cacheStats.reset();
         return Result.success();
     }
 
+    /**
+     * 预热是使用布隆过滤器模式的前置条件，跳过会导致实验数据完全失真。
+     */
     @PostMapping("/warm-up")
+    @Operation(summary = "缓存预热，加载全部商品并填充布隆过滤器")
     public Result<Integer> warmUp() {
         return Result.success(productService.warmUp());
     }
 
+    /**
+     * 对照实验入口。guarded 为 true 走布隆过滤器，false 只靠空值标记。
+     * 对比返回的 elapsedMillis 即可看出两种手段的差距。
+     */
     @GetMapping("/penetration")
-    @Operation(summary = "burst of ids that do not exist, with or without the bloom filter")
+    @Operation(summary = "缓存穿透实验，对比空值标记与布隆过滤器两种防护手段")
     public Result<Map<String, Object>> penetration(@RequestParam(defaultValue = "2000") int count,
                                                    @RequestParam(defaultValue = "false") boolean guarded) {
         return Result.success(cacheLabService.penetration(count, guarded));
     }
 
     @GetMapping("/probe")
+    @Operation(summary = "读取缓存，完整走一遍 L1 到 L2 再到回源的链路")
     public Result<String> probe(@RequestParam String key,
                                 @RequestParam(defaultValue = "probe-value") String value) {
         return Result.success(multiLevelCache.get(key, String.class, Duration.ofMinutes(5), () -> value));
     }
 
     @DeleteMapping("/probe")
+    @Operation(summary = "删除缓存并广播失效事件到其他节点")
     public Result<Void> evict(@RequestParam String key) {
         multiLevelCache.invalidate(key);
         return Result.success();
     }
 
+    /**
+     * 用 ObjectProvider 而不是直接注入，因为 L1 和 L2 都可以独立关闭，
+     * 关闭时容器里没有对应 bean，直接注入会启动失败。
+     */
     @GetMapping("/levels")
+    @Operation(summary = "查看 L1 与 L2 的容量和命中明细")
     public Result<Map<String, Object>> levels() {
         Map<String, Object> result = new LinkedHashMap<>();
         l1Provider.ifAvailable(store -> {

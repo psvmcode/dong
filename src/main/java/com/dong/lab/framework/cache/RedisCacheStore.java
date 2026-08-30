@@ -8,10 +8,17 @@ import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
+/**
+ * L2 分布式缓存，所有节点共享同一份数据。
+ *
+ * <p>与 L1 的关键差异：这里的 ttl 也要叠加抖动，
+ * 否则一批 key 同时写入就会同时失效，雪崩会穿透到数据库。
+ */
 public class RedisCacheStore implements CacheStore {
 
     private static final String KEY_PREFIX = "lab:cache:";
 
+    // 空值标记用字符串，不能用真正的 null，Redis 里 null 和不存在的 key 无法区分
     private static final String EMPTY_MARKER = "null";
 
     private final RedisService redisService;
@@ -73,6 +80,9 @@ public class RedisCacheStore implements CacheStore {
         return new CacheLookup.Hit<>(decoder.apply(raw));
     }
 
+    /**
+     * 给 ttl 叠加随机增量，把集中过期打散。这是防雪崩的关键一步。
+     */
     private Duration jitter(Duration ttl) {
         if (jitterRatio <= 0) {
             return ttl;
