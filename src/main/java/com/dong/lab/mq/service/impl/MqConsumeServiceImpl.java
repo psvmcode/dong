@@ -49,7 +49,6 @@ public class MqConsumeServiceImpl implements MqConsumeService {
                 logRecord.setStatus(MqMessageStatus.CONSUMED);
                 logRecord.setRetryCount(retries);
                 mqMessageLogMapper.insert(logRecord);
-
                 consumed.increment();
                 log.info("message consumed topic={} msgId={}", topic, msgId);
                 return true;

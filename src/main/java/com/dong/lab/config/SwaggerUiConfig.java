@@ -49,7 +49,6 @@ public class SwaggerUiConfig implements WebMvcConfigurer {
         log.info("openapi json  {}", host + "/v3/api-docs");
         log.info("actuator      {}", host + "/actuator/health");
         log.info("------------------------------------------------------------");
-
         if (getClass().getResource(WEBJAR_CSS) == null) {
             log.warn("swagger ui webjar {} is missing, update the version in static/swagger-ui/index.html", WEBJAR_VERSION);
         }

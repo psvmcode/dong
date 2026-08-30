@@ -33,7 +33,6 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
     public Map<String, Object> generate(String strategy, int count) {
         AtomicLong last = new AtomicLong();
         long start = System.nanoTime();
-
         switch (strategy.toLowerCase()) {
             case "snowflake" -> {
                 for (int i = 0; i < count; i++) {

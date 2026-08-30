@@ -42,7 +42,6 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
     public void rebuildTimelineFor(Long userId, List<Long> followeeIds) {
         RScoredSortedSet<Long> timeline = timelineOf(userId);
         timeline.delete();
-
         if (followeeIds == null || followeeIds.isEmpty()) {
             return;
         }

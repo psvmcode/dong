@@ -28,7 +28,6 @@ public class TccAccountParticipant implements TccParticipant {
     public void tryPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
-
         if (Boolean.TRUE.equals(payload.get("forceFailure"))) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account try phase failed on purpose");
         }

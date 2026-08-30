@@ -70,7 +70,6 @@ public class SeckillServiceImpl implements SeckillService {
         SeckillActivity activity = requireActivity(activityId);
         seckillStockService.prepare(activityId, activity.getTotalStock());
         soldOutFlag.clear(activityId);
-
         int updated = seckillActivityMapper.updateStatus(activityId,
                 SeckillActivityStatus.ONLINE.getCode(), activity.getVersion());
         if (updated == 0) {
@@ -101,7 +100,6 @@ public class SeckillServiceImpl implements SeckillService {
 
         int result = seckillStockService.deduct(activityId, userId, quantity);
         DeductStatus status = DeductStatus.fromResult(result);
-
         if (status == DeductStatus.SOLD_OUT) {
             soldOutFlag.mark(activityId);
             return SeckillReceiptResponse.rejected("sold out");
@@ -119,7 +117,6 @@ public class SeckillServiceImpl implements SeckillService {
 
         String orderNo = ORDER_NO_PREFIX + snowflake.nextId();
         BigDecimal amount = activity.getUnitPrice().multiply(BigDecimal.valueOf(quantity));
-
         Map<String, Object> message = new LinkedHashMap<>();
         message.put("orderNo", orderNo);
         message.put("activityId", activityId);
@@ -127,10 +124,8 @@ public class SeckillServiceImpl implements SeckillService {
         message.put("userId", userId);
         message.put("quantity", quantity);
         message.put("unitPrice", activity.getUnitPrice());
-
         messageProducer.send(TOPIC, orderNo, JsonUtils.toJson(message));
         log.info("seckill reserved orderNo={} activity={} user={} remaining={}", orderNo, activityId, userId, result);
-
         return SeckillReceiptResponse.accepted(orderNo, result, amount);
     }
 

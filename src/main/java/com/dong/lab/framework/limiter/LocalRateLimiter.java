@@ -44,7 +44,6 @@ public class LocalRateLimiter implements RateLimiter {
         double refillPerNanos = (double) rule.limit() / rule.window().toNanos();
         long now = System.nanoTime();
         AtomicBoolean allowed = new AtomicBoolean(false);
-
         buckets.asMap().compute(key, (ignored, existing) -> {
             Bucket bucket = existing == null ? new Bucket(rule.limit(), now) : existing;
             bucket.refill(refillPerNanos, rule.limit(), now);
@@ -54,7 +53,6 @@ public class LocalRateLimiter implements RateLimiter {
             }
             return bucket;
         });
-
         return allowed.get();
     }
 
@@ -62,7 +60,6 @@ public class LocalRateLimiter implements RateLimiter {
         long windowIndex = System.currentTimeMillis() / rule.window().toMillis();
         String windowKey = key + ":" + windowIndex;
         AtomicBoolean allowed = new AtomicBoolean(false);
-
         buckets.asMap().compute(windowKey, (ignored, existing) -> {
             Bucket bucket = existing == null ? new Bucket(0, System.nanoTime()) : existing;
             if (bucket.tokens < rule.limit()) {
@@ -71,16 +68,13 @@ public class LocalRateLimiter implements RateLimiter {
             }
             return bucket;
         });
-
         return allowed.get();
     }
 
     private static final class Bucket {
-
         private double tokens;
 
         private long lastRefillNanos;
-
         private Bucket(double tokens, long lastRefillNanos) {
             this.tokens = tokens;
             this.lastRefillNanos = lastRefillNanos;

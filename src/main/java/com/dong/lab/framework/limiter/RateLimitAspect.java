@@ -38,7 +38,6 @@ public class RateLimitAspect {
         RateLimitRule rule = new RateLimitRule(rateLimited.limit(),
                 Duration.ofNanos(rateLimited.unit().toNanos(rateLimited.window())),
                 rateLimited.algorithm());
-
         boolean allowed = rateLimitManager.tryAcquire(key, rule, rateLimited.distributed());
         if (!allowed) {
             String detail = rateLimited.message().isBlank()

@@ -39,7 +39,6 @@ public class GeoServiceImpl implements GeoService {
         Map<String, Double> distances =
                 geo.radiusWithDistance(longitude, latitude, radiusKm, GeoUnit.KILOMETERS, GeoOrder.ASC, limit);
         Map<String, GeoPosition> positions = geo.pos(distances.keySet().toArray(new String[0]));
-
         List<NearbyPlaceResponse> places = new ArrayList<>(distances.size());
         for (Map.Entry<String, Double> entry : distances.entrySet()) {
             GeoPosition position = positions.get(entry.getKey());

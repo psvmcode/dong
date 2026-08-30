@@ -37,13 +37,11 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
         Map<String, Object> message = JsonUtils.fromJson(payload,
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
                 });
-
         String orderNo = String.valueOf(message.get("orderNo"));
         Long activityId = Long.valueOf(String.valueOf(message.get("activityId")));
         Long userId = Long.valueOf(String.valueOf(message.get("userId")));
         int quantity = Integer.parseInt(String.valueOf(message.get("quantity")));
         BigDecimal unitPrice = new BigDecimal(String.valueOf(message.get("unitPrice")));
-
         if (seckillOrderMapper.countByActivityAndUser(activityId, userId) > 0) {
             duplicated.increment();
             log.warn("duplicate seckill order rejected orderNo={} activity={} user={}", orderNo, activityId, userId);
@@ -58,7 +56,6 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
         order.setQuantity(quantity);
         order.setAmount(unitPrice.multiply(BigDecimal.valueOf(quantity)));
         order.setStatus(SeckillOrderStatus.PENDING_PAYMENT);
-
         try {
             seckillOrderMapper.insert(order);
             created.increment();

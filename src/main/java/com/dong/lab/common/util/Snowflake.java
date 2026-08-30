@@ -50,7 +50,6 @@ public class Snowflake {
     public synchronized long nextId() {
         long timestamp = currentMillis();
         long offset = timestamp - lastTimestamp;
-
         if (offset < 0) {
             if (offset >= -MAX_BACKWARD_MS) {
                 timestamp = waitUntilNextMillis(lastTimestamp);

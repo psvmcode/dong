@@ -57,11 +57,9 @@ public class SocialServiceImpl implements SocialService {
         relation.setFollowerId(followerId);
         relation.setFolloweeId(followeeId);
         socialRelationMapper.insert(relation);
-
         followingSet(followerId).add(followeeId);
         followerSet(followeeId).add(followerId);
         socialTimelineService.rebuildTimelineFor(followerId, socialRelationMapper.selectFollowees(followerId));
-
         log.info("user {} followed {}", followerId, followeeId);
     }
 
@@ -118,14 +116,12 @@ public class SocialServiceImpl implements SocialService {
     @Transactional(rollbackFor = Exception.class)
     public long publishFeed(Long authorId, String content) {
         long feedId = snowflake.nextId();
-
         SocialFeed feed = new SocialFeed();
         feed.setFeedId(feedId);
         feed.setAuthorId(authorId);
         feed.setContent(content);
         feed.setLikeCount(0L);
         socialFeedMapper.insert(feed);
-
         socialTimelineService.fanOutToFollowers(authorId, feedId, followers(authorId));
         log.info("feed published feedId={} author={}", feedId, authorId);
         return feedId;

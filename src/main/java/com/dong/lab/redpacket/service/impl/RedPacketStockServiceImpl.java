@@ -57,11 +57,9 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
         redisService.delete(List.of(COUNT + packetNo, AMOUNT + packetNo, LIST + packetNo, USERS + packetNo));
         redisService.set(COUNT + packetNo, String.valueOf(amounts.size()), TTL);
         redisService.set(AMOUNT + packetNo, String.valueOf(totalAmount), TTL);
-
         redisService.template().opsForList().rightPushAll(LIST + packetNo,
                 amounts.stream().map(String::valueOf).toList());
         redisService.expire(LIST + packetNo, TTL);
-
         log.info("red packet stock prepared packetNo={} count={} total={}", packetNo, amounts.size(), totalAmount);
     }
 

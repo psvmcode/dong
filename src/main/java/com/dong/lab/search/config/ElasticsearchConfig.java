@@ -36,7 +36,6 @@ public class ElasticsearchConfig {
                 .map(String::trim)
                 .map(ElasticsearchConfig::toHttpHost)
                 .toArray(HttpHost[]::new);
-
         RestClientBuilder builder = RestClient.builder(hosts);
         if (!username.isBlank()) {
             CredentialsProvider credentialsProvider = new BasicCredentialsProvider();

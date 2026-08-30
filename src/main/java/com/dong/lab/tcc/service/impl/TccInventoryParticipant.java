@@ -28,7 +28,6 @@ public class TccInventoryParticipant implements TccParticipant {
     public void tryPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");
-
         int updated = tccParticipantMapper.freezeInventory(productId, quantity);
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "inventory not enough for try phase");

@@ -73,10 +73,6 @@ public class RocketMqProducer implements MessageProducer {
         return message;
     }
 
-    /**
-     * Selects the queue by the sharding key, the same key always lands on the same queue and is
-     * therefore consumed in the order it was sent.
-     */
     private static final class ShardingSelector implements org.apache.rocketmq.client.producer.MessageQueueSelector {
 
         @Override

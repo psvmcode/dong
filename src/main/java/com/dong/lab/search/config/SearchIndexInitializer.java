@@ -49,14 +49,12 @@ public class SearchIndexInitializer {
                     .properties("status", Property.of(property -> property.keyword(keyword -> keyword)))
                     .properties("createTime", Property.of(property -> property.date(
                             date -> date.format("strict_date_optional_time||epoch_millis")))));
-
             elasticsearchClient.indices().create(CreateIndexRequest.of(builder -> builder
                     .index(index)
                     .mappings(mapping)
                     .settings(settings -> settings
                             .numberOfShards("1")
                             .numberOfReplicas("0"))));
-
             log.info("index {} created with ik analyzer mapping", index);
         } catch (IOException ex) {
             throw new IllegalStateException("failed to create index " + index, ex);

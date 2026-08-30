@@ -42,7 +42,6 @@ public class PrimaryDataSourceConfig {
                 new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/**/*.xml"));
         factoryBean.setTypeAliasesPackage("com.dong.lab");
         factoryBean.setTypeHandlersPackage("com.dong.lab");
-
         org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
         configuration.setMapUnderscoreToCamelCase(true);
         configuration.setDefaultFetchSize(100);

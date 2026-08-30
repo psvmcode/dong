@@ -38,9 +38,7 @@ public class ExecutorConfig {
     }
 
     public static class DelayedTaskRunner {
-
         private final ScheduledExecutorService scheduler;
-
         public DelayedTaskRunner(ScheduledExecutorService scheduler) {
             this.scheduler = scheduler;
         }

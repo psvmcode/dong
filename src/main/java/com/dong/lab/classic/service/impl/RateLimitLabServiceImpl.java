@@ -26,7 +26,6 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
         for (RateLimitAlgorithm algorithm : RateLimitAlgorithm.values()) {
             String key = bizKey + ":" + algorithm.name().toLowerCase() + ":" + UUID.randomUUID();
             RateLimitRule rule = new RateLimitRule(limit, Duration.ofSeconds(windowSeconds), algorithm);
-
             long allowed = 0L;
             boolean supported = true;
             for (int i = 0; i < attempts; i++) {

@@ -54,7 +54,6 @@ public class MariaDbConfig {
         factoryBean.setDataSource(dataSource);
         factoryBean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/replica/*.xml"));
-
         org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
         configuration.setMapUnderscoreToCamelCase(true);
         factoryBean.setConfiguration(configuration);

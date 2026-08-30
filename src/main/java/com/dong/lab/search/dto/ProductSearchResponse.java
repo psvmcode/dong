@@ -22,7 +22,6 @@ public class ProductSearchResponse {
 
     @Data
     public static class Hit {
-
         private String id;
 
         private String name;

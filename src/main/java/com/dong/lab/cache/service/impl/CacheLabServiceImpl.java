@@ -26,7 +26,6 @@ public class CacheLabServiceImpl implements CacheLabService {
         long before = cacheStats.snapshot().penetrationBlocked();
         long start = System.currentTimeMillis();
         int rejected = 0;
-
         for (int i = 0; i < count; i++) {
             long id = ThreadLocalRandom.current().nextLong(9_000_000L, 9_999_999L);
             try {

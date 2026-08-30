@@ -56,7 +56,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     public long transfer(Long fromUserId, Long toUserId, long amount) {
         UserAccount from = requireAccount(fromUserId);
         UserAccount to = requireAccount(toUserId);
-
         if (from.getBalance() < amount) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "balance not enough");
         }
@@ -71,7 +70,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     public Map<String, Object> consistencyCheck(Long userId) {
         UserAccount first = userAccountMapper.selectByUserId(userId);
         UserAccount second = userAccountMapper.selectByUserId(userId);
-
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("userId", userId);
         result.put("firstRead", first == null ? null : first.getBalance());

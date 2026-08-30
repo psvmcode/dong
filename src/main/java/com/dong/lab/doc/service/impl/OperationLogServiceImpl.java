@@ -38,7 +38,6 @@ public class OperationLogServiceImpl implements OperationLogService {
         document.setAction(request.getAction());
         document.setDetail(request.getDetail());
         document.setCreateTime(LocalDateTime.now());
-
         OperationLogDocument saved = operationLogRepository.save(document);
         log.info("operation log saved bizType={} bizId={}", request.getBizType(), request.getBizId());
         return saved.getId();
@@ -47,7 +46,6 @@ public class OperationLogServiceImpl implements OperationLogService {
     @Override
     public PageResult<OperationLogDocument> findByPage(String bizType, int pageNum, int pageSize) {
         PageRequest request = PageRequest.of(pageNum, pageSize);
-
         Query query = new Query();
         if (bizType != null && !bizType.isBlank()) {
             query.addCriteria(Criteria.where("bizType").is(bizType));
@@ -56,7 +54,6 @@ public class OperationLogServiceImpl implements OperationLogService {
         long total = mongoTemplate.count(query, OperationLogDocument.class);
         List<OperationLogDocument> list = mongoTemplate.find(query.with(Pageable.ofSize(request.getPageSize())
                 .withPage(request.getPageNum() - 1)), OperationLogDocument.class);
-
         return PageResult.of(list, total, request);
     }
 

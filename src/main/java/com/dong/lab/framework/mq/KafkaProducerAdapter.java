@@ -44,7 +44,6 @@ public class KafkaProducerAdapter implements MessageProducer {
 
     private void send(String topic, String key, Object payload, String shardingKey, long notBefore) {
         String body = payload instanceof String text ? text : JsonUtils.toJson(payload);
-
         MessageBuilder<String> builder = MessageBuilder.withPayload(body)
                 .setHeader(KafkaHeaders.TOPIC, topic)
                 .setHeader(KafkaHeaders.KEY, key);

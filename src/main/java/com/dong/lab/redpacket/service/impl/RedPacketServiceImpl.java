@@ -37,14 +37,11 @@ public class RedPacketServiceImpl implements RedPacketService {
     @Transactional(rollbackFor = Exception.class)
     public String send(RedPacketSendRequest request) {
         String packetNo = PACKET_NO_PREFIX + snowflake.nextId();
-
         RedPacket redPacket = request.toEntity(packetNo);
         redPacketMapper.insert(redPacket);
-
         List<Long> amounts = redPacket.getPacketType() == RedPacketType.FIXED
                 ? RedPacketAllocator.allocateFixed(request.getTotalAmount(), request.getTotalCount())
                 : RedPacketAllocator.allocate(request.getTotalAmount(), request.getTotalCount());
-
         redPacketStockService.prepare(packetNo, amounts, request.getTotalAmount());
         log.info("red packet sent packetNo={} total={} count={}", packetNo,
                 request.getTotalAmount(), request.getTotalCount());
@@ -69,7 +66,6 @@ public class RedPacketServiceImpl implements RedPacketService {
         record.setUserId(userId);
         record.setAmount(amount);
         redPacketMapper.insertRecord(record);
-
         redPacketMapper.decreaseRemain(packetNo, amount, 1);
         int remainCount = redPacketStockService.remainCount(packetNo);
         if (remainCount <= 0) {

@@ -27,16 +27,13 @@ public class RedPacketAllocator {
         long remain = totalAmount;
         int remainCount = count;
         List<Long> amounts = new ArrayList<>(count);
-
         for (int i = 0; i < count - 1; i++) {
             long average = remain / remainCount;
             long upper = Math.max(MIN_AMOUNT, average * 2 - 1);
             long amount = ThreadLocalRandom.current().nextLong(MIN_AMOUNT, upper + 1);
-
             long reserveForOthers = (long) (remainCount - 1) * MIN_AMOUNT;
             amount = Math.min(amount, remain - reserveForOthers);
             amount = Math.max(amount, MIN_AMOUNT);
-
             amounts.add(amount);
             remain = remain - amount;
             remainCount--;

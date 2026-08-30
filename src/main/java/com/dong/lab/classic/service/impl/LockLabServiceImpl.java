@@ -45,13 +45,10 @@ public class LockLabServiceImpl implements LockLabService {
     private Map<String, Object> run(int threads, int loops, boolean guarded) {
         String key = COUNTER + System.nanoTime();
         redisService.set(key, "0");
-
         int total = Math.max(1, threads) * Math.max(1, loops);
         long start = System.currentTimeMillis();
-
         AtomicLong succeeded = new AtomicLong();
         AtomicLong timedOut = new AtomicLong();
-
         try (ExecutorService executor = Executors.newFixedThreadPool(Math.min(total, 64), factory())) {
             CountDownLatch latch = new CountDownLatch(total);
             for (int i = 0; i < total; i++) {
@@ -74,7 +71,6 @@ public class LockLabServiceImpl implements LockLabService {
 
         long actual = Long.parseLong(redisService.get(key).orElse("0"));
         redisService.delete(key);
-
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("mode", guarded ? "redisson-lock" : "no-lock");
         result.put("expected", total);

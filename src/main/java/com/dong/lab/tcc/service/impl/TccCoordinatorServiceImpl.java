@@ -52,14 +52,12 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         String xid = String.valueOf(snowflake.nextId());
         String orderNo = ORDER_NO_PREFIX + xid;
         long amount = request.getQuantity() * UNIT_PRICE;
-
         TccTransaction transaction = new TccTransaction();
         transaction.setXid(xid);
         transaction.setStatus(TccTransactionStatus.TRYING);
         transaction.setExpireTime(LocalDateTime.now().plusMinutes(5));
         transaction.setRetryCount(0);
         tccTransactionMapper.insert(transaction);
-
         TccOrder order = new TccOrder();
         order.setOrderNo(orderNo);
         order.setXid(xid);
@@ -69,7 +67,6 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         order.setAmount(amount);
         order.setStatus(TccOrderStatus.PENDING);
         tccParticipantMapper.insertOrder(order);
-
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("xid", xid);
         payload.put("orderNo", orderNo);
@@ -78,7 +75,6 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         payload.put("quantity", request.getQuantity());
         payload.put("amount", amount);
         payload.put("forceFailure", request.isForceFailure());
-
         List<TccParticipant> tried = new java.util.ArrayList<>();
         for (TccParticipant participant : participants) {
             try {
@@ -95,7 +91,6 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CONFIRMING.getCode());
         boolean confirmed = true;
         StringBuilder failure = new StringBuilder();
-
         for (TccParticipant participant : tried) {
             try {
                 participant.confirmPhase(xid, payload);
@@ -157,7 +152,6 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
             List<TccBranch> branches = tccTransactionMapper.selectBranches(xid);
             boolean allConfirmed = branches.stream()
                     .allMatch(branch -> branch.getStatus() == TccBranchStatus.CONFIRMED);
-
             if (allConfirmed && !branches.isEmpty()) {
                 tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CONFIRMED.getCode());
                 tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CONFIRMED.getCode());
@@ -222,7 +216,6 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
                 : JsonUtils.fromJson(branches.get(0).getPayload(),
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
                 });
-
         for (TccBranch branch : branches) {
             if (branch.getStatus() == TccBranchStatus.CANCELLED) {
                 continue;

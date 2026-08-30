@@ -71,7 +71,6 @@ public class SearchServiceImpl implements SearchService {
                                     .document(document))
                             .build())
                     .toList();
-
             var response = elasticsearchClient.bulk(builder -> builder.index(indexName()).operations(operations));
             if (Boolean.TRUE.equals(response.errors())) {
                 String reason = response.items().stream()
@@ -105,7 +104,6 @@ public class SearchServiceImpl implements SearchService {
     public ProductSearchResponse search(ProductSearchRequest request) {
         try {
             BoolQuery.Builder bool = new BoolQuery.Builder();
-
             if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
                 bool.must(MatchQuery.of(match -> match
                         .field("name")
@@ -124,7 +122,6 @@ public class SearchServiceImpl implements SearchService {
             }
 
             int from = Math.max(0, request.getPageNum() - 1) * request.getPageSize();
-
             SearchRequest searchRequest = SearchRequest.of(builder -> builder
                     .index(indexName())
                     .from(from)
@@ -134,10 +131,8 @@ public class SearchServiceImpl implements SearchService {
                             .fields("name", HighlightField.of(field -> field))))
                     .aggregations("categoryFacets", aggregation -> aggregation
                             .terms(terms -> terms.field("category"))));
-
             SearchResponse<ProductDocument> response =
                     elasticsearchClient.search(searchRequest, ProductDocument.class);
-
             ProductSearchResponse result = new ProductSearchResponse();
             result.setTotal(response.hits().total() == null ? 0L : response.hits().total().value());
             result.setPageNum(request.getPageNum());
