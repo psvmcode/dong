@@ -23,10 +23,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Redis 经典场景集合，包括延迟队列、地理位置、发号器、分布式锁与限流。
+ * 锁和限流两组接口都是对照实验，用来量化"加了会怎样、不加会怎样"。
+ */
 @RestController
 @RequestMapping("/api/classic")
 @RequiredArgsConstructor
-@Tag(name = "classic-lab")
+@Tag(name = "经典场景-Redis")
 public class RedisLabController {
 
     private final DelayQueueService delayQueueService;
@@ -41,24 +45,41 @@ public class RedisLabController {
 
     private final RateLimitManager rateLimitManager;
 
+    /**
+     * 投递延迟任务。任务在延迟时间过后才可被取出，
+     * 适合做超时未支付自动关单这类场景。
+     */
     @PostMapping("/delay-queue/offer")
+    @Operation(summary = "投递延迟任务，到达指定时间后才可被消费")
     public Result<Void> offer(@RequestParam String payload,
                               @RequestParam(defaultValue = "5") long delaySeconds) {
         delayQueueService.offer(payload, Duration.ofSeconds(delaySeconds));
         return Result.success();
     }
 
+    /**
+     * 取出已到期任务。未到期的不会被返回。
+     */
     @GetMapping("/delay-queue/take")
+    @Operation(summary = "取出已到期的延迟任务")
     public Result<List<String>> take(@RequestParam(defaultValue = "10") int limit) {
         return Result.success(delayQueueService.take(limit));
     }
 
+    /**
+     * 队列中待消费的任务数。
+     */
     @GetMapping("/delay-queue/size")
+    @Operation(summary = "查询延迟队列的待消费数量")
     public Result<Long> delayQueueSize() {
         return Result.success(delayQueueService.size());
     }
 
+    /**
+     * 添加地理位置坐标。
+     */
     @PostMapping("/geo")
+    @Operation(summary = "添加地理位置坐标")
     public Result<Long> geoAdd(@RequestParam(defaultValue = "beijing") String city,
                                @RequestParam double longitude,
                                @RequestParam double latitude,
@@ -66,7 +87,12 @@ public class RedisLabController {
         return Result.success(geoService.add(city, longitude, latitude, member));
     }
 
+    /**
+     * 查询指定坐标附近范围内的成员。底层是 Redis GEO，
+     * 本质上是把经纬度编码进 ZSet 再做范围查询。
+     */
     @GetMapping("/geo/nearby")
+    @Operation(summary = "查询指定坐标附近范围内的成员")
     public Result<List<NearbyPlaceResponse>> nearby(@RequestParam(defaultValue = "beijing") String city,
                                                     @RequestParam double longitude,
                                                     @RequestParam double latitude,
@@ -75,34 +101,55 @@ public class RedisLabController {
         return Result.success(geoService.nearby(city, longitude, latitude, radiusKm, limit));
     }
 
+    /**
+     * 计算两个成员之间的距离。
+     */
     @GetMapping("/geo/distance")
+    @Operation(summary = "计算两个成员之间的距离")
     public Result<Double> distance(@RequestParam(defaultValue = "beijing") String city,
                                    @RequestParam String first,
                                    @RequestParam String second) {
         return Result.success(geoService.distance(city, first, second));
     }
 
+    /**
+     * 按指定策略批量生成 id。四种策略各有取舍：
+     * 雪花算法趋势递增但依赖机器时钟，号段模式对数据库有压力但绝对递增，
+     * INCR 最简单但会暴露业务量，UUID 无序不适合做数据库主键。
+     */
     @GetMapping("/id")
+    @Operation(summary = "按指定策略批量生成 id，并给出耗时")
     public Result<Map<String, Object>> generateId(@RequestParam(defaultValue = "snowflake") String strategy,
                                                   @RequestParam(defaultValue = "1000") int count) {
         return Result.success(idGeneratorService.generate(strategy, count));
     }
 
+    /**
+     * 不加锁的并发自增，用作对照组。结果会大量丢失更新。
+     */
     @GetMapping("/lock/without-lock")
-    @Operation(summary = "concurrent increments without a lock, some of them get lost")
+    @Operation(summary = "不加锁的并发自增，用作对照组，会丢失更新")
     public Result<Map<String, Object>> withoutLock(@RequestParam(defaultValue = "16") int threads,
                                                    @RequestParam(defaultValue = "20") int loops) {
         return Result.success(lockLabService.withoutLock(threads, loops));
     }
 
+    /**
+     * 加锁的并发自增。结果与期望值完全一致，
+     * 代价是耗时比不加锁高出一到两个数量级，这就是正确性的成本。
+     */
     @GetMapping("/lock/with-lock")
-    @Operation(summary = "same workload inside a redisson lock, the total is exact")
+    @Operation(summary = "加 Redisson 锁的并发自增，结果精确但耗时高得多")
     public Result<Map<String, Object>> withLock(@RequestParam(defaultValue = "16") int threads,
                                                 @RequestParam(defaultValue = "20") int loops) {
         return Result.success(lockLabService.withLock(threads, loops));
     }
 
+    /**
+     * 用指定算法尝试获取一次配额。
+     */
     @GetMapping("/limiter/try")
+    @Operation(summary = "用指定算法尝试获取一次配额")
     public Result<Boolean> tryAcquire(@RequestParam(defaultValue = "demo") String key,
                                       @RequestParam(defaultValue = "TOKEN_BUCKET") RateLimitAlgorithm algorithm,
                                       @RequestParam(defaultValue = "10") long limit,
@@ -112,7 +159,13 @@ public class RedisLabController {
         return Result.success(rateLimitManager.tryAcquire(key, rule, distributed));
     }
 
+    /**
+     * 四种限流算法在同一突发流量下的对比。
+     * 固定窗口在边界处会放过两倍流量，滑动窗口精确但占内存，
+     * 令牌桶允许突发，漏桶强制匀速。
+     */
     @GetMapping("/limiter/compare")
+    @Operation(summary = "对比固定窗口、滑动窗口、令牌桶、漏桶四种算法")
     public Result<Map<String, Object>> compare(@RequestParam(defaultValue = "demo") String bizKey,
                                                @RequestParam(defaultValue = "10") long limit,
                                                @RequestParam(defaultValue = "60") long windowSeconds,

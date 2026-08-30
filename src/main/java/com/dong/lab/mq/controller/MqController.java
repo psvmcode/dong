@@ -18,17 +18,25 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 消息实验入口。业务代码只依赖 MessageProducer 接口，
+ * 具体走本地总线、RocketMQ 还是 Kafka 由 MqFacade 按配置路由，切换不需要改代码。
+ */
 @RestController
 @RequestMapping("/api/mq")
 @RequiredArgsConstructor
-@Tag(name = "mq")
+@Tag(name = "消息")
 public class MqController {
 
     private final MqProduceService mqProduceService;
 
     private final MqConsumeService mqConsumeService;
 
+    /**
+     * 发送普通消息。
+     */
     @PostMapping("/send")
+    @Operation(summary = "发送普通消息")
     public Result<Void> send(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) String topic,
                              @RequestParam String key,
                              @RequestParam(defaultValue = "{}") String payload) {
@@ -36,8 +44,13 @@ public class MqController {
         return Result.success();
     }
 
+    /**
+     * 发送延迟消息。三种传输实现机制完全不同：
+     * RocketMQ 只有十八个固定延迟等级，Kafka 靠消费端暂存，
+     * 本地总线用定时调度。精度要求高时不能依赖 RocketMQ 的延迟等级。
+     */
     @PostMapping("/send-delayed")
-    @Operation(summary = "delayed delivery, rocketmq uses delay levels, kafka parks the message, local bus schedules it")
+    @Operation(summary = "发送延迟消息，三种传输实现机制不同")
     public Result<Void> sendDelayed(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) String topic,
                                     @RequestParam String key,
                                     @RequestParam(defaultValue = "10") long delaySeconds) {
@@ -45,8 +58,12 @@ public class MqController {
         return Result.success();
     }
 
+    /**
+     * 发送顺序消息。相同 shardingKey 的消息进入同一队列或分区，
+     * 从而按发送顺序被消费。
+     */
     @PostMapping("/send-ordered")
-    @Operation(summary = "ordered delivery, every message sharing a sharding key lands on the same channel or partition")
+    @Operation(summary = "发送顺序消息，相同分片的消息按序消费")
     public Result<Void> sendOrdered(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) String topic,
                                     @RequestParam String key,
                                     @RequestParam String shardingKey) {
@@ -54,7 +71,11 @@ public class MqController {
         return Result.success();
     }
 
+    /**
+     * 批量发送。
+     */
     @PostMapping("/send-batch")
+    @Operation(summary = "批量发送消息")
     public Result<Void> sendBatch(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) String topic,
                                   @RequestParam(defaultValue = "batch") String keyPrefix,
                                   @RequestParam(defaultValue = "10") int count) {
@@ -62,17 +83,30 @@ public class MqController {
         return Result.success();
     }
 
+    /**
+     * 查看当前生效的传输实现。
+     */
     @GetMapping("/status")
+    @Operation(summary = "查看当前生效的消息传输实现")
     public Result<Map<String, Object>> status() {
         return Result.success(mqProduceService.status());
     }
 
+    /**
+     * 查看投递日志。
+     */
     @GetMapping("/logs")
+    @Operation(summary = "查看消息投递日志")
     public Result<List<MqMessageLog>> logs(@RequestParam(defaultValue = "20") int limit) {
         return Result.success(mqConsumeService.recent(limit));
     }
 
+    /**
+     * 查看消费统计。duplicated 计数来自消息日志的唯一索引，
+     * 可以验证重复投递是否被幂等拦截。
+     */
     @GetMapping("/stats")
+    @Operation(summary = "查看消费统计，含重复投递计数")
     public Result<Map<String, Object>> stats() {
         return Result.success(mqConsumeService.stats());
     }
