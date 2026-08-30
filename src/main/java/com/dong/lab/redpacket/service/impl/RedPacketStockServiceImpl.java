@@ -11,6 +11,13 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * 红包库存实现。金额在发红包时就预分配好并整体推入 List，
+ * 抢的时候只是一次 RPOP，原子性由 Redis 单线程保证，全程无锁无事务。
+ *
+ * <p>这样设计的好处是再多人并发抢也不会竞争，
+ * 且金额总和一定精确守恒，因为分配时在整数域就算好了。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,6 +33,10 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
 
     private static final Duration TTL = Duration.ofHours(24);
 
+    /**
+     * 抢红包脚本。先查重再检查余量，最后才弹出，三步必须原子完成。
+     * 返回 -1 表示已抢完或重复抢，否则返回抢到的金额。
+     */
     private static final String GRAB_SCRIPT = """
             if redis.call('sismember', KEYS[4], ARGV[1]) == 1 then
                 return -1

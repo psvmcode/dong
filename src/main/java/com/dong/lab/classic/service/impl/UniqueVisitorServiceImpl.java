@@ -11,6 +11,10 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * 独立访客实现。基于 HyperLogLog，每个页面每天固定占用约 12KB，
+ * 代价是结果有约百分之零点八的误差，金额类场景不能使用。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

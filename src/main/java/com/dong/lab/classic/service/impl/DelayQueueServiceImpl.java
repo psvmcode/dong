@@ -11,6 +11,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 延迟队列实现。基于 Redisson 的延迟队列，
+ * 到期后转入目标队列再被消费。
+ *
+ * <p>Redis 的延迟队列没有重试与持久化保证，强可靠场景应使用 RocketMQ 延迟消息。
+ */
 @Slf4j
 @Service
 public class DelayQueueServiceImpl implements DelayQueueService {

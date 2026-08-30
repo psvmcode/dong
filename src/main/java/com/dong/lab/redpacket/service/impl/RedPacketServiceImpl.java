@@ -20,6 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * 抢红包实现。发红包时就把金额算好并推入 Redis，
+ * 抢的时候只是一次原子弹出，因此不需要锁，金额也能精确守恒。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

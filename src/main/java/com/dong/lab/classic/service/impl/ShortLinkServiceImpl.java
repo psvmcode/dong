@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 
+/**
+ * 短链接实现。短码由发号器生成后做 Base62 编码，
+ * 同一原始链接每次生成的短码都不同，避免被批量遍历。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

@@ -11,6 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
+/**
+ * 账户参与者。Try 冻结余额，Confirm 真正扣减，Cancel 释放冻结。
+ *
+ * <p>三个方法都必须幂等，且 cancelPhase 要能处理空回滚。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

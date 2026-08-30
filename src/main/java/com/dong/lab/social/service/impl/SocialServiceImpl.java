@@ -24,6 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 微博模型实现。关注关系用两个 Set 双向维护：
+ * following 记录我关注的人，follower 记录关注我的人。
+ * 多存一份是空间换时间，否则查询粉丝需要全量扫描。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

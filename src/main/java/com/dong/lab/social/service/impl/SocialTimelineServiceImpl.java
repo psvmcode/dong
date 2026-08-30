@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * 推模式时间线实现。发动态时同步写给所有粉丝，
+ * 读的时候直接取结果，代价是粉丝量大的账号写放大严重。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

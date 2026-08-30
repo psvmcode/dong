@@ -14,6 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 地理位置实现。基于 Redis GEO，
+ * 本质是把经纬度编码进 ZSet 再做范围查询。
+ */
 @Slf4j
 @Service
 public class GeoServiceImpl implements GeoService {

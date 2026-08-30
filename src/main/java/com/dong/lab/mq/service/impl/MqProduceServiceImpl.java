@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.Map;
 
+/**
+ * 消息发送实现。业务代码只依赖抽象，
+ * 具体走本地总线、RocketMQ 还是 Kafka 由 MqFacade 按配置路由。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

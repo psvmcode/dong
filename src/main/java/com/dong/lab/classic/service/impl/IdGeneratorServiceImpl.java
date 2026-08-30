@@ -16,6 +16,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 发号器实现。四种策略各有取舍：
+ * 雪花算法趋势递增但依赖机器时钟，号段模式对数据库有压力但绝对递增，
+ * INCR 最简单但会暴露业务量，UUID 无序不适合做数据库主键。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

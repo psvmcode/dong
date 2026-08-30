@@ -13,6 +13,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * 限流算法对比实现。四种算法在同一突发流量下放行数量差异明显：
+ * 固定窗口在边界处最多放过两倍配额，滑动窗口精确但占内存，
+ * 令牌桶允许突发，漏桶强制匀速。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

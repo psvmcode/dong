@@ -32,6 +32,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 秒杀实现。四道防线依次生效：
+ * 限流令牌桶挡住超出承载力的流量，
+ * 本地售罄标记让后续请求连 Redis 都不用访问，
+ * Lua 脚本保证扣减与去重原子完成，
+ * 数据库唯一索引兜底防重复购买。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

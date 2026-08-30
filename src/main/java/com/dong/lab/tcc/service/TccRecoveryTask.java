@@ -6,6 +6,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * 悬挂事务恢复。进程在 Try 与 Confirm 之间宕机时，
+ * 事务会停留在中间状态，冻结的资源永远不会被释放，必须由定时任务兜底。
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor

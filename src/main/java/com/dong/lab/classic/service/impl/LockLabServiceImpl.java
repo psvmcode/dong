@@ -17,6 +17,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 分布式锁对照实验。不加锁的模式会大量丢失更新，加锁的模式结果精确，
+ * 代价是耗时高出一到两个数量级，这就是正确性的成本。
+ *
+ * <p>两个关键实现约束：
+ * 必须用平台线程而非虚拟线程，因为 Redisson 可重入锁依赖线程 id 标识持有者，
+ * 而虚拟线程的 id 不保证唯一；
+ * 结果必须区分拿到锁与等待超时，否则超时线程会被静默计入丢失更新，实验结论失真。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -84,6 +93,10 @@ public class LockLabServiceImpl implements LockLabService {
         return result;
     }
 
+    /**
+     * 读改写演示。不加锁时这里的 get 与 set 之间存在竞态窗口，
+     * 两个线程可能读到同一个值再各自加一，导致更新丢失。
+     */
     private boolean incrementUnder(String key, boolean guarded) {
         if (!guarded) {
             increment(key);
@@ -104,6 +117,10 @@ public class LockLabServiceImpl implements LockLabService {
         redisService.set(key, String.valueOf(current + 1));
     }
 
+    /**
+     * 刻意使用平台线程池。虚拟线程的 id 不唯一，
+     * 会导致 Redisson 可重入锁无法识别持有者，锁直接失效。
+     */
     private static ThreadFactory factory() {
         AtomicLong counter = new AtomicLong();
         return runnable -> {

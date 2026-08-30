@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * 索引同步实现，把 MySQL 全量商品重建到 Elasticsearch。
+ */
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "lab.elasticsearch", name = "enabled", havingValue = "true")

@@ -32,6 +32,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 搜索实现。索引映射由启动时显式创建，
+ * category 为 keyword 以支持聚合，name 与 description 用 IK 分词。
+ *
+ * <p>批量写入必须检查响应里的 errors 标志，
+ * 因为 ES 的 bulk 接口即使单条失败也返回 200。
+ */
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "lab.elasticsearch", name = "enabled", havingValue = "true")

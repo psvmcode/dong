@@ -19,6 +19,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 操作日志实现。基于 MongoDB，
+ * 适合字段会随业务演进、结构不固定的日志数据。
+ */
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "lab.mongodb", name = "enabled", havingValue = "true")

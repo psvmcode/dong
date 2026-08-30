@@ -28,6 +28,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * TCC 协调者实现。依次驱动各参与者的 Try、Confirm、Cancel。
+ *
+ * <p>三个必须处理的问题：
+ * 幂等靠分支表的唯一索引；
+ * 空回滚是 Try 未执行却收到 Cancel；
+ * 悬挂是 Cancel 先到、Try 后到，需要在 Try 前检查事务状态。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -47,6 +55,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
 
     private final Snowflake snowflake;
 
+    /**
+     * 提交事务。Try 阶段只要有一个参与者失败就立即回滚已成功的分支，
+     * Confirm 阶段失败则把事务留在 CONFIRMING 状态，交给恢复任务重试。
+     */
     @Override
     public TccResultResponse submit(TccOrderRequest request) {
         String xid = String.valueOf(snowflake.nextId());
@@ -137,6 +149,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         return tccTransactionMapper.selectBranches(xid);
     }
 
+    /**
+     * 恢复悬挂事务。分支全部已确认则推进为已提交，否则整单回滚，
+     * 避免冻结的资源永远不被释放。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int recoverPending() {
@@ -193,6 +209,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         log.info("tcc participants seeded user={} balance={} product={} available={}", userId, balance, productId, available);
     }
 
+    /**
+     * 回滚已 Try 成功的分支。回滚失败的分支会被标回 TRIED 状态，
+     * 等待恢复任务再次尝试，不能自接丢弃，否则冻结资源就泄漏了。
+     */
     private void cancelAll(String xid, List<TccParticipant> tried, Map<String, Object> payload) {
         tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLING.getCode());
         for (TccParticipant participant : tried) {
@@ -236,6 +256,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
     }
 
+    /**
+     * 记录分支。errorMessage 必须用空字符串代替 null，
+     * 因为该字段在数据库上有非空约束，写入 null 会让回滚本身失败。
+     */
     private void recordBranch(String xid, String branchId, Map<String, Object> payload,
                               TccBranchStatus status, String errorMessage) {
         TccBranch branch = new TccBranch();

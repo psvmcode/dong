@@ -14,6 +14,12 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 
+/**
+ * 秒杀订单异步建单。库存扣减已在 Redis 完成，这里只负责落库。
+ *
+ * <p>两道防重：先按活动与用户查一次，再由数据库唯一索引兜底。
+ * 只依赖查询判断是不够的，并发下两笔请求可能同时通过检查。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

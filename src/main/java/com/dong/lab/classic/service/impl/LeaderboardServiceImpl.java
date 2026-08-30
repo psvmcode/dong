@@ -16,6 +16,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * 排行榜实现。基于 Redis ZSet，写入与查询均为对数复杂度，
+ * 相比数据库排序分页，在高频更新场景下代价低得多。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

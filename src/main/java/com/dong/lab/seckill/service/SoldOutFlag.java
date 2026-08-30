@@ -8,6 +8,13 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.concurrent.atomic.LongAdder;
 
+/**
+ * 本地售罄标记。库存归零后在本地缓存一份标记，
+ * 后续请求直接返回，连 Redis 都不用访问，这是四道防线里的第二道。
+ *
+ * <p>ttl 只设 10 秒，因为售罄状态可能因订单取消而回滚，
+ * 标记存在越久，误拒的时间窗就越长。
+ */
 @Slf4j
 @Service
 public class SoldOutFlag {

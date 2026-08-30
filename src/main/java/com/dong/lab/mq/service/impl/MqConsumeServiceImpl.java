@@ -15,6 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 
+/**
+ * 消息消费实现。所有传输共用同一套处理逻辑，
+ * 幂等靠消息日志的唯一索引保证。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

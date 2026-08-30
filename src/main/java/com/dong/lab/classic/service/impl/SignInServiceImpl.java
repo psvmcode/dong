@@ -13,6 +13,12 @@ import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 签到实现。基于 Bitmap，每月一个 key，
+ * 每个用户每月只占极少存储，一年下来也就几百字节。
+ *
+ * <p>连续天数需要向前扫描位图直到遇到 0，跨月时要额外拼接上月末的连续段。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
