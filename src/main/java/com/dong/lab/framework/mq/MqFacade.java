@@ -10,6 +10,14 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 消息门面。业务代码只依赖 MessageProducer 接口，
+ * 由它按 lab.mq.active 把请求路由到本地总线、RocketMQ 或 Kafka，
+ * 因此切换消息中间件是改配置而不是改代码。
+ *
+ * <p>两个实现用 ObjectProvider 而非直接注入：
+ * 它们各自受开关控制，关闭时容器里没有对应 bean，直接注入会启动失败。
+ */
 @Slf4j
 @Primary
 @Component
@@ -70,6 +78,10 @@ public class MqFacade implements MessageProducer {
         };
     }
 
+    /**
+     * 配置不一致时快速失败。若允许静默回落到本地总线，
+     * 消息就会在进程内空转，线上表现为消息发出去了却没人处理，很难排查。
+     */
     private MessageProducer require(MessageProducer producer, String name) {
         if (producer == null) {
             throw new IllegalStateException(

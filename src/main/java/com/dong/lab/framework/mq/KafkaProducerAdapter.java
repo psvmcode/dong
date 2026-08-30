@@ -12,12 +12,20 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
+/**
+ * Kafka 发送适配器。
+ *
+ * <p>与 RocketMQ 的两个关键差异：
+ * Kafka 没有原生延迟消息，这里靠自定义头记录生效时间，由消费端暂存后再处理；
+ * 顺序消息靠分区键，相同 shardingKey 的消息写入同一分区从而保证分区内有序。
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "lab.kafka", name = "enabled", havingValue = "true")
 public class KafkaProducerAdapter implements MessageProducer {
 
+    // Kafka 无原生延迟消息，用这个头记录生效时间戳，消费端据此暂存
     public static final String NOT_BEFORE_HEADER = "lab-not-before";
 
     private final KafkaTemplate<String, String> kafkaTemplate;
@@ -27,11 +35,18 @@ public class KafkaProducerAdapter implements MessageProducer {
         send(topic, key, payload, null, 0L);
     }
 
+    /**
+     * 延迟发送。只是打个标记，真正延迟由消费端实现，
+     * 因此消息会立刻出现在分区里，只是不被处理。
+     */
     @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
         send(topic, key, payload, null, System.currentTimeMillis() + delay.toMillis());
     }
 
+    /**
+     * 顺序发送。按 shardingKey 取模选分区，保证相同 key 进入同一分区。
+     */
     @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
         send(topic, key, payload, shardingKey, 0L);

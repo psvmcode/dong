@@ -19,6 +19,13 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Method;
 import java.time.Duration;
 
+/**
+ * {@code @RateLimited} 注解切面。在方法执行前尝试获取配额，
+ * 拿不到就抛业务异常，由全局异常处理器转成 429 对应的错误码。
+ *
+ * <p>key 支持 SpEL，可以按业务维度限流而不是所有请求共用一个桶，
+ * 例如把活动 id 拼进 key，写法参考 RateLimited 注解的 key 属性。
+ */
 @Slf4j
 @Aspect
 @Component

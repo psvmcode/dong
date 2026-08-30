@@ -14,6 +14,10 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * 缓存装配。L1 与 L2 都按开关决定是否注册，
+ * 因此多级缓存拿到的某一层可能是 null，调用处必须判空。
+ */
 @Configuration
 @EnableConfigurationProperties(CacheProperties.class)
 @RequiredArgsConstructor
@@ -69,6 +73,10 @@ public class CacheConfig {
         return container;
     }
 
+    /**
+     * 按类型取 bean，不存在返回 null。
+     * L1/L2 可独立关闭，这里不能因为某一层缺失就启动失败。
+     */
     private <T> T beanIfPresent(Class<T> type) {
         try {
             return applicationContext.getBean(type);

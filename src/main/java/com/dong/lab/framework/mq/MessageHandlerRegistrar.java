@@ -7,6 +7,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * 把容器中所有 MessageHandler 注册到本地总线。
+ *
+ * <p>之所以由本地总线统一持有：切换传输实现时业务处理器无需改动，
+ * RockerMQ 与 Kafka 的监听器同样会调用这些 handler。
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor

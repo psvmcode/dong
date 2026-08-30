@@ -8,9 +8,16 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * 本地限流器。状态存在进程内的 Caffeine 里，因此只在单节点内有效，
+ * 多实例部署时每个节点各自计数，实际放放量是单节点配额乘以节点数。
+ *
+ * <p>只实现了令牌桶与固定窗口两种，滑动窗口与漏桶需要 Redisson 实现。
+ */
 @Component
 public class LocalRateLimiter implements RateLimiter {
 
+    // 空闲 key 十分钟后清理，避免长期不访问的 key 白占内存
     private static final Duration IDLE_EVICTION = Duration.ofMinutes(10);
 
     private static final long MAX_TRACKED_KEYS = 100_000L;
@@ -40,6 +47,10 @@ public class LocalRateLimiter implements RateLimiter {
         return "local";
     }
 
+    /**
+     * 令牌桶。按时间比例匀速补充令牌，桶内有多少令牌就允许通过多少，
+     * 因此允许突发流量，只要桶里有存货。
+     */
     private boolean acquireTokenBucket(String key, RateLimitRule rule, long permits) {
         double refillPerNanos = (double) rule.limit() / rule.window().toNanos();
         long now = System.nanoTime();
@@ -56,6 +67,11 @@ public class LocalRateLimiter implements RateLimiter {
         return allowed.get();
     }
 
+    /**
+     * 固定窗口。按当前时间整除窗口长度得到窗口序号，窗口内计数。
+     * 缺陷在于窗口边界：上一个窗口末尾与下一个窗口开头连起来的极短时间内，
+     * 最多可以放过两倍配额。
+     */
     private boolean acquireFixedWindow(String key, RateLimitRule rule) {
         long windowIndex = System.currentTimeMillis() / rule.window().toMillis();
         String windowKey = key + ":" + windowIndex;
