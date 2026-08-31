@@ -160,18 +160,25 @@ public class RedisLabController {
     }
 
     /**
-     * 四种限流算法在同一突发流量下的对比。
-     * 固定窗口在边界处会放过两倍流量，滑动窗口精确但占内存，
-     * 令牌桶允许突发，漏桶强制匀速。
+     * 四种限流算法的对比。
+     *
+     * <p>只打一轮突发时四种算法的放行数量必然相同，因为窗口内都最多放行 limit 个，
+     * 区分不出算法。真正的差异在配额如何恢复，要看第二轮。
+     *
+     * <p>传入 gapMillis 后会在两轮突发之间等待，此时四种算法表现不同：
+     * 固定窗口只有跨过窗口边界才放行，滑动窗口放行滑出窗口的那部分，
+     * 令牌桶放行补充的令牌，漏桶放行漏出的水量。
+     * 建议配合较短的窗口观察，例如 limit=10、windowSeconds=6、gapMillis=3000。
      */
     @GetMapping("/limiter/compare")
-    @Operation(summary = "对比固定窗口、滑动窗口、令牌桶、漏桶四种算法")
+    @Operation(summary = "对比固定窗口、滑动窗口、令牌桶、漏桶四种算法，可指定两轮突发间隔")
     public Result<Map<String, Object>> compare(@RequestParam(defaultValue = "demo") String bizKey,
                                                @RequestParam(defaultValue = "10") long limit,
                                                @RequestParam(defaultValue = "60") long windowSeconds,
                                                @RequestParam(defaultValue = "50") int attempts,
-                                               @RequestParam(defaultValue = "true") boolean distributed) {
-        return Result.success(rateLimitLabService.compare(bizKey, limit, windowSeconds, attempts, distributed));
+                                               @RequestParam(defaultValue = "true") boolean distributed,
+                                               @RequestParam(defaultValue = "0") long gapMillis) {
+        return Result.success(rateLimitLabService.compare(bizKey, limit, windowSeconds, attempts, distributed, gapMillis));
     }
 
 }

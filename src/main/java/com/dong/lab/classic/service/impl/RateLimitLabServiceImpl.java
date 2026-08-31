@@ -27,30 +27,61 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
 
     @Override
     public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts, boolean distributed) {
+        return compare(bizKey, limit, windowSeconds, attempts, distributed, 0L);
+    }
+
+    @Override
+    public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts,
+                                       boolean distributed, long delayMillis) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (RateLimitAlgorithm algorithm : RateLimitAlgorithm.values()) {
             String key = bizKey + ":" + algorithm.name().toLowerCase() + ":" + UUID.randomUUID();
             RateLimitRule rule = new RateLimitRule(limit, Duration.ofSeconds(windowSeconds), algorithm);
-            long allowed = 0L;
-            boolean supported = true;
-            for (int i = 0; i < attempts; i++) {
-                try {
-                    if (rateLimitManager.tryAcquire(key, rule, distributed)) {
-                        allowed++;
-                    }
-                } catch (IllegalArgumentException ex) {
-                    supported = false;
-                    break;
-                }
+            long firstBurst = burst(key, rule, attempts, distributed);
+            if (firstBurst < 0) {
+                result.put(algorithm.name(), Map.of("supported", false));
+                continue;
             }
-            if (supported) {
-                result.put(algorithm.name(), Map.of("allowed", allowed, "rejected", attempts - allowed));
-            } else {
-                result.put(algorithm.name(), Map.of("allowed", 0, "rejected", 0, "supported", false));
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("firstBurstAllowed", firstBurst);
+            detail.put("firstBurstRejected", attempts - firstBurst);
+            if (delayMillis > 0) {
+                sleep(delayMillis);
+                long secondBurst = burst(key, rule, attempts, distributed);
+                detail.put("secondBurstAllowed", secondBurst);
+                detail.put("recoveredInGap", secondBurst);
+            }
+            result.put(algorithm.name(), detail);
+        }
+        log.info("rate limit comparison finished distributed={} limit={} attempts={} delayMillis={}",
+                distributed, limit, attempts, delayMillis);
+        return result;
+    }
+
+    /**
+     * 连续尝试 attempts 次，返回放行数量。返回负数表示该算法不被当前实现支持。
+     */
+    private long burst(String key, RateLimitRule rule, int attempts, boolean distributed) {
+        long allowed = 0L;
+        for (int i = 0; i < attempts; i++) {
+            try {
+                if (rateLimitManager.tryAcquire(key, rule, distributed)) {
+                    allowed++;
+                }
+            } catch (IllegalArgumentException ex) {
+                return -1L;
             }
         }
-        log.info("rate limit comparison finished distributed={} limit={} attempts={}", distributed, limit, attempts);
-        return result;
+        return allowed;
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("rate limit comparison interrupted", ex);
+        }
     }
 
 }

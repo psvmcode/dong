@@ -298,16 +298,37 @@ L1 的 TTL 上限被限制在 60 秒，且所有失效都会通过 Redis 发布�
 | 距离计算 | GEO | `GET /api/classic/geo/distance?first=a&second=b` |
 | 延迟队列 | RDelayedQueue | `POST /api/classic/delay-queue/offer?payload=order-1&delaySeconds=5` |
 | 发号器 | Snowflake / 号段 / INCR / UUID | `GET /api/classic/id?strategy=snowflake&count=1000` |
-| 限流 | 四种算法 | `GET /api/classic/limiter/compare?limit=10&attempts=50` |
+| 限流 | 四种算法 | `GET /api/classic/limiter/compare?limit=10&attempts=30&gapMillis=3500` |
 | 分布式锁 | Redisson RLock | `GET /api/classic/lock/with-lock?threads=8&loops=10` |
 
-**限流算法对比**（同一 key、同一突发流量）：
+**限流算法对比**：
 
 ```bash
-curl 'http://127.0.0.1:8090/api/classic/limiter/compare?limit=10&windowSeconds=60&attempts=50&distributed=true'
+curl 'http://127.0.0.1:8090/api/classic/limiter/compare?limit=10&windowSeconds=6&attempts=30&distributed=true&gapMillis=3500'
 ```
 
-四种算法的行为差异一目了然：固定窗口在边界处会放过两倍流量，滑动窗口精确但占内存，令牌桶允许突发，漏桶强制匀速。
+`gapMillis` 表示两轮突发之间的等待时间，是看出算法差异的关键。
+
+只打一轮突发时，四种算法的放行数量几乎相同（窗口内都最多放行 `limit` 个），区分不出算法。真正的差异在**配额如何恢复**，因此要看第二轮：
+
+| 参数 | fixed_window | sliding_window | token_bucket | leaky_bucket |
+|---|---|---|---|---|
+| 第一轮放行 | 10 | 10 | 11~12 | 10~12 |
+| 间隔 3 秒后放行 | 0 | 0 | 6 | 6~7 |
+| 间隔 3.5 秒后放行 | 10 | 0 | 7 | 7 |
+| 间隔 5 秒后放行 | 10 | 10 | 10 | 10 |
+
+（实测于远程 Redis，`limit=10`、窗口 6 秒、每轮 30 次请求，重复多次结果稳定）
+
+第一轮的数值会有波动，因为令牌桶与漏桶在请求期间持续恢复配额，放行量取决于这 30 次请求实际耗时多久。间隔后的第二轮数值更稳定，也更适合用来对比。
+
+几处值得留意：
+
+- **固定窗口在 3.5 秒时已经放行 10 个**，说明它跨过窗口边界就一次性归零，而不是逐步恢复
+- **滑动窗口在同一时刻仍是 0**，因为请求还没滑出窗口，它是最严格的
+- **令牌桶与漏桶第一轮会略超 10**，这不是超额——它们限制的是平均速率而非窗口内瞬时总量，持续请求期间配额会按速率恢复
+
+**为什么自己用 Lua 实现**：Redisson 的 `RRateLimiter` 底层只有令牌桶一种实现，只能选全局或按客户端计数，四种算法会退化成同一种行为。本项目改为在 Redis 上用 Lua 自行实现四种算法，对比才有意义。详见第九节。
 
 **锁的对照实验**：
 
@@ -837,6 +858,30 @@ Kafka 是同一类问题，`KAFKA_CFG_ADVERTISED_LISTENERS` 必须填公网地�
 
 事务回滚时 `error_message` 为 null，违反数据库 NOT NULL 约束，导致回滚本身失败。在 SQL 中用 `ifnull(..., '')` 兜底，Java 侧统一写空字符串。
 
+### 20. Redisson 限流让四种算法退化成同一种
+
+最初用 `RedissonClient.getRateLimiter()` 实现分布式限流，并写了这样的分支：
+
+```java
+return algorithm == RateLimitAlgorithm.TOKEN_BUCKET ? RateType.OVERALL : RateType.OVERALL;
+```
+
+两个分支都是 `OVERALL`，实测四种算法在分布式模式下放行数量**完全相同**——对比实验彻底失真。
+
+根因不是笔误：Redisson 的 `RRateLimiter` 底层只有令牌桶一种实现，只有 `RateType.OVERALL` 与 `RateType.PER_CLIENT` 两种计数维度，无法表达滑动窗口和漏桶。补上分支也无从下手。
+
+**解法**：用 Lua 在 Redis 上自行实现四种算法（见 `framework/limiter/LuaRateLimiter`）。
+
+几个实现要点：
+
+- 时间一律用 `redis.call('TIME')` 取服务器时间。多实例部署时各节点时钟必然有偏差，用应用本地时间会让窗口边界不一致
+- 滑动窗口用有序集合记录时间戳，需要额外的序列号 key，否则同一毫秒内的请求会因成员名相同而被覆盖
+- 令牌桶与漏桶的浮点状态写入前要格式化，避免科学计数法写进 Redis 后读不出来
+
+**另一个认知修正**：令牌桶与漏桶在持续请求下会略超 `limit`，这不是超额。它们限制的是平均速率而非窗口内瞬时总量，请求期间配额本就按速率恢复。实测 `limit=10`、窗口 6 秒、30 次请求打到远程 Redis 约耗时一到两秒，期间补充了几个额度，因此放行 11 个。
+
+**对比实验的设计要点**：只打一轮突发区分不出算法，四种都会放行 `limit` 个。差异体现在配额如何恢复，所以接口提供了 `gapMillis` 参数打两轮，第二轮的结果才有区分度（见 5.2 节的实测表）。
+
 ---
 
 ## 十、编码规范（dong-standards）
@@ -845,7 +890,7 @@ Kafka 是同一类问题，`KAFKA_CFG_ADVERTISED_LISTENERS` 必须填公网地�
 
 | 规则 | 说明 |
 |---|---|
-| 禁止注释 | 包括 Javadoc、行内注释、SQL 注释。设计意图写在本文档中 |
+| 注释 | 业务模块默认禁止任何注释，代码应自解释；**本学习模块例外**，允许并鼓励中文注释，写设计意图与原理，不复述代码。详见规范第 1 条例外条款 |
 | SQL 关键字小写 | `select`、`from`、`where`、`limit` 全部小写 |
 | DDL 先行 | 先写建表语句，再写实体和 Mapper |
 | 属性空行 | 实体每个属性之间空一行 |

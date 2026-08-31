@@ -13,14 +13,14 @@ public class RateLimitManager {
 
     private final LocalRateLimiter localRateLimiter;
 
-    private final RedissonRateLimiter redissonRateLimiter;
+    private final LuaRateLimiter luaRateLimiter;
 
     /**
      * 注意本地实现只支持部分算法，传了不支持的算法会直接抛异常而不是放行，
      * 这样能让问题尽早暴露。
      */
     public boolean tryAcquire(String key, RateLimitRule rule, boolean distributed) {
-        RateLimiter limiter = distributed ? redissonRateLimiter : localRateLimiter;
+        RateLimiter limiter = distributed ? luaRateLimiter : localRateLimiter;
         if (!limiter.supportedAlgorithms().contains(rule.algorithm())) {
             throw new IllegalArgumentException(
                     limiter.name() + " limiter does not support " + rule.algorithm());
