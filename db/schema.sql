@@ -216,6 +216,147 @@ create table if not exists mq_message_log
 ) engine = innodb
   default charset = utf8mb4;
 
+create table if not exists cross_border_account
+(
+    id             bigint unsigned not null auto_increment,
+    account_no     varchar(32)     not null default '',
+    owner_name     varchar(64)     not null default '',
+    country        varchar(8)      not null default '',
+    currency       varchar(8)      not null default '',
+    balance        decimal(18, 2)  not null default 0,
+    frozen_balance decimal(18, 2)  not null default 0,
+    kyc_level      tinyint         not null default 0,
+    daily_limit    decimal(18, 2)  not null default 0,
+    single_limit   decimal(18, 2)  not null default 0,
+    status         tinyint         not null default 1,
+    create_time    datetime        not null default current_timestamp,
+    update_time    datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    unique key uk_account_no (account_no),
+    key idx_currency (currency)
+) engine = innodb
+  default charset = utf8mb4;
+
+create table if not exists cross_border_fx_quote
+(
+    id            bigint unsigned not null auto_increment,
+    quote_no      varchar(32)     not null default '',
+    currency_pair varchar(16)     not null default '',
+    bid_rate      decimal(18, 8)  not null default 0,
+    ask_rate      decimal(18, 8)  not null default 0,
+    locked_rate   decimal(18, 8)  not null default 0,
+    status        tinyint         not null default 0,
+    expire_time   datetime        not null,
+    remittance_no varchar(32)     not null default '',
+    create_time   datetime        not null default current_timestamp,
+    update_time   datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    unique key uk_quote_no (quote_no),
+    key idx_pair_status (currency_pair, status),
+    key idx_expire_time (expire_time)
+) engine = innodb
+  default charset = utf8mb4;
+
+create table if not exists cross_border_remittance
+(
+    id                bigint unsigned not null auto_increment,
+    remittance_no     varchar(32)     not null default '',
+    idempotent_key    varchar(64)     not null default '',
+    payer_account_id  bigint unsigned not null default 0,
+    payee_account_id  bigint unsigned not null default 0,
+    source_currency   varchar(8)      not null default '',
+    target_currency   varchar(8)      not null default '',
+    source_amount     decimal(18, 2)  not null default 0,
+    exchange_rate     decimal(18, 8)  not null default 0,
+    target_amount     decimal(18, 2)  not null default 0,
+    fee_amount        decimal(18, 2)  not null default 0,
+    channel           tinyint         not null default 1,
+    status            tinyint         not null default 1,
+    compliance_status tinyint         not null default 0,
+    quote_no          varchar(32)     not null default '',
+    batch_no          varchar(32)     not null default '',
+    fail_reason       varchar(255)    not null default '',
+    version           int             not null default 0,
+    create_time       datetime        not null default current_timestamp,
+    update_time       datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    unique key uk_remittance_no (remittance_no),
+    unique key uk_idempotent_key (idempotent_key),
+    key idx_status (status),
+    key idx_batch_no (batch_no),
+    key idx_create_time (create_time)
+) engine = innodb
+  default charset = utf8mb4;
+
+create table if not exists cross_border_compliance_record
+(
+    id            bigint unsigned not null auto_increment,
+    remittance_no varchar(32)     not null default '',
+    check_type    tinyint         not null default 0,
+    result        tinyint         not null default 0,
+    hit_detail    varchar(512)    not null default '',
+    create_time   datetime        not null default current_timestamp,
+    update_time   datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    key idx_remittance_no (remittance_no)
+) engine = innodb
+  default charset = utf8mb4;
+
+create table if not exists cross_border_account_ledger
+(
+    id            bigint unsigned not null auto_increment,
+    ledger_no     varchar(32)     not null default '',
+    remittance_no varchar(32)     not null default '',
+    account_id    bigint unsigned not null default 0,
+    direction     tinyint         not null default 0,
+    currency      varchar(8)      not null default '',
+    amount        decimal(18, 2)  not null default 0,
+    balance_after decimal(18, 2)  not null default 0,
+    create_time   datetime        not null default current_timestamp,
+    update_time   datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    unique key uk_ledger_no (ledger_no),
+    unique key uk_remittance_account_direction (remittance_no, account_id, direction),
+    key idx_account_id (account_id),
+    key idx_create_time (create_time)
+) engine = innodb
+  default charset = utf8mb4;
+
+create table if not exists cross_border_settlement_batch
+(
+    id           bigint unsigned not null auto_increment,
+    batch_no     varchar(32)     not null default '',
+    channel      tinyint         not null default 1,
+    currency     varchar(8)      not null default '',
+    total_count  int             not null default 0,
+    total_amount decimal(18, 2)  not null default 0,
+    status       tinyint         not null default 0,
+    cutoff_time  datetime        not null,
+    create_time  datetime        not null default current_timestamp,
+    update_time  datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    unique key uk_batch_no (batch_no),
+    key idx_status (status)
+) engine = innodb
+  default charset = utf8mb4;
+
+create table if not exists cross_border_recon_diff
+(
+    id             bigint unsigned not null auto_increment,
+    batch_no       varchar(32)     not null default '',
+    remittance_no  varchar(32)     not null default '',
+    diff_type      tinyint         not null default 0,
+    local_amount   decimal(18, 2)  not null default 0,
+    channel_amount decimal(18, 2)  not null default 0,
+    handle_status  tinyint         not null default 0,
+    create_time    datetime        not null default current_timestamp,
+    update_time    datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    key idx_batch_no (batch_no),
+    key idx_remittance_no (remittance_no)
+) engine = innodb
+  default charset = utf8mb4;
+
 create database if not exists dong_lab_replica default character set utf8mb4 collate utf8mb4_general_ci;
 
 use dong_lab_replica;

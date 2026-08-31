@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.ComplianceRecordMapper">
+
+    <resultMap id="recordMap" type="com.dong.lab.crossborder.entity.ComplianceRecord">
+        <id column="id" property="id"/>
+        <result column="remittance_no" property="remittanceNo"/>
+        <result column="check_type" property="checkType"
+                javaType="com.dong.lab.crossborder.enums.ComplianceCheckType"/>
+        <result column="result" property="result" javaType="com.dong.lab.crossborder.enums.ComplianceResult"/>
+        <result column="hit_detail" property="hitDetail"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByRemittanceNo" resultMap="recordMap">
+        select id, remittance_no, check_type, result, hit_detail, create_time, update_time
+        from cross_border_compliance_record
+        where remittance_no = #{remittanceNo}
+        order by id asc
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ComplianceRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_compliance_record (remittance_no, check_type, result, hit_detail)
+        values (#{remittanceNo}, #{checkType}, #{result}, #{hitDetail})
+    </insert>
+
+    <select id="countByResult" resultType="long">
+        select count(*)
+        from cross_border_compliance_record
+        where result = #{result}
+    </select>
+
+    <delete id="clearAll">
+        delete from cross_border_compliance_record
+    </delete>
+
+</mapper>

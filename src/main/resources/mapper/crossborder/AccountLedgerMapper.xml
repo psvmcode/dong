@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.AccountLedgerMapper">
+
+    <resultMap id="ledgerMap" type="com.dong.lab.crossborder.entity.AccountLedger">
+        <id column="id" property="id"/>
+        <result column="ledger_no" property="ledgerNo"/>
+        <result column="remittance_no" property="remittanceNo"/>
+        <result column="account_id" property="accountId"/>
+        <result column="direction" property="direction"
+                javaType="com.dong.lab.crossborder.enums.LedgerDirection"/>
+        <result column="currency" property="currency"/>
+        <result column="amount" property="amount"/>
+        <result column="balance_after" property="balanceAfter"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByLedgerNo" resultMap="ledgerMap">
+        select id, ledger_no, remittance_no, account_id, direction, currency, amount, balance_after,
+               create_time, update_time
+        from cross_border_account_ledger
+        where ledger_no = #{ledgerNo}
+    </select>
+
+    <select id="selectByRemittanceNo" resultMap="ledgerMap">
+        select id, ledger_no, remittance_no, account_id, direction, currency, amount, balance_after,
+               create_time, update_time
+        from cross_border_account_ledger
+        where remittance_no = #{remittanceNo}
+        order by id asc
+    </select>
+
+    <select id="selectByAccountId" resultMap="ledgerMap">
+        select id, ledger_no, remittance_no, account_id, direction, currency, amount, balance_after,
+               create_time, update_time
+        from cross_border_account_ledger
+        where account_id = #{accountId}
+        order by id desc
+        limit #{limit}
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.AccountLedger"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_account_ledger (ledger_no, remittance_no, account_id, direction, currency,
+                                                 amount, balance_after)
+        values (#{ledgerNo}, #{remittanceNo}, #{accountId}, #{direction}, #{currency}, #{amount}, #{balanceAfter})
+    </insert>
+
+    <select id="sumByAccountAndDirection" resultType="java.math.BigDecimal">
+        select ifnull(sum(amount), 0)
+        from cross_border_account_ledger
+        where account_id = #{accountId}
+          and direction = #{direction}
+    </select>
+
+    <delete id="clearAll">
+        delete from cross_border_account_ledger
+    </delete>
+
+</mapper>

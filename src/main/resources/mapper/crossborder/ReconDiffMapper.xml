@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.ReconDiffMapper">
+
+    <resultMap id="diffMap" type="com.dong.lab.crossborder.entity.ReconDiff">
+        <id column="id" property="id"/>
+        <result column="batch_no" property="batchNo"/>
+        <result column="remittance_no" property="remittanceNo"/>
+        <result column="diff_type" property="diffType" javaType="com.dong.lab.crossborder.enums.ReconDiffType"/>
+        <result column="local_amount" property="localAmount"/>
+        <result column="channel_amount" property="channelAmount"/>
+        <result column="handle_status" property="handleStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByBatchNo" resultMap="diffMap">
+        select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
+               create_time, update_time
+        from cross_border_recon_diff
+        where batch_no = #{batchNo}
+        order by id asc
+    </select>
+
+    <select id="selectAll" resultMap="diffMap">
+        select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
+               create_time, update_time
+        from cross_border_recon_diff
+        order by id desc
+        limit #{limit}
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ReconDiff"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
+                                             channel_amount, handle_status)
+        values (#{batchNo}, #{remittanceNo}, #{diffType}, #{localAmount}, #{channelAmount}, #{handleStatus})
+    </insert>
+
+    <select id="countUnhandled" resultType="long">
+        select count(*)
+        from cross_border_recon_diff
+        where handle_status = 0
+    </select>
+
+    <update id="markHandled">
+        update cross_border_recon_diff
+        set handle_status = 1,
+            update_time = now()
+        where batch_no = #{batchNo}
+          and handle_status = 0
+    </update>
+
+    <delete id="clearAll">
+        delete from cross_border_recon_diff
+    </delete>
+
+</mapper>

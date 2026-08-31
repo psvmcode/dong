@@ -12,7 +12,8 @@ import org.springframework.context.annotation.Configuration;
                 "com.dong.lab.redpacket.mapper",
                 "com.dong.lab.social.mapper",
                 "com.dong.lab.tcc.mapper",
-                "com.dong.lab.mq.mapper"
+                "com.dong.lab.mq.mapper",
+                "com.dong.lab.crossborder.mapper"
         },
         sqlSessionFactoryRef = "sqlSessionFactory"
 )

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.FxQuoteMapper">
+
+    <resultMap id="quoteMap" type="com.dong.lab.crossborder.entity.FxQuote">
+        <id column="id" property="id"/>
+        <result column="quote_no" property="quoteNo"/>
+        <result column="currency_pair" property="currencyPair"/>
+        <result column="bid_rate" property="bidRate"/>
+        <result column="ask_rate" property="askRate"/>
+        <result column="locked_rate" property="lockedRate"/>
+        <result column="status" property="status" javaType="com.dong.lab.crossborder.enums.FxQuoteStatus"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="remittance_no" property="remittanceNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByQuoteNo" resultMap="quoteMap">
+        select id, quote_no, currency_pair, bid_rate, ask_rate, locked_rate, status, expire_time,
+               remittance_no, create_time, update_time
+        from cross_border_fx_quote
+        where quote_no = #{quoteNo}
+    </select>
+
+    <select id="selectByPairAndStatus" resultMap="quoteMap">
+        select id, quote_no, currency_pair, bid_rate, ask_rate, locked_rate, status, expire_time,
+               remittance_no, create_time, update_time
+        from cross_border_fx_quote
+        where currency_pair = #{currencyPair}
+          and status = #{status}
+          and expire_time > now()
+        order by id asc
+        limit #{limit}
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.FxQuote"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_fx_quote (quote_no, currency_pair, bid_rate, ask_rate, locked_rate,
+                                           status, expire_time, remittance_no)
+        values (#{quoteNo}, #{currencyPair}, #{bidRate}, #{askRate}, #{lockedRate},
+                #{status}, #{expireTime}, #{remittanceNo})
+    </insert>
+
+    <update id="lock">
+        update cross_border_fx_quote
+        set status        = 2,
+            remittance_no = #{remittanceNo},
+            locked_rate   = #{lockedRate}
+        where quote_no = #{quoteNo}
+          and status = 1
+          and expire_time > now()
+    </update>
+
+    <update id="updateStatus">
+        update cross_border_fx_quote
+        set status = #{status}
+        where quote_no = #{quoteNo}
+    </update>
+
+    <update id="expireOverdue">
+        update cross_border_fx_quote
+        set status = 4
+        where status = 1
+          and expire_time &lt;= #{now}
+    </update>
+
+    <delete id="clearAll">
+        delete from cross_border_fx_quote
+    </delete>
+
+</mapper>

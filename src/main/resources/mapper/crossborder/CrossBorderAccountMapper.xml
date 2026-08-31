@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderAccountMapper">
+
+    <resultMap id="accountMap" type="com.dong.lab.crossborder.entity.CrossBorderAccount">
+        <id column="id" property="id"/>
+        <result column="account_no" property="accountNo"/>
+        <result column="owner_name" property="ownerName"/>
+        <result column="country" property="country"/>
+        <result column="currency" property="currency"/>
+        <result column="balance" property="balance"/>
+        <result column="frozen_balance" property="frozenBalance"/>
+        <result column="kyc_level" property="kycLevel"/>
+        <result column="daily_limit" property="dailyLimit"/>
+        <result column="single_limit" property="singleLimit"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByAccountNo" resultMap="accountMap">
+        select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
+               daily_limit, single_limit, status, create_time, update_time
+        from cross_border_account
+        where account_no = #{accountNo}
+    </select>
+
+    <select id="selectById" resultMap="accountMap">
+        select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
+               daily_limit, single_limit, status, create_time, update_time
+        from cross_border_account
+        where id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="accountMap">
+        select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
+               daily_limit, single_limit, status, create_time, update_time
+        from cross_border_account
+        order by id asc
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderAccount"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_account (account_no, owner_name, country, currency, balance, frozen_balance,
+                                         kyc_level, daily_limit, single_limit, status)
+        values (#{accountNo}, #{ownerName}, #{country}, #{currency}, #{balance}, #{frozenBalance},
+                #{kycLevel}, #{dailyLimit}, #{singleLimit}, #{status})
+    </insert>
+
+    <update id="deduct">
+        update cross_border_account
+        set balance  = balance - #{amount},
+            update_time = now()
+        where id = #{id}
+          and balance - frozen_balance >= #{amount}
+    </update>
+
+    <update id="credit">
+        update cross_border_account
+        set balance  = balance + #{amount},
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <update id="freeze">
+        update cross_border_account
+        set frozen_balance = frozen_balance + #{amount},
+            update_time = now()
+        where id = #{id}
+          and balance - frozen_balance >= #{amount}
+    </update>
+
+    <update id="unfreeze">
+        update cross_border_account
+        set frozen_balance = frozen_balance - #{amount},
+            update_time = now()
+        where id = #{id}
+          and frozen_balance >= #{amount}
+    </update>
+
+    <delete id="clearAll">
+        delete from cross_border_account
+    </delete>
+
+</mapper>

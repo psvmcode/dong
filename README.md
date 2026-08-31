@@ -58,6 +58,7 @@
 | 消息 | `/api/mq` | local / RocketMQ / Kafka | 顺序、延迟、批量、幂等 | 重复投递被拦截 |
 | 文档 | `/api/doc` | MongoDB | 无 schema 日志 | 字段可随业务演进 |
 | 多数据源 | `/api/replica` | MariaDB | 第二数据源、独立事务管理器 | 一致性检查通过 |
+| 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、异步清算、对账 | 金额精确到分，余额流水一致 |
 
 ---
 
@@ -542,6 +543,43 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 ```
 
 ---
+
+### 5.11 跨境支付（crossborder）
+
+这是最贴近真实业务的一个场景。一笔跨境汇款从发起到到账会经过八个环节，每个环节都有对应的工程问题：
+
+```
+汇款申请 → 幂等校验 → 合规筛查 → 锁定汇率 → 扣款记账 → 异步清算 → 收款入账 → 对账核销
+```
+
+| 环节 | 真实问题 | 本项目的做法 |
+|---|---|---|
+| 汇款申请 | 网络超时后重试导致重复汇款 | `idempotent_key` 唯一索引 + 分布式锁，重放返回原单 |
+| 合规筛查 | 制裁名单命中必须拒绝，这是监管硬性要求 | 名单放 Redis Set（O(1) 匹配），四道检查逐条留痕 |
+| 锁定汇率 | 汇率实时波动，不锁汇银行要承担敞口风险 | 报价带有效期，乐观锁锁定，过期作废 |
+| 风控限额 | 日累计限额并发下会被突破 | Lua 脚本原子完成累加与判断 |
+| 扣款记账 | 扣款与记账必须原子，否则资金账实不符 | 同一本地事务，余额扣减带充足条件防负数 |
+| 异步清算 | 渠道只有批量清算窗口，做不到实时 | RocketMQ 顺序消息推进，`gapMillis` 模式由补偿任务兜底 |
+| 收款入账 | 重复消息导致重复入账 | 消费幂等 + 流水唯一索引兜底 |
+| 对账核销 | 渠道回单与本地流水不一致 | 差异表记录长款短款，运营按类型处理 |
+
+**为什么选本地事务加消息而不是 TCC**：扣款记账用本地事务保证资金账实相符；清算要经过外部渠道，渠道本身只支持异步批量，把它拉进强一致事务既做不到也没有必要，最终一致加对账兜底才是支付系统的实际做法。
+
+**实测**：1000 CNY 汇往 USD，CIPS 渠道（固定费 10 加万分之五），按锁定汇率 0.14006993 成交，收款方精确收到 140.07 USD，付款方扣款 1010.50 CNY，余额与流水差额为零。
+
+**一个真实事故级别的坑**：入账逻辑最初写在消费者内部方法上，`this` 调用绕过了 Spring 事务代理，事务静默失效。并发到达的重复消息各自提交了加钱，流水唯一索引冲突却回滚不了已提交的余额变更，收款方余额被重复累加。修复方式是把账务操作拆到独立的 `CrossBorderLedgerService`，让事务真正经过代理生效。
+
+**主要接口**：
+
+```bash
+curl -X POST 'http://127.0.0.1:8090/api/crossborder/accounts' -H 'Content-Type: application/json' \
+  -d '{"ownerName":"Alice","country":"CN","currency":"CNY","balance":100000,"kycLevel":2}'
+curl -X POST 'http://127.0.0.1:8090/api/crossborder/fx/quote?sourceCurrency=CNY&targetCurrency=USD&validSeconds=300'
+curl -X POST http://127.0.0.1:8090/api/crossborder/remittance -H 'Content-Type: application/json' \
+  -d '{"idempotentKey":"unique-key","payerAccountNo":"...","payeeAccountNo":"...","sourceAmount":1000,"channel":"CIPS"}'
+curl 'http://127.0.0.1:8090/api/crossborder/remittance/runtime'
+```
+
 
 ## 六、开关化设计
 

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.SettlementBatchMapper">
+
+    <resultMap id="batchMap" type="com.dong.lab.crossborder.entity.SettlementBatch">
+        <id column="id" property="id"/>
+        <result column="batch_no" property="batchNo"/>
+        <result column="channel" property="channel"
+                javaType="com.dong.lab.crossborder.enums.SettlementChannel"/>
+        <result column="currency" property="currency"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="status" property="status"
+                javaType="com.dong.lab.crossborder.enums.SettlementStatus"/>
+        <result column="cutoff_time" property="cutoffTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectByBatchNo" resultMap="batchMap">
+        select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
+               create_time, update_time
+        from cross_border_settlement_batch
+        where batch_no = #{batchNo}
+    </select>
+
+    <select id="selectByStatus" resultMap="batchMap">
+        select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
+               create_time, update_time
+        from cross_border_settlement_batch
+        where status = #{status}
+        order by id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectAll" resultMap="batchMap">
+        select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
+               create_time, update_time
+        from cross_border_settlement_batch
+        order by id desc
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.SettlementBatch"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_settlement_batch (batch_no, channel, currency, total_count, total_amount,
+                                                   status, cutoff_time)
+        values (#{batchNo}, #{channel}, #{currency}, #{totalCount}, #{totalAmount}, #{status}, #{cutoffTime})
+    </insert>
+
+    <update id="updateStatus">
+        update cross_border_settlement_batch
+        set status = #{status},
+            update_time = now()
+        where batch_no = #{batchNo}
+    </update>
+
+    <update id="updateTotal">
+        update cross_border_settlement_batch
+        set total_count = #{totalCount},
+            total_amount = #{totalAmount},
+            update_time = now()
+        where batch_no = #{batchNo}
+    </update>
+
+    <update id="closeOverdue">
+        update cross_border_settlement_batch
+        set status = 2,
+            update_time = now()
+        where status = 1
+          and cutoff_time &lt;= #{now}
+    </update>
+
+    <delete id="clearAll">
+        delete from cross_border_settlement_batch
+    </delete>
+
+</mapper>

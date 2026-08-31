@@ -1,0 +1,111 @@
+package com.dong.lab.crossborder.controller;
+
+import com.dong.lab.common.result.Result;
+import com.dong.lab.crossborder.dto.AccountCreateRequest;
+import com.dong.lab.crossborder.dto.AccountResponse;
+import com.dong.lab.crossborder.service.ComplianceService;
+import com.dong.lab.crossborder.service.CrossBorderAccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 跨境账户与制裁名单。账户按币种分开，
+ * 因为各币种资金分开清算，不能混在一个余额里。
+ */
+@RestController
+@RequestMapping("/api/crossborder")
+@RequiredArgsConstructor
+@Tag(name = "跨境支付-账户")
+public class CrossBorderAccountController {
+
+    private final CrossBorderAccountService accountService;
+
+    private final ComplianceService complianceService;
+
+    /**
+     * 开户。kycLevel 决定可汇额度，这是各国监管的基本要求。
+     */
+    @PostMapping("/accounts")
+    @Operation(summary = "开立跨境账户，返回账户 id")
+    public Result<Long> create(@Valid @RequestBody AccountCreateRequest request) {
+        return Result.success(accountService.create(request));
+    }
+
+    /**
+     * 按账号查询。
+     */
+    @GetMapping("/accounts/{accountNo}")
+    @Operation(summary = "按账号查询账户，含可用余额")
+    public Result<AccountResponse> findByAccountNo(@PathVariable String accountNo) {
+        return Result.success(accountService.findByAccountNo(accountNo));
+    }
+
+    /**
+     * 查询全部账户。
+     */
+    @GetMapping("/accounts")
+    @Operation(summary = "查询全部跨境账户")
+    public Result<List<AccountResponse>> findAll() {
+        return Result.success(accountService.findAll());
+    }
+
+    /**
+     * 校验余额与流水是否一致。差额应为 0，不为 0 说明记账有遗漏。
+     */
+    @GetMapping("/accounts/{accountNo}/diff")
+    @Operation(summary = "校验账户余额与流水的差额")
+    public Result<Map<String, Object>> balanceDiff(@PathVariable String accountNo,
+                                                   @RequestParam(defaultValue = "0") double initial) {
+        AccountResponse account = accountService.findByAccountNo(accountNo);
+        java.math.BigDecimal diff = accountService.balanceDiff(account.getId(),
+                new java.math.BigDecimal(initial));
+        return Result.success(Map.of(
+                "accountNo", accountNo,
+                "balance", account.getBalance(),
+                "diff", diff,
+                "consistent", diff.compareTo(java.math.BigDecimal.ZERO) == 0));
+    }
+
+    /**
+     * 加入制裁名单。命中名单的汇款会被直接拒绝。
+     */
+    @PostMapping("/sanction")
+    @Operation(summary = "加入制裁名单")
+    public Result<Void> addSanction(@RequestParam String ownerName) {
+        complianceService.addSanction(ownerName);
+        return Result.success();
+    }
+
+    /**
+     * 从制裁名单移除。
+     */
+    @DeleteMapping("/sanction")
+    @Operation(summary = "从制裁名单移除")
+    public Result<Void> removeSanction(@RequestParam String ownerName) {
+        complianceService.removeSanction(ownerName);
+        return Result.success();
+    }
+
+    /**
+     * 查询名单大小。
+     */
+    @GetMapping("/sanction/count")
+    @Operation(summary = "查询制裁名单大小")
+    public Result<Long> sanctionCount() {
+        return Result.success(complianceService.sanctionCount());
+    }
+
+}

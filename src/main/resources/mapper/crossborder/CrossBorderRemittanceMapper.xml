@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper">
+
+    <resultMap id="remittanceMap" type="com.dong.lab.crossborder.entity.CrossBorderRemittance">
+        <id column="id" property="id"/>
+        <result column="remittance_no" property="remittanceNo"/>
+        <result column="idempotent_key" property="idempotentKey"/>
+        <result column="payer_account_id" property="payerAccountId"/>
+        <result column="payee_account_id" property="payeeAccountId"/>
+        <result column="source_currency" property="sourceCurrency"/>
+        <result column="target_currency" property="targetCurrency"/>
+        <result column="source_amount" property="sourceAmount"/>
+        <result column="exchange_rate" property="exchangeRate"/>
+        <result column="target_amount" property="targetAmount"/>
+        <result column="fee_amount" property="feeAmount"/>
+        <result column="channel" property="channel" javaType="com.dong.lab.crossborder.enums.SettlementChannel"/>
+        <result column="status" property="status" javaType="com.dong.lab.crossborder.enums.RemittanceStatus"/>
+        <result column="compliance_status" property="complianceStatus"/>
+        <result column="quote_no" property="quoteNo"/>
+        <result column="batch_no" property="batchNo"/>
+        <result column="fail_reason" property="failReason"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, remittance_no, idempotent_key, payer_account_id, payee_account_id, source_currency,
+        target_currency, source_amount, exchange_rate, target_amount, fee_amount, channel, status,
+        compliance_status, quote_no, batch_no, fail_reason, version, create_time, update_time
+    </sql>
+
+    <select id="selectByRemittanceNo" resultMap="remittanceMap">
+        select
+        <include refid="columns"/>
+        from cross_border_remittance
+        where remittance_no = #{remittanceNo}
+    </select>
+
+    <select id="selectByIdempotentKey" resultMap="remittanceMap">
+        select
+        <include refid="columns"/>
+        from cross_border_remittance
+        where idempotent_key = #{idempotentKey}
+    </select>
+
+    <select id="selectByStatus" resultMap="remittanceMap">
+        select
+        <include refid="columns"/>
+        from cross_border_remittance
+        where status = #{status}
+        order by id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectByBatchNo" resultMap="remittanceMap">
+        select
+        <include refid="columns"/>
+        from cross_border_remittance
+        where batch_no = #{batchNo}
+        order by id asc
+    </select>
+
+    <select id="selectPage" resultMap="remittanceMap">
+        select
+        <include refid="columns"/>
+        from cross_border_remittance
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        select count(*)
+        from cross_border_remittance
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderRemittance"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_remittance (remittance_no, idempotent_key, payer_account_id, payee_account_id,
+                                             source_currency, target_currency, source_amount, exchange_rate,
+                                             target_amount, fee_amount, channel, status, compliance_status,
+                                             quote_no, batch_no, fail_reason, version)
+        values (#{remittanceNo}, #{idempotentKey}, #{payerAccountId}, #{payeeAccountId},
+                #{sourceCurrency}, #{targetCurrency}, #{sourceAmount}, #{exchangeRate},
+                #{targetAmount}, #{feeAmount}, #{channel}, #{status}, #{complianceStatus},
+                #{quoteNo}, #{batchNo}, #{failReason}, #{version})
+    </insert>
+
+    <update id="updateStatus">
+        update cross_border_remittance
+        set status   = #{status},
+            version  = version + 1,
+            update_time = now()
+        where remittance_no = #{remittanceNo}
+          and status = #{expectedStatus}
+          and version = #{version}
+    </update>
+
+    <update id="updateBatchNo">
+        update cross_border_remittance
+        set batch_no = #{batchNo},
+            update_time = now()
+        where remittance_no = #{remittanceNo}
+    </update>
+
+    <update id="updateFailReason">
+        update cross_border_remittance
+        set status      = #{status},
+            fail_reason = #{failReason},
+            version     = version + 1,
+            update_time = now()
+        where remittance_no = #{remittanceNo}
+    </update>
+
+    <update id="updateQuoteNo">
+        update cross_border_remittance
+        set quote_no = #{quoteNo},
+            update_time = now()
+        where remittance_no = #{remittanceNo}
+    </update>
+
+    <delete id="clearAll">
+        delete from cross_border_remittance
+    </delete>
+
+</mapper>
