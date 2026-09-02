@@ -31,11 +31,30 @@
         limit #{limit}
     </select>
 
+    <select id="selectUnhandled" resultMap="diffMap">
+        select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
+               create_time, update_time
+        from cross_border_recon_diff
+        where handle_status = 0
+        order by id asc
+        limit #{limit}
+    </select>
+
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ReconDiff"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
                                              channel_amount, handle_status)
         values (#{batchNo}, #{remittanceNo}, #{diffType}, #{localAmount}, #{channelAmount}, #{handleStatus})
+    </insert>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
+                                             channel_amount, handle_status)
+        values
+        <foreach collection="items" item="item" separator=",">
+            (#{item.batchNo}, #{item.remittanceNo}, #{item.diffType}, #{item.localAmount},
+             #{item.channelAmount}, #{item.handleStatus})
+        </foreach>
     </insert>
 
     <select id="countUnhandled" resultType="long">
@@ -44,11 +63,26 @@
         where handle_status = 0
     </select>
 
+    <select id="countByBatchAndType" resultType="long">
+        select count(*)
+        from cross_border_recon_diff
+        where batch_no = #{batchNo}
+          and diff_type = #{diffType}
+    </select>
+
     <update id="markHandled">
         update cross_border_recon_diff
         set handle_status = 1,
             update_time = now()
         where batch_no = #{batchNo}
+          and handle_status = 0
+    </update>
+
+    <update id="markOneHandled">
+        update cross_border_recon_diff
+        set handle_status = 1,
+            update_time = now()
+        where id = #{id}
           and handle_status = 0
     </update>
 

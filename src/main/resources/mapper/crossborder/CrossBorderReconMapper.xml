@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderReconMapper">
+
+    <resultMap id="remittanceMap" type="com.dong.lab.crossborder.entity.CrossBorderRemittance">
+        <id column="id" property="id"/>
+        <result column="remittance_no" property="remittanceNo"/>
+        <result column="idempotent_key" property="idempotentKey"/>
+        <result column="payer_account_id" property="payerAccountId"/>
+        <result column="payee_account_id" property="payeeAccountId"/>
+        <result column="source_currency" property="sourceCurrency"/>
+        <result column="target_currency" property="targetCurrency"/>
+        <result column="source_amount" property="sourceAmount"/>
+        <result column="exchange_rate" property="exchangeRate"/>
+        <result column="target_amount" property="targetAmount"/>
+        <result column="fee_amount" property="feeAmount"/>
+        <result column="channel" property="channel" javaType="com.dong.lab.crossborder.enums.SettlementChannel"/>
+        <result column="status" property="status" javaType="com.dong.lab.crossborder.enums.RemittanceStatus"/>
+        <result column="compliance_status" property="complianceStatus"/>
+        <result column="quote_no" property="quoteNo"/>
+        <result column="batch_no" property="batchNo"/>
+        <result column="fail_reason" property="failReason"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectSettledByBatch" resultMap="remittanceMap">
+        select id, remittance_no, idempotent_key, payer_account_id, payee_account_id, source_currency,
+               target_currency, source_amount, exchange_rate, target_amount, fee_amount, channel, status,
+               compliance_status, quote_no, batch_no, fail_reason, version, create_time, update_time
+        from cross_border_remittance
+        where batch_no = #{batchNo}
+          and status = #{status}
+        order by id asc
+    </select>
+
+    <select id="sumCreditByAccountAndTime" resultType="java.math.BigDecimal">
+        select ifnull(sum(amount), 0)
+        from cross_border_account_ledger
+        where account_id = #{accountId}
+          and direction = 2
+          and create_time &gt;= #{from}
+          and create_time &lt; #{to}
+    </select>
+
+    <select id="summaryByChannel" resultType="java.util.LinkedHashMap">
+        select channel, count(*) as count, ifnull(sum(target_amount), 0) as totalAmount,
+               ifnull(sum(fee_amount), 0) as totalFee
+        from cross_border_remittance
+        where status = #{status}
+          and update_time &gt;= #{from}
+          and update_time &lt; #{to}
+        group by channel
+        order by channel asc
+    </select>
+
+</mapper>
