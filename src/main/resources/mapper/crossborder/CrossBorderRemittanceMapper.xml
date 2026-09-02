@@ -86,6 +86,12 @@
         </where>
     </select>
 
+    <select id="countGroupByStatus" resultType="java.util.LinkedHashMap">
+        select status, count(*) as total
+        from cross_border_remittance
+        group by status
+    </select>
+
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderRemittance"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_remittance (remittance_no, idempotent_key, payer_account_id, payee_account_id,

@@ -14,17 +14,22 @@ import com.dong.lab.crossborder.entity.CrossBorderRemittance;
 import com.dong.lab.crossborder.enums.ComplianceResult;
 import com.dong.lab.crossborder.enums.LedgerDirection;
 import com.dong.lab.crossborder.enums.RemittanceStatus;
+import com.dong.lab.crossborder.enums.SettlementChannel;
 import com.dong.lab.crossborder.mapper.AccountLedgerMapper;
 import com.dong.lab.crossborder.mapper.CrossBorderAccountMapper;
 import com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper;
+import com.dong.lab.crossborder.service.AmlMonitor;
+import com.dong.lab.crossborder.service.ChannelRouter;
 import com.dong.lab.crossborder.service.ComplianceService;
 import com.dong.lab.crossborder.service.CrossBorderLedgerService;
 import com.dong.lab.crossborder.service.FxQuoteService;
 import com.dong.lab.crossborder.service.RemittanceService;
 import com.dong.lab.framework.lock.DistributedLockService;
+import com.dong.lab.framework.lock.LockHandle;
 import com.dong.lab.framework.mq.MqFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -34,9 +39,12 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Optional;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -59,6 +67,11 @@ public class RemittanceServiceImpl implements RemittanceService {
 
     private static final String LOCK_PREFIX = "lab:crossborder:idem:";
 
+    /**
+     * 账户可用状态，与 cross_border_account.status 的取值一致。
+     */
+    private static final int ACCOUNT_STATUS_ACTIVE = 1;
+
     private final CrossBorderRemittanceMapper remittanceMapper;
 
     private final CrossBorderAccountMapper accountMapper;
@@ -73,6 +86,10 @@ public class RemittanceServiceImpl implements RemittanceService {
 
     private final DistributedLockService distributedLockService;
 
+    private final ChannelRouter channelRouter;
+
+    private final AmlMonitor amlMonitor;
+
     private final MqFacade mqFacade;
 
     private final Snowflake snowflake;
@@ -82,6 +99,8 @@ public class RemittanceServiceImpl implements RemittanceService {
     private final LongAdder idempotentHit = new LongAdder();
 
     private final LongAdder complianceRejected = new LongAdder();
+
+    private final LongAdder pendingReview = new LongAdder();
 
     private final LongAdder messageSent = new LongAdder();
 
@@ -97,14 +116,22 @@ public class RemittanceServiceImpl implements RemittanceService {
             return toResponse(existing);
         }
 
-        try (var ignored = distributedLockService.tryLock(LOCK_PREFIX + request.getIdempotentKey(),
+        try (LockHandle handle = distributedLockService.tryLock(LOCK_PREFIX + request.getIdempotentKey(),
                 Duration.ofSeconds(10), Duration.ofSeconds(5))) {
+            if (!handle.isAcquired()) {
+                throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                        "another request with the same idempotent key is in progress");
+            }
             CrossBorderRemittance again = remittanceMapper.selectByIdempotentKey(request.getIdempotentKey());
             if (again != null) {
                 idempotentHit.increment();
                 return toResponse(again);
             }
-            return doCreate(request);
+            try {
+                return doCreate(request);
+            } catch (DuplicateKeyException ex) {
+                return onDuplicateIdempotentKey(request.getIdempotentKey());
+            }
         }
     }
 
@@ -116,7 +143,8 @@ public class RemittanceServiceImpl implements RemittanceService {
                     "cross border remittance requires different currencies");
         }
 
-        CrossBorderRemittance remittance = buildRemittance(request, payer);
+        SettlementChannel channel = resolveChannel(request);
+        CrossBorderRemittance remittance = buildRemittance(request, payer, payee, channel);
         ComplianceResult verdict = complianceService.screen(remittance, payer, request.getSourceAmount());
         if (verdict == ComplianceResult.REJECT) {
             complianceRejected.increment();
@@ -127,8 +155,8 @@ public class RemittanceServiceImpl implements RemittanceService {
                     "remittance rejected by compliance check");
         }
         if (verdict == ComplianceResult.MANUAL_REVIEW) {
-            complianceRejected.increment();
-            remittance.setStatus(RemittanceStatus.COMPLIANCE_REJECTED);
+            pendingReview.increment();
+            remittance.setStatus(RemittanceStatus.PENDING_REVIEW);
             remittance.setComplianceStatus(verdict.getCode());
             remittance.setFailReason("pending manual review");
             remittanceMapper.insert(remittance);
@@ -136,8 +164,11 @@ public class RemittanceServiceImpl implements RemittanceService {
                     "remittance suspended for manual review");
         }
 
+        // 拆分交易检测放在常规合规之后：单独看每笔都合规，要看行为模式才能发现
+        Optional<String> structuring = amlMonitor.detectStructuring(payer.getId(), request.getSourceAmount());
+        structuring.ifPresent(detail -> log.warn("aml structuring signal remittanceNo={} {}", remittance.getRemittanceNo(), detail));
         BigDecimal rate = fxQuoteService.lock(remittance.getQuoteNo(), remittance.getRemittanceNo());
-        BigDecimal fee = fxQuoteService.fee(request.getSourceAmount(), request.getChannel());
+        BigDecimal fee = fxQuoteService.fee(request.getSourceAmount(), channel);
         BigDecimal targetAmount = request.getSourceAmount().multiply(rate)
                 .setScale(2, RoundingMode.HALF_UP);
         remittance.setExchangeRate(rate);
@@ -145,11 +176,32 @@ public class RemittanceServiceImpl implements RemittanceService {
         remittance.setTargetAmount(targetAmount);
         remittance.setComplianceStatus(ComplianceResult.PASS.getCode());
         remittance.setStatus(RemittanceStatus.QUOTE_LOCKED);
-        ledgerService.debitAndPersist(remittance, payer, request.getSourceAmount().add(fee));
+        try {
+            ledgerService.debitAndPersist(remittance, payer, request.getSourceAmount().add(fee));
+        } catch (RuntimeException ex) {
+            complianceService.releaseDailyLimit(payer.getId(), request.getSourceAmount());
+            throw ex;
+        }
         fxQuoteService.markUsed(remittance.getQuoteNo());
         created.increment();
         sendSettlementMessage(remittance);
         return toResponse(remittance);
+    }
+
+    /**
+     * 唯一索引冲突说明同一幂等键已被并发请求落库，此时应返回那笔已存在的单子，
+     * 而不是向上抛错。否则客户端重试会收到冲突错误，误以为汇款失败再次发起。
+     */
+    private RemittanceResponse onDuplicateIdempotentKey(String idempotentKey) {
+        idempotentHit.increment();
+        CrossBorderRemittance persisted = remittanceMapper.selectByIdempotentKey(idempotentKey);
+        if (persisted == null) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance for idempotent key " + idempotentKey + " is being created");
+        }
+        log.info("idempotent key conflict resolved by returning existing order key={} remittanceNo={}",
+                idempotentKey, persisted.getRemittanceNo());
+        return toResponse(persisted);
     }
 
     /**
@@ -215,13 +267,36 @@ public class RemittanceServiceImpl implements RemittanceService {
         List<CrossBorderRemittance> list = remittanceMapper.selectPage(status,
                 pageRequest.getOffset(), pageRequest.getPageSize());
         long total = remittanceMapper.countByStatus(status);
-        List<RemittanceResponse> items = list.stream().map(this::toResponse).toList();
-        return PageResult.of(items, total, pageRequest);
+        return PageResult.of(toResponses(list), total, pageRequest);
     }
 
     @Override
     public List<RemittanceResponse> findByBatchNo(String batchNo) {
-        return remittanceMapper.selectByBatchNo(batchNo).stream().map(this::toResponse).toList();
+        return toResponses(remittanceMapper.selectByBatchNo(batchNo));
+    }
+
+    /**
+     * 批量转换。先一次性取回涉及的账户，再在内存里拼接，
+     * 避免每笔汇款都去查两次账户造成的 N+1。
+     */
+    private List<RemittanceResponse> toResponses(List<CrossBorderRemittance> list) {
+        if (list.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> ids = new HashSet<>();
+        for (CrossBorderRemittance item : list) {
+            ids.add(item.getPayerAccountId());
+            ids.add(item.getPayeeAccountId());
+        }
+        Map<Long, String> accountNos = new HashMap<>();
+        for (CrossBorderAccount account : accountMapper.selectByIds(ids)) {
+            accountNos.put(account.getId(), account.getAccountNo());
+        }
+        return list.stream()
+                .map(item -> RemittanceResponse.from(item,
+                        accountNos.getOrDefault(item.getPayerAccountId(), ""),
+                        accountNos.getOrDefault(item.getPayeeAccountId(), "")))
+                .toList();
     }
 
     /**
@@ -248,14 +323,21 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     /**
-     * 失败退款。资金已扣的按原金额退回，并记一笔反向流水，
-     * 状态置为 REFUNDED 而不是回退到之前的状态，保持状态机单向。
+     * 失败退款。先用乐观锁把状态抢占为 REFUNDED，抢占成功的线程才执行退款，
+     * 并发调用只有一人真正退款，其余直接返回，不会出现重复退款。
+     * 资金未扣的单子没有借方流水，循环自然跳过，仅推进状态。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void failAndRefund(String remittanceNo, String reason) {
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null || remittance.getStatus().isFinal()) {
+            return;
+        }
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.REFUNDED,
+                remittance.getStatus(), remittance.getVersion());
+        if (claimed <= 0) {
+            log.info("refund claimed by another request remittanceNo={}", remittanceNo);
             return;
         }
         List<AccountLedger> ledgers = ledgerMapper.selectByRemittanceNo(remittanceNo);
@@ -282,12 +364,17 @@ public class RemittanceServiceImpl implements RemittanceService {
     @Override
     public Map<String, Object> runtime() {
         Map<String, Object> runtime = new LinkedHashMap<>();
+        Map<Integer, Long> grouped = new HashMap<>();
+        for (Map<String, Object> row : remittanceMapper.countGroupByStatus()) {
+            grouped.put(((Number) row.get("status")).intValue(), ((Number) row.get("total")).longValue());
+        }
         for (RemittanceStatus status : RemittanceStatus.values()) {
-            runtime.put(status.name(), remittanceMapper.countByStatus(status));
+            runtime.put(status.name(), grouped.getOrDefault(status.getCode(), 0L));
         }
         runtime.put("created", created.sum());
         runtime.put("idempotentHit", idempotentHit.sum());
         runtime.put("complianceRejected", complianceRejected.sum());
+        runtime.put("pendingReview", pendingReview.sum());
         runtime.put("messageSent", messageSent.sum());
         runtime.put("messageFailed", messageFailed.sum());
         runtime.put("sanctionSize", complianceService.sanctionCount());
@@ -302,8 +389,8 @@ public class RemittanceServiceImpl implements RemittanceService {
         return affected;
     }
 
-    private CrossBorderRemittance buildRemittance(RemittanceCreateRequest request, CrossBorderAccount payer) {
-        CrossBorderAccount payee = requireAccount(request.getPayeeAccountNo());
+    private CrossBorderRemittance buildRemittance(RemittanceCreateRequest request, CrossBorderAccount payer,
+                                                  CrossBorderAccount payee, SettlementChannel channel) {
         CrossBorderRemittance remittance = new CrossBorderRemittance();
         remittance.setRemittanceNo("RM" + snowflake.nextId());
         remittance.setIdempotentKey(request.getIdempotentKey());
@@ -315,7 +402,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         remittance.setExchangeRate(BigDecimal.ZERO);
         remittance.setTargetAmount(BigDecimal.ZERO);
         remittance.setFeeAmount(BigDecimal.ZERO);
-        remittance.setChannel(request.getChannel());
+        remittance.setChannel(channel);
         remittance.setStatus(RemittanceStatus.CREATED);
         remittance.setComplianceStatus(0);
         remittance.setQuoteNo(request.getQuoteNo() == null || request.getQuoteNo().isBlank()
@@ -327,10 +414,33 @@ public class RemittanceServiceImpl implements RemittanceService {
         return remittance;
     }
 
+    /**
+     * 渠道解析。调用方指定了就尊重指定，否则交给路由器按成本与时效选择。
+     * 指定的渠道若超单笔上限仍会走路由兜底，不能因偏好导致汇款失败。
+     */
+    private SettlementChannel resolveChannel(RemittanceCreateRequest request) {
+        if (request.getChannel() != null) {
+            return request.getChannel();
+        }
+        boolean urgent = Boolean.TRUE.equals(request.getUrgent());
+        ChannelRouter.RouteDecision decision = channelRouter.route(request.getSourceAmount(), urgent);
+        log.info("channel routed amount={} urgent={} channel={} reasons={}",
+                request.getSourceAmount(), urgent, decision.channel(), decision.reasons());
+        return decision.channel();
+    }
+
+    /**
+     * 取账户并校验可用性。冻结或注销的账户不能参与汇款，
+     * 真实系统里这是反洗钱与司法冻结的硬性要求。
+     */
     private CrossBorderAccount requireAccount(String accountNo) {
         CrossBorderAccount account = accountMapper.selectByAccountNo(accountNo);
         if (account == null) {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "account " + accountNo + " not found");
+        }
+        if (account.getStatus() == null || account.getStatus() != ACCOUNT_STATUS_ACTIVE) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "account " + accountNo + " is not active, status " + account.getStatus());
         }
         return account;
     }

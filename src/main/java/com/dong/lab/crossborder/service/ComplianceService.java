@@ -52,6 +52,12 @@ public interface ComplianceService {
     boolean checkAndAccumulateDailyLimit(Long accountId, BigDecimal amount, BigDecimal dailyLimit);
 
     /**
+     * 释放日限额占用。扣款失败或被拒绝时必须调用，
+     * 否则失败的交易会永久占用额度，导致客户当天无法再汇款。
+     */
+    void releaseDailyLimit(Long accountId, BigDecimal amount);
+
+    /**
      * 查询某笔汇款的合规记录。
      */
     List<ComplianceRecordResponse> recordsOf(String remittanceNo);

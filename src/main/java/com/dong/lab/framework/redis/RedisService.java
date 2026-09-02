@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -94,6 +95,26 @@ public class RedisService {
 
     public void publish(String channel, String message) {
         stringRedisTemplate.convertAndSend(channel, message);
+    }
+
+    /**
+     * 读取整个 hash。用于结构化计数场景一次取回全部字段。
+     */
+    public Map<String, String> hashGetAll(String key) {
+        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
+        if (entries == null || entries.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> result = new java.util.LinkedHashMap<>();
+        entries.forEach((k, v) -> result.put(String.valueOf(k), String.valueOf(v)));
+        return result;
+    }
+
+    public void hashPutAll(String key, Map<String, String> fields, Duration ttl) {
+        stringRedisTemplate.opsForHash().putAll(key, fields);
+        if (ttl != null) {
+            stringRedisTemplate.expire(key, ttl);
+        }
     }
 
     /**

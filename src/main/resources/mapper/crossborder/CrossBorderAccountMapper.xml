@@ -40,6 +40,16 @@
         order by id asc
     </select>
 
+    <select id="selectByIds" resultMap="accountMap">
+        select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
+               daily_limit, single_limit, status, create_time, update_time
+        from cross_border_account
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderAccount"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account (account_no, owner_name, country, currency, balance, frozen_balance,

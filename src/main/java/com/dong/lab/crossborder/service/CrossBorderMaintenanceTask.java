@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -36,9 +37,16 @@ public class CrossBorderMaintenanceTask {
 
     private final MqFacade mqFacade;
 
+    /**
+     * 静默期。创建后这段时间内不补偿，留给正常投递流程。
+     */
+    private static final Duration COMPENSATION_IDLE = Duration.ofMinutes(2);
+
     private final LongAdder compensationRounds = new LongAdder();
 
     private final LongAdder compensatedMessages = new LongAdder();
+
+    private final LongAdder skippedInQuietPeriod = new LongAdder();
 
     /**
      * 清理过期报价。定时执行而不是在锁汇时惰性判断，
@@ -66,6 +74,10 @@ public class CrossBorderMaintenanceTask {
     /**
      * 补偿扫描。重新发送已扣款但未收到清算确认的汇款单。
      * 消费端幂等，重复发送不会重复入账，所以这里重发是安全的。
+     *
+     * <p>静默期是必须的：刚创建的汇款单消息还在投递途中，
+     * 若不加区分地立即重发，每轮都会把在途消息再发一遍，形成消息风暴。
+     * 这里只补偿创建超过一定时间仍未推进的单子。
      */
     @Scheduled(fixedDelay = 30_000, initialDelay = 45_000)
     public void compensateSettlementMessages() {
@@ -74,7 +86,12 @@ public class CrossBorderMaintenanceTask {
             return;
         }
         compensationRounds.increment();
+        LocalDateTime threshold = LocalDateTime.now().minus(COMPENSATION_IDLE);
         for (CrossBorderRemittance remittance : pending) {
+            if (remittance.getCreateTime() != null && remittance.getCreateTime().isAfter(threshold)) {
+                skippedInQuietPeriod.increment();
+                continue;
+            }
             Map<String, Object> payload = new HashMap<>();
             payload.put("remittanceNo", remittance.getRemittanceNo());
             payload.put("batchNo", remittance.getBatchNo());
@@ -99,6 +116,10 @@ public class CrossBorderMaintenanceTask {
 
     public long compensatedMessagesCount() {
         return compensatedMessages.sum();
+    }
+
+    public long skippedInQuietPeriodCount() {
+        return skippedInQuietPeriod.sum();
     }
 
 }

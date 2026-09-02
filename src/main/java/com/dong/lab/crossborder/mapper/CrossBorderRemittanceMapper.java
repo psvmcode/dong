@@ -24,6 +24,12 @@ public interface CrossBorderRemittanceMapper {
 
     long countByStatus(@Param("status") RemittanceStatus status);
 
+    /**
+     * 按状态分组统计。一次性取回全部状态的计数，
+     * 比逐个状态各查一次省去多轮往返。
+     */
+    List<java.util.Map<String, Object>> countGroupByStatus();
+
     int insert(CrossBorderRemittance remittance);
 
     /**

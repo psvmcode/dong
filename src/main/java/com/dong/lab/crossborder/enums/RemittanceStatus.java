@@ -30,7 +30,9 @@ public enum RemittanceStatus {
 
     FAILED(7),
 
-    REFUNDED(8);
+    REFUNDED(8),
+
+    PENDING_REVIEW(9);
 
     private final int code;
 
@@ -48,6 +50,13 @@ public enum RemittanceStatus {
      */
     public boolean isFinal() {
         return this == SETTLED || this == REFUNDED || this == COMPLIANCE_REJECTED || this == FAILED;
+    }
+
+    /**
+     * 待人工审核。它不是终态，人工放行后可继续推进，驳回则走退款。
+     */
+    public boolean isPendingReview() {
+        return this == PENDING_REVIEW;
     }
 
 }

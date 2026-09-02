@@ -16,6 +16,11 @@ public interface CrossBorderAccountMapper {
 
     List<CrossBorderAccount> selectAll();
 
+    /**
+     * 按 id 批量查询。列表场景一次性取回，避免逐条查询造成的 N+1。
+     */
+    List<CrossBorderAccount> selectByIds(@Param("ids") java.util.Collection<Long> ids);
+
     int insert(CrossBorderAccount account);
 
     /**

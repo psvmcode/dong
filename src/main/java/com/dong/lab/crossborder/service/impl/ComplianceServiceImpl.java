@@ -54,7 +54,21 @@ public class ComplianceServiceImpl implements ComplianceService {
             return 0
             """;
 
+    /**
+     * 释放占用。用 math.max 兜底防止减成负数，
+     * 因为扣款失败与退款可能重复触发释放。
+     */
+    private static final String RELEASE_SCRIPT = """
+            local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+            local delta = tonumber(ARGV[1])
+            local next = math.max(0, current - delta)
+            redis.call('SET', KEYS[1], tostring(next))
+            return next
+            """;
+
     private static final RedisScript<Long> LIMIT = new DefaultRedisScript<>(LIMIT_SCRIPT, Long.class);
+
+    private static final RedisScript<Long> RELEASE = new DefaultRedisScript<>(RELEASE_SCRIPT, Long.class);
 
     /**
      * 超过该金额进入人工审核，这是反洗钱的常见做法。
@@ -187,6 +201,13 @@ public class ComplianceServiceImpl implements ComplianceService {
             return false;
         }
         return result > 0L;
+    }
+
+    @Override
+    public void releaseDailyLimit(Long accountId, BigDecimal amount) {
+        String key = DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId;
+        long cents = amount.multiply(new BigDecimal("100")).longValue();
+        redisService.execute(RELEASE, List.of(key), cents);
     }
 
     @Override
