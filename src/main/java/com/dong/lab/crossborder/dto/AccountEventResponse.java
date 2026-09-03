@@ -12,16 +12,34 @@ import java.time.LocalDateTime;
 @Data
 public class AccountEventResponse {
 
+    /**
+     * 事件记录唯一标识。
+     */
     private Long id;
 
+    /**
+     * 账户编号，说明这条事件属于哪个账户。
+     */
     private String accountNo;
 
+    /**
+     * 事件类型，例如冻结、解冻、限额调整等。
+     */
     private String eventType;
 
+    /**
+     * 操作原因，监管回访与审计追溯时必须能还原当时依据。
+     */
     private String reason;
 
+    /**
+     * 操作人，所有账户状态变更必须落实到具体责任人。
+     */
     private String operator;
 
+    /**
+     * 事件发生时间。
+     */
     private LocalDateTime createTime;
 
     public static AccountEventResponse from(AccountEvent entity) {

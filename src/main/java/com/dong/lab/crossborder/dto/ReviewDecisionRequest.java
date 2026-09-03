@@ -11,10 +11,16 @@ import lombok.Data;
 @Data
 public class ReviewDecisionRequest {
 
+    /**
+     * 审核人姓名或工号，合规决策必须能追溯到具体的人。
+     */
     @NotBlank
     @Size(max = 64)
     private String reviewer;
 
+    /**
+     * 审核意见，说明放行或驳回的具体理由。
+     */
     @Size(max = 255)
     private String note;
 

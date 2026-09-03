@@ -15,22 +15,49 @@ import java.time.LocalDateTime;
 @Data
 public class SettlementBatchResponse {
 
+    /**
+     * 清算批次号，标识本轮清算批次。
+     */
     private String batchNo;
 
+    /**
+     * 清算渠道。
+     */
     private SettlementChannel channel;
 
+    /**
+     * 批次币种。
+     */
     private String currency;
 
+    /**
+     * 批次内汇款总笔数。
+     */
     private Integer totalCount;
 
+    /**
+     * 批次内汇款总金额。
+     */
     private BigDecimal totalAmount;
 
+    /**
+     * 批次状态，例如待清算、清算中、已完成、失败。
+     */
     private SettlementStatus status;
 
+    /**
+     * 截单时间，之后进入的汇款只能等待下一批次。
+     */
     private LocalDateTime cutoffTime;
 
+    /**
+     * 批次创建时间。
+     */
     private LocalDateTime createTime;
 
+    /**
+     * 批次最后更新时间。
+     */
     private LocalDateTime updateTime;
 
     public static SettlementBatchResponse from(SettlementBatch entity) {

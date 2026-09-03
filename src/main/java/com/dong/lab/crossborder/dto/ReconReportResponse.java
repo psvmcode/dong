@@ -15,28 +15,64 @@ import java.util.Map;
 @Data
 public class ReconReportResponse {
 
+    /**
+     * 对账批次号。
+     */
     private String batchNo;
 
+    /**
+     * 清算渠道。
+     */
     private SettlementChannel channel;
 
+    /**
+     * 对账币种。
+     */
     private String currency;
 
+    /**
+     * 对账执行时间。
+     */
     private LocalDateTime reconTime;
 
+    /**
+     * 本地记录的总笔数。
+     */
     private int localCount;
 
+    /**
+     * 本地记录的总金额。
+     */
     private BigDecimal localTotal;
 
+    /**
+     * 渠道返回的总笔数。
+     */
     private int channelCount;
 
+    /**
+     * 渠道返回的总金额。
+     */
     private BigDecimal channelTotal;
 
+    /**
+     * 本地与渠道完全匹配的笔数。
+     */
     private int matchedCount;
 
+    /**
+     * 存在差异的笔数。
+     */
     private int diffCount;
 
+    /**
+     * 尚未处理的差异笔数。
+     */
     private int unhandledCount;
 
+    /**
+     * 是否平衡，即总笔数与总金额是否一致且无未处理差异。
+     */
     private boolean balanced;
 
     /**
