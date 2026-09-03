@@ -34,6 +34,17 @@
         limit #{limit}
     </select>
 
+    <select id="selectOpenByChannelAndCurrency" resultMap="batchMap">
+        select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
+               create_time, update_time
+        from cross_border_settlement_batch
+        where status = 1
+          and channel = #{channel}
+          and currency = #{currency}
+        order by id desc
+        limit 1
+    </select>
+
     <select id="selectAll" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
                create_time, update_time

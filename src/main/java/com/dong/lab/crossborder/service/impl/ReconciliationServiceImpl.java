@@ -49,17 +49,32 @@ public class ReconciliationServiceImpl implements ReconciliationService {
 
     private final SettlementBatchMapper batchMapper;
 
+    /**
+     * 对账主体。批次是 OPEN 时拒绝对账，因为还在收集，对账结果会一直变；
+     * CLOSED 时若批次内单子已全部结算，先推进为 SETTLED 再对账，
+     * 语义是「对账确认清算无误」。
+     * 重跑先清旧差异，保证对账是幂等的，不会越跑差异越多。
+     */
     @Override
-    public ReconReportResponse reconcile(String batchNo) {
+    public ReconReportResponse reconcile(String batchNo, double simulatedErrorRate) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
             throw new IllegalArgumentException("batch " + batchNo + " not found");
         }
-        if (batch.getStatus() != SettlementStatus.SETTLED) {
-            throw new IllegalStateException("batch " + batchNo + " is not settled, cannot reconcile");
+        if (batch.getStatus() == SettlementStatus.OPEN) {
+            throw new IllegalStateException("batch " + batchNo + " is still open, close it before reconciling");
         }
         List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED);
-        List<Map<String, Object>> channelStatement = generateChannelStatement(batchNo, 0.0);
+        if (batch.getStatus() == SettlementStatus.CLOSED) {
+            boolean allSettled = localItems.stream()
+                    .allMatch(item -> item.getStatus() == RemittanceStatus.SETTLED);
+            if (allSettled && !localItems.isEmpty()) {
+                batchMapper.updateStatus(batchNo, SettlementStatus.SETTLED);
+                batch = batchMapper.selectByBatchNo(batchNo);
+            }
+        }
+        reconDiffMapper.deleteByBatchNo(batchNo);
+        List<Map<String, Object>> channelStatement = generateChannelStatement(batchNo, simulatedErrorRate);
         Map<String, Map<String, Object>> channelByNo = new HashMap<>();
         for (Map<String, Object> item : channelStatement) {
             channelByNo.put(String.valueOf(item.get("remittanceNo")), item);
@@ -90,8 +105,8 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         if (!diffs.isEmpty()) {
             reconDiffMapper.batchInsert(diffs);
         }
-        log.info("reconciliation finished batchNo={} local={} channel={} matched={} diffs={}",
-                batchNo, localItems.size(), channelStatement.size(), matched, diffs.size());
+        log.info("reconciliation finished batchNo={} errorRate={} local={} channel={} matched={} diffs={}",
+                batchNo, simulatedErrorRate, localItems.size(), channelStatement.size(), matched, diffs.size());
         return buildReport(batch, localItems, channelStatement, matched, diffs);
     }
 

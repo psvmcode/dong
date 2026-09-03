@@ -86,6 +86,11 @@
           and handle_status = 0
     </update>
 
+    <delete id="deleteByBatchNo">
+        delete from cross_border_recon_diff
+        where batch_no = #{batchNo}
+    </delete>
+
     <delete id="clearAll">
         delete from cross_border_recon_diff
     </delete>

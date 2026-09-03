@@ -34,11 +34,16 @@ public class CrossBorderReconController {
 
     /**
      * 执行对账。取已结算批次的本地流水，模拟渠道回单，逐笔比对生成差异。
+     *
+     * <p>errorRate 用于模拟渠道差错，0 表示回单完全准确；
+     * 注入差错后对账应能发现漏单、金额不一致与多余单，这是对账系统自身的验收手段。
+     * 重复对账会先清掉该批次的旧差异，结果以最新一轮为准。
      */
     @PostMapping("/{batchNo}")
-    @Operation(summary = "执行一轮对账，返回对账报告")
-    public Result<ReconReportResponse> reconcile(@PathVariable String batchNo) {
-        return Result.success(reconciliationService.reconcile(batchNo));
+    @Operation(summary = "执行一轮对账，返回对账报告，可注入渠道差错率")
+    public Result<ReconReportResponse> reconcile(@PathVariable String batchNo,
+                                                 @RequestParam(defaultValue = "0.0") double errorRate) {
+        return Result.success(reconciliationService.reconcile(batchNo, errorRate));
     }
 
     /**

@@ -33,6 +33,12 @@ public interface ReconDiffMapper {
      */
     int markOneHandled(@Param("id") Long id);
 
+    /**
+     * 清空某批次的差异记录。对账重跑时先清旧结果再插入，
+     * 保证重复对账不会产生成倍的重复差异。
+     */
+    int deleteByBatchNo(@Param("batchNo") String batchNo);
+
     int clearAll();
 
 }

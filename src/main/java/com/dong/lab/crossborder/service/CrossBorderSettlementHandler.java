@@ -2,8 +2,12 @@ package com.dong.lab.crossborder.service;
 
 import com.dong.lab.common.util.JsonUtils;
 import com.dong.lab.crossborder.entity.CrossBorderRemittance;
+import com.dong.lab.crossborder.entity.SettlementBatch;
 import com.dong.lab.crossborder.enums.RemittanceStatus;
+import com.dong.lab.crossborder.enums.SettlementChannel;
+import com.dong.lab.crossborder.enums.SettlementStatus;
 import com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper;
+import com.dong.lab.crossborder.mapper.SettlementBatchMapper;
 import com.dong.lab.crossborder.service.CrossBorderLedgerService;
 import com.dong.lab.framework.mq.MessageHandler;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -11,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -24,13 +30,21 @@ import java.util.concurrent.atomic.LongAdder;
  * <p>这里的入账必须走独立 bean 而不是本类内部方法：
  * 同类 this 调用绕过 Spring 代理，事务静默失效，
  * 曾经因此出现并发消息重复入账六次的事故。
+ *
+ * <p>入账时会把汇款单归入当前打开的清算批次，没有就自动创建一个。
+ * 不归批的代价是对账按批次拉取时查不到这些单子，
+ * 整条实时清算链路的资金就成了对账盲区。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CrossBorderSettlementHandler implements MessageHandler {
 
+    private static final long DEFAULT_CUTOFF_MINUTES = 30L;
+
     private final CrossBorderRemittanceMapper remittanceMapper;
+
+    private final SettlementBatchMapper batchMapper;
 
     private final CrossBorderLedgerService ledgerService;
 
@@ -66,9 +80,42 @@ public class CrossBorderSettlementHandler implements MessageHandler {
             log.warn("skip settlement remittanceNo={} currentStatus={}", remittanceNo, remittance.getStatus());
             return true;
         }
+        assignBatch(remittance);
         creditAndAdvance(remittance);
         processed.increment();
         return true;
+    }
+
+    /**
+     * 归入当前打开的批次。找不到打开的批次就建一个，
+     * 批次计数同步累加。归批失败不阻断入账，只是该单子的批次字段留空，
+     * 对账时作为未归批单据单独处理，资金动作不能因为对账组织问题而延迟。
+     */
+    private void assignBatch(CrossBorderRemittance remittance) {
+        try {
+            SettlementChannel channel = remittance.getChannel() == null
+                    ? SettlementChannel.SWIFT : remittance.getChannel();
+            SettlementBatch batch = batchMapper.selectOpenByChannelAndCurrency(channel, remittance.getTargetCurrency());
+            if (batch == null) {
+                batch = new SettlementBatch();
+                batch.setBatchNo("SB" + System.nanoTime());
+                batch.setChannel(channel);
+                batch.setCurrency(remittance.getTargetCurrency());
+                batch.setTotalCount(0);
+                batch.setTotalAmount(BigDecimal.ZERO);
+                batch.setStatus(SettlementStatus.OPEN);
+                batch.setCutoffTime(LocalDateTime.now().plusMinutes(DEFAULT_CUTOFF_MINUTES));
+                batchMapper.insert(batch);
+                log.info("settlement batch auto created batchNo={} channel={} currency={}",
+                        batch.getBatchNo(), channel, remittance.getTargetCurrency());
+            }
+            remittanceMapper.updateBatchNo(remittance.getRemittanceNo(), batch.getBatchNo());
+            batchMapper.updateTotal(batch.getBatchNo(), batch.getTotalCount() + 1,
+                    batch.getTotalAmount().add(remittance.getTargetAmount()));
+            remittance.setBatchNo(batch.getBatchNo());
+        } catch (Exception ex) {
+            log.warn("assign batch failed remittanceNo={}", remittance.getRemittanceNo(), ex);
+        }
     }
 
     private void creditAndAdvance(CrossBorderRemittance remittance) {

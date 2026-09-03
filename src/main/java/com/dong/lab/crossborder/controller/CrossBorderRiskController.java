@@ -3,6 +3,7 @@ package com.dong.lab.crossborder.controller;
 import com.dong.lab.common.result.Result;
 import com.dong.lab.crossborder.service.AmlMonitor;
 import com.dong.lab.crossborder.service.ChannelRouter;
+import com.dong.lab.crossborder.service.ComplianceService;
 import com.dong.lab.crossborder.service.FxExposureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +36,8 @@ public class CrossBorderRiskController {
     private final AmlMonitor amlMonitor;
 
     private final FxExposureService fxExposureService;
+
+    private final ComplianceService complianceService;
 
     /**
      * 查看指定金额下全部渠道的评分与推荐结果。
@@ -76,6 +79,17 @@ public class CrossBorderRiskController {
     @Operation(summary = "清空 AML 监控数据")
     public Result<Void> resetAml() {
         amlMonitor.reset();
+        return Result.success();
+    }
+
+    /**
+     * 重置某账户的日限额占用。运维场景使用：
+     * 渠道侧确认某日计数有误时，重置后重新累计。
+     */
+    @PostMapping("/aml/reset-daily")
+    @Operation(summary = "重置账户的日限额占用计数")
+    public Result<Void> resetDaily(@RequestParam Long payerAccountId) {
+        complianceService.resetDailyUsage(payerAccountId);
         return Result.success();
     }
 

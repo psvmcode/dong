@@ -29,8 +29,13 @@ public interface ReconciliationService {
      *
      * <p>渠道回单数据由 generateChannelStatement 模拟，
      * 真实系统从渠道的 SFTP 或 API 拉取。
+     *
+     * @param batchNo             清算批次号，批次必须是 CLOSED 或 SETTLED 状态
+     * @param simulatedErrorRate  模拟渠道差错率，0 到 1 之间。0 表示渠道回单完全准确，
+     *                            大于 0 时会注入漏单、金额偏移与多余单，用来验证对账能否发现差异
+     * @return 对账报告
      */
-    ReconReportResponse reconcile(String batchNo);
+    ReconReportResponse reconcile(String batchNo, double simulatedErrorRate);
 
     /**
      * 模拟渠道回单。基于本地已结算的汇款单生成，
