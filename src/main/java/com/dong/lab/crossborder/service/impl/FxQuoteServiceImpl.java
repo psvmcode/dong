@@ -9,6 +9,7 @@ import com.dong.lab.crossborder.enums.FxQuoteStatus;
 import com.dong.lab.crossborder.enums.SettlementChannel;
 import com.dong.lab.crossborder.mapper.FxQuoteMapper;
 import com.dong.lab.crossborder.service.FxQuoteService;
+import com.dong.lab.framework.lock.DistributedLockService;
 import com.dong.lab.framework.redis.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,8 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     private final FxQuoteMapper fxQuoteMapper;
 
     private final RedisService redisService;
+
+    private final DistributedLockService distributedLockService;
 
     private final Snowflake snowflake;
 
@@ -127,6 +130,9 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     /**
      * 当前牌价。高频读取场景，用 Redis 缓存 30 秒，
      * 汇率本身变化不剧烈，短暂延迟不影响展示。
+     *
+     * <p>这里用分布式锁防止缓存击穿：缓存未命中时，
+     * 并发请求里只有一个去回源计算，其余等待或读刚写入的缓存。
      */
     @Override
     public BigDecimal currentRate(String sourceCurrency, String targetCurrency) {
@@ -134,9 +140,19 @@ public class FxQuoteServiceImpl implements FxQuoteService {
         return redisService.get(cacheKey)
                 .map(BigDecimal::new)
                 .orElseGet(() -> {
-                    BigDecimal rate = midRate(sourceCurrency, targetCurrency);
-                    redisService.set(cacheKey, rate.toPlainString(), RATE_CACHE_TTL);
-                    return rate;
+                    try (var handle = distributedLockService.tryLock(
+                            cacheKey + ":lock", Duration.ofSeconds(5), Duration.ofSeconds(2))) {
+                        if (handle.isAcquired()) {
+                            return redisService.get(cacheKey)
+                                    .map(BigDecimal::new)
+                                    .orElseGet(() -> {
+                                        BigDecimal rate = midRate(sourceCurrency, targetCurrency);
+                                        redisService.set(cacheKey, rate.toPlainString(), RATE_CACHE_TTL);
+                                        return rate;
+                                    });
+                        }
+                        return midRate(sourceCurrency, targetCurrency);
+                    }
                 });
     }
 

@@ -108,13 +108,13 @@ public class AmlMonitorImpl implements AmlMonitor {
                 "date", LocalDate.now().toString());
     }
 
+    /**
+     * 命中拆分模式的账户列表。用 scan 替代 keys 扫描，避免在大规模 Redis 上阻塞。
+     */
     @Override
     public List<Map<String, Object>> flaggedAccounts() {
         List<Map<String, Object>> flagged = new ArrayList<>();
-        Set<String> keys = redisService.template().keys(KEY_PREFIX + "*");
-        if (keys == null) {
-            return flagged;
-        }
+        Set<String> keys = scanAmlKeys();
         for (String key : keys.stream().sorted().toList()) {
             if (key.endsWith(":under")) {
                 continue;
@@ -133,10 +133,25 @@ public class AmlMonitorImpl implements AmlMonitor {
 
     @Override
     public void reset() {
-        Set<String> keys = redisService.template().keys(KEY_PREFIX + "*");
+        Set<String> keys = scanAmlKeys();
         if (keys != null && !keys.isEmpty()) {
             redisService.template().delete(keys);
         }
+    }
+
+    /**
+     * 用 scan 增量扫描替代 keys 全量扫描。keys 在大库上会阻塞 Redis 主线程，
+     * scan 虽然多一轮往返但不会阻塞，是生产环境的强制要求。
+     */
+    private Set<String> scanAmlKeys() {
+        Set<String> result = new java.util.HashSet<>();
+        org.springframework.data.redis.core.Cursor<String> cursor =
+                redisService.template().scan(org.springframework.data.redis.core.ScanOptions
+                        .scanOptions().match(KEY_PREFIX + "*").count(100).build());
+        while (cursor.hasNext()) {
+            result.add(cursor.next());
+        }
+        return result;
     }
 
     private String keyOf(Long payerAccountId) {

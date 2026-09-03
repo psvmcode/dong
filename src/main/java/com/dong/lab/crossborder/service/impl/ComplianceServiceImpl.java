@@ -168,10 +168,19 @@ public class ComplianceServiceImpl implements ComplianceService {
         return within ? ComplianceResult.PASS : ComplianceResult.REJECT;
     }
 
+    /**
+     * 制裁名单匹配。Redis 不可用时返回 true（宁可误拒不可漏放），
+     * 因为漏放一个制裁对象的后果远比误拒一笔正常汇款严重。
+     */
     @Override
     public boolean hitSanction(String country, String ownerName) {
-        Boolean member = redisService.template().opsForSet().isMember(SANCTION_KEY, ownerName);
-        return Boolean.TRUE.equals(member);
+        try {
+            Boolean member = redisService.template().opsForSet().isMember(SANCTION_KEY, ownerName);
+            return Boolean.TRUE.equals(member);
+        } catch (Exception ex) {
+            log.error("sanction list check failed, fail safe by treating as hit name={}", ownerName, ex);
+            return true;
+        }
     }
 
     @Override

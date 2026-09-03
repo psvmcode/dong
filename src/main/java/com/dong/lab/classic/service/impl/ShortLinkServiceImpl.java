@@ -29,7 +29,11 @@ public class ShortLinkServiceImpl implements ShortLinkService {
 
     private static final String HIT_COUNTER = "lab:short:hit:";
 
+    private static final String NULL_MARKER = "null";
+
     private static final Duration CACHE_TTL = Duration.ofDays(7);
+
+    private static final Duration NULL_TTL = Duration.ofMinutes(10);
 
     private final ShortLinkMapper shortLinkMapper;
 
@@ -52,14 +56,25 @@ public class ShortLinkServiceImpl implements ShortLinkService {
         return code;
     }
 
+    /**
+     * 解析短链。缓存空值标记防止穿透：不存在的 code 第二次不会打到数据库。
+     * 空值标记用特殊前缀区分，避免与真实 URL 混淆。
+     */
     @Override
     public String resolve(String code) {
         String cached = redisService.get(CODE_CACHE + code).orElse(null);
         if (cached != null) {
+            if (NULL_MARKER.equals(cached)) {
+                throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "short link " + code + " not found");
+            }
             countHit(code);
             return cached;
         }
-        ShortLink shortLink = findByCode(code);
+        ShortLink shortLink = shortLinkMapper.selectByCode(code);
+        if (shortLink == null) {
+            redisService.set(CODE_CACHE + code, NULL_MARKER, NULL_TTL);
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "short link " + code + " not found");
+        }
         redisService.set(CODE_CACHE + code, shortLink.getOriginUrl(), CACHE_TTL);
         countHit(code);
         return shortLink.getOriginUrl();

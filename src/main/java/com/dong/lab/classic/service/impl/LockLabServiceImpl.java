@@ -112,6 +112,11 @@ public class LockLabServiceImpl implements LockLabService {
         }
     }
 
+    /**
+     * 不加锁的读改写。get 与 set 之间存在竞态窗口，
+     * 两个线程可能读到同一个值再各自加一，丢失一次更新。
+     * 这正是这个实验要演示的问题。
+     */
     private void increment(String key) {
         long current = Long.parseLong(redisService.get(key).orElse("0"));
         redisService.set(key, String.valueOf(current + 1));
