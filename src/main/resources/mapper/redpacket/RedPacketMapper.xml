@@ -25,6 +25,7 @@
         <result column="create_time" property="createTime"/>
     </resultMap>
 
+    <!-- 按红包编号查红包 -->
     <select id="selectByPacketNo" resultMap="redPacketMap">
         select id, packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count, packet_type, status,
                create_time, update_time
@@ -32,6 +33,7 @@
         where packet_no = #{packetNo}
     </select>
 
+    <!-- 发红包落库 -->
     <insert id="insert" parameterType="com.dong.lab.redpacket.entity.RedPacket"
             useGeneratedKeys="true" keyProperty="id">
         insert into red_packet (packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count,
@@ -40,12 +42,14 @@
                 #{packetType}, #{status})
     </insert>
 
+    <!-- 推进红包状态 -->
     <update id="updateStatus">
         update red_packet
         set status = #{status}
         where packet_no = #{packetNo}
     </update>
 
+    <!-- 扣减剩余金额与份数，带充足条件防负数 -->
     <update id="decreaseRemain">
         update red_packet
         set remain_amount = remain_amount - #{amount},
@@ -53,6 +57,7 @@
         where packet_no = #{packetNo}
     </update>
 
+    <!-- 查领取记录 -->
     <select id="selectRecords" resultMap="recordMap">
         select id, packet_no, user_id, amount, create_time
         from red_packet_record
@@ -60,12 +65,14 @@
         order by id asc
     </select>
 
+    <!-- 写领取记录 -->
     <insert id="insertRecord" parameterType="com.dong.lab.redpacket.entity.RedPacketRecord"
             useGeneratedKeys="true" keyProperty="id">
         insert into red_packet_record (packet_no, user_id, amount)
         values (#{packetNo}, #{userId}, #{amount})
     </insert>
 
+    <!-- 统计领取记录数 -->
     <select id="countRecord" resultType="java.lang.Integer">
         select count(1)
         from red_packet_record

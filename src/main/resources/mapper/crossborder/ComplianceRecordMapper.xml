@@ -17,6 +17,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 查汇款单的全部合规检查记录 -->
     <select id="selectByRemittanceNo" resultMap="recordMap">
         select id, remittance_no, check_type, result, hit_detail, create_time, update_time
         from cross_border_compliance_record
@@ -24,18 +25,21 @@
         order by id asc
     </select>
 
+    <!-- 写入一条检查记录留痕 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ComplianceRecord"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_compliance_record (remittance_no, check_type, result, hit_detail)
         values (#{remittanceNo}, #{checkType}, #{result}, #{hitDetail})
     </insert>
 
+    <!-- 按结论统计数量 -->
     <select id="countByResult" resultType="long">
         select count(*)
         from cross_border_compliance_record
         where result = #{result}
     </select>
 
+    <!-- 清空记录，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_compliance_record
     </delete>

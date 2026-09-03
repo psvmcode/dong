@@ -18,6 +18,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 查批次的差异记录 -->
     <select id="selectByBatchNo" resultMap="diffMap">
         select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
                create_time, update_time
@@ -26,6 +27,7 @@
         order by id asc
     </select>
 
+    <!-- 最近差异记录 -->
     <select id="selectAll" resultMap="diffMap">
         select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
                create_time, update_time
@@ -34,6 +36,7 @@
         limit #{limit}
     </select>
 
+    <!-- 未处理差异 -->
     <select id="selectUnhandled" resultMap="diffMap">
         select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
                create_time, update_time
@@ -43,6 +46,7 @@
         limit #{limit}
     </select>
 
+    <!-- 写入单条差异 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ReconDiff"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
@@ -50,6 +54,7 @@
         values (#{batchNo}, #{remittanceNo}, #{diffType}, #{localAmount}, #{channelAmount}, #{handleStatus})
     </insert>
 
+    <!-- 批量写入差异，一轮对账一次落库 -->
     <insert id="batchInsert" parameterType="java.util.List">
         insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
                                              channel_amount, handle_status)
@@ -60,12 +65,14 @@
         </foreach>
     </insert>
 
+    <!-- 未处理差异数 -->
     <select id="countUnhandled" resultType="long">
         select count(*)
         from cross_border_recon_diff
         where handle_status = 0
     </select>
 
+    <!-- 按批次与类型统计 -->
     <select id="countByBatchAndType" resultType="long">
         select count(*)
         from cross_border_recon_diff
@@ -73,6 +80,7 @@
           and diff_type = #{diffType}
     </select>
 
+    <!-- 批量标记批次内差异已处理 -->
     <update id="markHandled">
         update cross_border_recon_diff
         set handle_status = 1,
@@ -81,6 +89,7 @@
           and handle_status = 0
     </update>
 
+    <!-- 单笔标记已处理 -->
     <update id="markOneHandled">
         update cross_border_recon_diff
         set handle_status = 1,
@@ -89,11 +98,13 @@
           and handle_status = 0
     </update>
 
+    <!-- 清空批次差异，对账重跑用 -->
     <delete id="deleteByBatchNo">
         delete from cross_border_recon_diff
         where batch_no = #{batchNo}
     </delete>
 
+    <!-- 清空差异，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_recon_diff
     </delete>

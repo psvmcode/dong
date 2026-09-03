@@ -12,18 +12,21 @@
         <result column="create_time" property="createTime"/>
     </resultMap>
 
+    <!-- 发布动态落库 -->
     <insert id="insert" parameterType="com.dong.lab.social.entity.SocialFeed"
             useGeneratedKeys="true" keyProperty="id">
         insert into social_feed (feed_id, author_id, content, like_count)
         values (#{feedId}, #{authorId}, #{content}, #{likeCount})
     </insert>
 
+    <!-- 按动态 id 查动态 -->
     <select id="selectByFeedId" resultMap="feedMap">
         select id, feed_id, author_id, content, like_count, create_time
         from social_feed
         where feed_id = #{feedId}
     </select>
 
+    <!-- 查作者的动态 -->
     <select id="selectByAuthor" resultMap="feedMap">
         select id, feed_id, author_id, content, like_count, create_time
         from social_feed
@@ -31,6 +34,7 @@
         order by feed_id desc
     </select>
 
+    <!-- 按作者列表查动态，拉模式时间线聚合 -->
     <select id="selectByAuthors" resultMap="feedMap">
         select id, feed_id, author_id, content, like_count, create_time
         from social_feed
@@ -42,6 +46,7 @@
         limit #{offset}, #{size}
     </select>
 
+    <!-- 点赞数累加落库 -->
     <update id="increaseLikeCount">
         update social_feed
         set like_count = like_count + 1

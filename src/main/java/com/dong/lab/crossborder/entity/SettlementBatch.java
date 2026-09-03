@@ -14,31 +14,54 @@ import java.time.LocalDateTime;
 @Data
 public class SettlementBatch {
 
+    /**
+     * 主键
+     */
     private Long id;
 
-    /** 批次号，渠道清算与对账都以批次为单位 */
+    /**
+     * 批次号，全局唯一
+     */
     private String batchNo;
 
-    /** 清算渠道：CIPS、SWIFT、CORRESPONDENT */
+    /**
+     * 清算渠道
+     */
     private SettlementChannel channel;
 
-    /** 批次币种，同币种的单子才能进同一批 */
+    /**
+     * 清算币种，同批次只能是一种币
+     */
     private String currency;
 
-    /** 批次内汇款单数 */
+    /**
+     * 批次内汇款笔数
+     */
     private Integer totalCount;
 
-    /** 批次总金额，与渠道回单核对 */
+    /**
+     * 批次内汇款总金额
+     */
     private BigDecimal totalAmount;
 
-    /** 批次状态：收集、已报文、已清算、已关闭 */
+    /**
+     * 批次状态，1 收集中 2 已关闭 3 已清算
+     */
     private SettlementStatus status;
 
-    /** 本批清算截止时刻，错过等下一窗口 */
+    /**
+     * 清算截止时间，渠道按窗口批量清算
+     */
     private LocalDateTime cutoffTime;
 
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
 
 }

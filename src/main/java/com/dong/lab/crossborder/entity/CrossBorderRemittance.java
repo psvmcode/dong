@@ -15,61 +15,104 @@ import java.time.LocalDateTime;
 @Data
 public class CrossBorderRemittance {
 
+    /**
+     * 主键
+     */
     private Long id;
 
-    /** 汇款单号，对外业务标识 */
+    /**
+     * 汇款单号，全局唯一
+     */
     private String remittanceNo;
 
-    /** 幂等键，调用方生成，唯一索引防重复汇款 */
+    /**
+     * 幂等键，调用方生成，唯一索引防止重复汇款
+     */
     private String idempotentKey;
 
-    /** 付款账户 */
+    /**
+     * 付款方账户 id
+     */
     private Long payerAccountId;
 
-    /** 收款账户 */
+    /**
+     * 收款方账户 id
+     */
     private Long payeeAccountId;
 
-    /** 源币种，付款账户币种 */
+    /**
+     * 源币种
+     */
     private String sourceCurrency;
 
-    /** 目标币种，收款账户币种 */
+    /**
+     * 目标币种
+     */
     private String targetCurrency;
 
-    /** 汇出金额，手续费另算 */
+    /**
+     * 源币种金额
+     */
     private BigDecimal sourceAmount;
 
-    /** 锁定汇率，挂起期间为 0，锁汇后回填 */
+    /**
+     * 成交汇率，锁汇后写入
+     */
     private BigDecimal exchangeRate;
 
-    /** 收款方到账金额 = 源金额 × 汇率 */
+    /**
+     * 目标币种金额，源金额乘以锁定汇率换算
+     */
     private BigDecimal targetAmount;
 
-    /** 渠道手续费 */
+    /**
+     * 手续费，按渠道费率计算
+     */
     private BigDecimal feeAmount;
 
-    /** 清算渠道 */
+    /**
+     * 清算渠道，1 SWIFT 2 CIPS 3 本地清算
+     */
     private SettlementChannel channel;
 
-    /** 汇款单状态，单向推进 */
+    /**
+     * 汇款状态，状态机单向推进
+     */
     private RemittanceStatus status;
 
-    /** 合规结论，与 ComplianceRecord 对应 */
+    /**
+     * 合规结论编码，0 未检 1 通过 2 拒绝 3 转人工
+     */
     private Integer complianceStatus;
 
-    /** 关联的汇率报价号 */
+    /**
+     * 引用的汇率报价单号
+     */
     private String quoteNo;
 
-    /** 所属清算批次，未进批为空 */
+    /**
+     * 所属清算批次号，实时清算由消费者归批
+     */
     private String batchNo;
 
-    /** 失败或挂起原因 */
+    /**
+     * 失败或挂起原因
+     */
     private String failReason;
 
-    /** 乐观锁版本号，并发推进状态的仲裁依据 */
+    /**
+     * 乐观锁版本号，状态推进时递增
+     */
     private Integer version;
 
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
 
 }

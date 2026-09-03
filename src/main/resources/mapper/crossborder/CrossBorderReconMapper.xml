@@ -29,6 +29,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 查批次内已结算汇款单，对账的本地侧数据源 -->
     <select id="selectSettledByBatch" resultMap="remittanceMap">
         select id, remittance_no, idempotent_key, payer_account_id, payee_account_id, source_currency,
                target_currency, source_amount, exchange_rate, target_amount, fee_amount, channel, status,
@@ -39,6 +40,7 @@
         order by id asc
     </select>
 
+    <!-- 时间段内贷方累计，与渠道回单比对 -->
     <select id="sumCreditByAccountAndTime" resultType="java.math.BigDecimal">
         select ifnull(sum(amount), 0)
         from cross_border_account_ledger
@@ -48,6 +50,7 @@
           and create_time &lt; #{to}
     </select>
 
+    <!-- 按渠道汇总笔数与金额，生成对账汇总 -->
     <select id="summaryByChannel" resultType="java.util.LinkedHashMap">
         select channel, count(*) as count, ifnull(sum(target_amount), 0) as totalAmount,
                ifnull(sum(fee_amount), 0) as totalFee

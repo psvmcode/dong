@@ -13,6 +13,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 按账号查账户事件 -->
     <select id="selectByAccountNo" resultMap="eventMap">
         select id, account_no, event_type, reason, operator, create_time, update_time
         from cross_border_account_event
@@ -20,12 +21,14 @@
         order by id asc
     </select>
 
+    <!-- 写入账户事件留痕 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.AccountEvent"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account_event (account_no, event_type, reason, operator)
         values (#{accountNo}, #{eventType}, #{reason}, #{operator})
     </insert>
 
+    <!-- 清空事件，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_account_event
     </delete>

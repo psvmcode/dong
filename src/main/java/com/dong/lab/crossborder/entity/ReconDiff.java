@@ -13,28 +13,49 @@ import java.time.LocalDateTime;
 @Data
 public class ReconDiff {
 
+    /**
+     * 主键
+     */
     private Long id;
 
-    /** 所属清算批次 */
+    /**
+     * 清算批次号
+     */
     private String batchNo;
 
-    /** 有差异的汇款单号，单边账时可能为空 */
+    /**
+     * 汇款单号，渠道多单时可能没有对应本地单
+     */
     private String remittanceNo;
 
-    /** 差异类型：长款、短款、单边账、金额不符 */
+    /**
+     * 差异类型，1 长款 2 短款 3 金额不一致 4 渠道有本地无 5 本地有渠道无
+     */
     private ReconDiffType diffType;
 
-    /** 本地账务金额 */
+    /**
+     * 本地记录的金额
+     */
     private BigDecimal localAmount;
 
-    /** 渠道回单金额 */
+    /**
+     * 渠道回单的金额
+     */
     private BigDecimal channelAmount;
 
-    /** 处理状态：待处理、已核销、已挂账 */
+    /**
+     * 处理状态，0 未处理 1 已核销
+     */
     private Integer handleStatus;
 
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
 
 }

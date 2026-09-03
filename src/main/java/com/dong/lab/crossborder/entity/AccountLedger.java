@@ -14,30 +14,54 @@ import java.time.LocalDateTime;
 @Data
 public class AccountLedger {
 
+    /**
+     * 主键
+     */
     private Long id;
 
-    /** 流水号，全局唯一，便于单条追溯 */
+    /**
+     * 流水号，全局唯一
+     */
     private String ledgerNo;
 
-    /** 关联的汇款单号 */
+    /**
+     * 关联的汇款单号，同一笔汇款的多条流水共用
+     */
     private String remittanceNo;
 
-    /** 记账账户 */
+    /**
+     * 账户 id
+     */
     private Long accountId;
 
-    /** 方向：借方扣款、贷方入账 */
+    /**
+     * 记账方向，1 借方支出 2 贷方收入
+     */
     private LedgerDirection direction;
 
+    /**
+     * 币种
+     */
     private String currency;
 
-    /** 发生金额，恒为正数，方向由 direction 表达 */
+    /**
+     * 发生金额
+     */
     private BigDecimal amount;
 
-    /** 记账后的余额快照，流水序列可完整还原余额变化 */
+    /**
+     * 记账后的余额快照，用于还原任意时点的账务状态
+     */
     private BigDecimal balanceAfter;
 
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
 
 }

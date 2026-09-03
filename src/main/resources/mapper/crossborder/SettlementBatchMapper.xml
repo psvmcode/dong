@@ -21,6 +21,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 按批次号查批次 -->
     <select id="selectByBatchNo" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
                create_time, update_time
@@ -28,6 +29,7 @@
         where batch_no = #{batchNo}
     </select>
 
+    <!-- 按状态查批次 -->
     <select id="selectByStatus" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
                create_time, update_time
@@ -37,6 +39,7 @@
         limit #{limit}
     </select>
 
+    <!-- 查渠道与币种的打开批次，实时清算归批用 -->
     <select id="selectOpenByChannelAndCurrency" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
                create_time, update_time
@@ -48,6 +51,7 @@
         limit 1
     </select>
 
+    <!-- 全部批次 -->
     <select id="selectAll" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
                create_time, update_time
@@ -55,6 +59,7 @@
         order by id desc
     </select>
 
+    <!-- 创建批次 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.SettlementBatch"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_settlement_batch (batch_no, channel, currency, total_count, total_amount,
@@ -62,6 +67,7 @@
         values (#{batchNo}, #{channel}, #{currency}, #{totalCount}, #{totalAmount}, #{status}, #{cutoffTime})
     </insert>
 
+    <!-- 推进批次状态 -->
     <update id="updateStatus">
         update cross_border_settlement_batch
         set status = #{status},
@@ -69,6 +75,7 @@
         where batch_no = #{batchNo}
     </update>
 
+    <!-- 累加批次笔数与金额 -->
     <update id="updateTotal">
         update cross_border_settlement_batch
         set total_count = #{totalCount},
@@ -77,6 +84,7 @@
         where batch_no = #{batchNo}
     </update>
 
+    <!-- 关闭超过清算截止时间的批次 -->
     <update id="closeOverdue">
         update cross_border_settlement_batch
         set status = 2,
@@ -85,6 +93,7 @@
           and cutoff_time &lt;= #{now}
     </update>
 
+    <!-- 清空批次，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_settlement_batch
     </delete>

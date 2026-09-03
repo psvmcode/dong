@@ -12,41 +12,69 @@ import java.time.LocalDateTime;
 @Data
 public class CrossBorderAccount {
 
-    /** 内部主键，对外一律用 accountNo */
+    /**
+     * 主键
+     */
     private Long id;
 
-    /** 对外展示的账号，开户时由发号器生成 */
+    /**
+     * 账号，全局唯一
+     */
     private String accountNo;
 
-    /** 账户持有人姓名，制裁名单按此匹配 */
+    /**
+     * 户主姓名，制裁名单按此匹配
+     */
     private String ownerName;
 
-    /** 持有人所在国家或地区，合规筛查的维度之一 */
+    /**
+     * 所属国家或地区代码
+     */
     private String country;
 
-    /** 账户币种，一个币种一个账户 */
+    /**
+     * 账户币种，同一用户在不同币种下是不同账户
+     */
     private String currency;
 
-    /** 账面余额，含冻结部分 */
+    /**
+     * 账户余额
+     */
     private BigDecimal balance;
 
-    /** 冻结金额，可用余额 = balance - frozenBalance */
+    /**
+     * 冻结金额，已被汇款占用的部分
+     */
     private BigDecimal frozenBalance;
 
-    /** 实名认证等级，决定单笔可汇上限 */
+    /**
+     * KYC 认证等级，决定可汇出额度上限
+     */
     private Integer kycLevel;
 
-    /** 日累计汇款限额 */
+    /**
+     * 日累计汇出限额
+     */
     private BigDecimal dailyLimit;
 
-    /** 单笔汇款限额 */
+    /**
+     * 单笔汇出限额
+     */
     private BigDecimal singleLimit;
 
-    /** 账户状态，1 激活 2 冻结，冻结后不能发起新汇款 */
+    /**
+     * 账户状态，1 正常 0 冻结
+     */
     private Integer status;
 
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
 
 }

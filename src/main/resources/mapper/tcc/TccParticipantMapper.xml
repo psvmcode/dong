@@ -34,18 +34,21 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 查库存 -->
     <select id="selectInventory" resultMap="inventoryMap">
         select id, product_id, available, frozen, create_time, update_time
         from tcc_inventory
         where product_id = #{productId}
     </select>
 
+    <!-- 初始化库存 -->
     <insert id="insertInventory" parameterType="com.dong.lab.tcc.entity.TccInventory"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_inventory (product_id, available, frozen)
         values (#{productId}, #{available}, #{frozen})
     </insert>
 
+    <!-- Try 阶段冻结库存 -->
     <update id="freezeInventory">
         update tcc_inventory
         set available = available - #{quantity},
@@ -54,6 +57,7 @@
           and available &gt;= #{quantity}
     </update>
 
+    <!-- Confirm 阶段扣减冻结库存 -->
     <update id="confirmInventory">
         update tcc_inventory
         set frozen = frozen - #{quantity}
@@ -61,6 +65,7 @@
           and frozen &gt;= #{quantity}
     </update>
 
+    <!-- Cancel 阶段释放冻结库存 -->
     <update id="cancelInventory">
         update tcc_inventory
         set available = available + #{quantity},
@@ -69,18 +74,21 @@
           and frozen &gt;= #{quantity}
     </update>
 
+    <!-- 查账户 -->
     <select id="selectAccount" resultMap="accountMap">
         select id, user_id, balance, frozen, create_time, update_time
         from tcc_account
         where user_id = #{userId}
     </select>
 
+    <!-- 初始化账户 -->
     <insert id="insertAccount" parameterType="com.dong.lab.tcc.entity.TccAccount"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_account (user_id, balance, frozen)
         values (#{userId}, #{balance}, #{frozen})
     </insert>
 
+    <!-- Try 阶段冻结余额 -->
     <update id="freezeAccount">
         update tcc_account
         set balance = balance - #{amount},
@@ -89,6 +97,7 @@
           and balance &gt;= #{amount}
     </update>
 
+    <!-- Confirm 阶段扣减冻结余额 -->
     <update id="confirmAccount">
         update tcc_account
         set frozen = frozen - #{amount}
@@ -96,6 +105,7 @@
           and frozen &gt;= #{amount}
     </update>
 
+    <!-- Cancel 阶段释放冻结余额 -->
     <update id="cancelAccount">
         update tcc_account
         set balance = balance + #{amount},
@@ -104,18 +114,21 @@
           and frozen &gt;= #{amount}
     </update>
 
+    <!-- 按全局事务查订单 -->
     <select id="selectOrderByXid" resultMap="orderMap">
         select id, order_no, xid, user_id, product_id, quantity, amount, status, create_time, update_time
         from tcc_order
         where xid = #{xid}
     </select>
 
+    <!-- 创建订单 -->
     <insert id="insertOrder" parameterType="com.dong.lab.tcc.entity.TccOrder"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_order (order_no, xid, user_id, product_id, quantity, amount, status)
         values (#{orderNo}, #{xid}, #{userId}, #{productId}, #{quantity}, #{amount}, #{status})
     </insert>
 
+    <!-- 推进订单状态 -->
     <update id="updateOrderStatus">
         update tcc_order
         set status = #{status}

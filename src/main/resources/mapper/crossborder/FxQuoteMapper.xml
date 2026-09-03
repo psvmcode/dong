@@ -20,6 +20,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 按报价单号查报价 -->
     <select id="selectByQuoteNo" resultMap="quoteMap">
         select id, quote_no, currency_pair, bid_rate, ask_rate, locked_rate, status, expire_time,
                remittance_no, create_time, update_time
@@ -27,6 +28,7 @@
         where quote_no = #{quoteNo}
     </select>
 
+    <!-- 按货币对与状态查可用报价 -->
     <select id="selectByPairAndStatus" resultMap="quoteMap">
         select id, quote_no, currency_pair, bid_rate, ask_rate, locked_rate, status, expire_time,
                remittance_no, create_time, update_time
@@ -38,6 +40,7 @@
         limit #{limit}
     </select>
 
+    <!-- 写入报价 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.FxQuote"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_fx_quote (quote_no, currency_pair, bid_rate, ask_rate, locked_rate,
@@ -46,6 +49,7 @@
                 #{status}, #{expireTime}, #{remittanceNo})
     </insert>
 
+    <!-- 乐观锁锁定报价，状态与有效期都匹配才更新 -->
     <update id="lock">
         update cross_border_fx_quote
         set status        = 2,
@@ -56,12 +60,14 @@
           and expire_time > now()
     </update>
 
+    <!-- 推进报价状态 -->
     <update id="updateStatus">
         update cross_border_fx_quote
         set status = #{status}
         where quote_no = #{quoteNo}
     </update>
 
+    <!-- 批量标记过期报价 -->
     <update id="expireOverdue">
         update cross_border_fx_quote
         set status = 4
@@ -69,6 +75,7 @@
           and expire_time &lt;= #{now}
     </update>
 
+    <!-- 清空报价，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_fx_quote
     </delete>

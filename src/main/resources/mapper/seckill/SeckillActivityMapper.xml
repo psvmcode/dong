@@ -23,6 +23,7 @@
         create_time, update_time
     </sql>
 
+    <!-- 按主键查活动 -->
     <select id="selectById" resultMap="activityMap">
         select
         <include refid="activityColumns"/>
@@ -30,6 +31,7 @@
         where id = #{id}
     </select>
 
+    <!-- 全部活动列表 -->
     <select id="selectAll" resultMap="activityMap">
         select
         <include refid="activityColumns"/>
@@ -37,6 +39,7 @@
         order by id desc
     </select>
 
+    <!-- 新增秒杀活动 -->
     <insert id="insert" parameterType="com.dong.lab.seckill.entity.SeckillActivity"
             useGeneratedKeys="true" keyProperty="id">
         insert into seckill_activity (product_id, title, total_stock, available_stock, unit_price, start_time, end_time,
@@ -45,6 +48,7 @@
                 #{status})
     </insert>
 
+    <!-- 推进活动状态 -->
     <update id="updateStatus">
         update seckill_activity
         set status  = #{status},
@@ -53,6 +57,7 @@
           and version = #{expectedVersion}
     </update>
 
+    <!-- 回写 Redis 扣减后的剩余库存 -->
     <update id="updateAvailableStock">
         update seckill_activity
         set available_stock = #{availableStock}

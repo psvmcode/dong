@@ -18,6 +18,7 @@
         id, name, category, price, stock, status, create_time, update_time
     </sql>
 
+    <!-- 按主键查商品 -->
     <select id="selectById" resultMap="productMap">
         select
         <include refid="columns"/>
@@ -25,6 +26,7 @@
         where id = #{id}
     </select>
 
+    <!-- 全量商品，供同步与预热 -->
     <select id="selectAll" resultMap="productMap">
         select
         <include refid="columns"/>
@@ -32,6 +34,7 @@
         order by id asc
     </select>
 
+    <!-- 分页查询，手写 limit -->
     <select id="selectByPage" resultMap="productMap">
         select
         <include refid="columns"/>
@@ -40,20 +43,24 @@
         limit #{offset}, #{size}
     </select>
 
+    <!-- 统计总数，配合分页计算总条数 -->
     <select id="countAll" resultType="java.lang.Long">
         select count(1) from product
     </select>
 
+    <!-- 全部商品 id，供布隆过滤器填充 -->
     <select id="selectAllIds" resultType="java.lang.Long">
         select id from product order by id asc
     </select>
 
+    <!-- 新增商品，主键回填 -->
     <insert id="insert" parameterType="com.dong.lab.cache.entity.Product"
             useGeneratedKeys="true" keyProperty="id">
         insert into product (name, category, price, stock, status)
         values (#{name}, #{category}, #{price}, #{stock}, #{status})
     </insert>
 
+    <!-- 更新商品 -->
     <update id="update" parameterType="com.dong.lab.cache.entity.Product">
         update product
         set name     = #{name},
@@ -63,6 +70,7 @@
         where id = #{id}
     </update>
 
+    <!-- 按主键删除商品 -->
     <delete id="deleteById">
         delete from product where id = #{id}
     </delete>

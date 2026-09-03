@@ -11,18 +11,21 @@
         <result column="create_time" property="createTime"/>
     </resultMap>
 
+    <!-- 按短码查原始链接 -->
     <select id="selectByCode" resultMap="shortLinkMap">
         select id, code, origin_url, hit_count, create_time
         from short_url
         where code = #{code}
     </select>
 
+    <!-- 新增短链记录 -->
     <insert id="insert" parameterType="com.dong.lab.classic.entity.ShortLink"
             useGeneratedKeys="true" keyProperty="id">
         insert into short_url (code, origin_url, hit_count)
         values (#{code}, #{originUrl}, #{hitCount})
     </insert>
 
+    <!-- 点击计数累加，Redis 计数后异步落库 -->
     <update id="increaseHitCount">
         update short_url
         set hit_count = hit_count + 1

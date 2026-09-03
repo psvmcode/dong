@@ -21,6 +21,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 按流水号查流水 -->
     <select id="selectByLedgerNo" resultMap="ledgerMap">
         select id, ledger_no, remittance_no, account_id, direction, currency, amount, balance_after,
                create_time, update_time
@@ -28,6 +29,7 @@
         where ledger_no = #{ledgerNo}
     </select>
 
+    <!-- 查汇款单的全部流水，退款时定位借方流水 -->
     <select id="selectByRemittanceNo" resultMap="ledgerMap">
         select id, ledger_no, remittance_no, account_id, direction, currency, amount, balance_after,
                create_time, update_time
@@ -36,6 +38,7 @@
         order by id asc
     </select>
 
+    <!-- 查账户近期流水 -->
     <select id="selectByAccountId" resultMap="ledgerMap">
         select id, ledger_no, remittance_no, account_id, direction, currency, amount, balance_after,
                create_time, update_time
@@ -45,6 +48,7 @@
         limit #{limit}
     </select>
 
+    <!-- 写入流水，余额快照一并落库 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.AccountLedger"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account_ledger (ledger_no, remittance_no, account_id, direction, currency,
@@ -52,6 +56,7 @@
         values (#{ledgerNo}, #{remittanceNo}, #{accountId}, #{direction}, #{currency}, #{amount}, #{balanceAfter})
     </insert>
 
+    <!-- 按方向累计发生额，余额与流水一致性校验用 -->
     <select id="sumByAccountAndDirection" resultType="java.math.BigDecimal">
         select ifnull(sum(amount), 0)
         from cross_border_account_ledger
@@ -59,6 +64,7 @@
           and direction = #{direction}
     </select>
 
+    <!-- 清空流水，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_account_ledger
     </delete>

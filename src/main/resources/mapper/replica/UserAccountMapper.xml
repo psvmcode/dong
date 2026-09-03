@@ -12,24 +12,28 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 按用户查账户 -->
     <select id="selectByUserId" resultMap="accountMap">
         select id, user_id, username, balance, create_time, update_time
         from user_account
         where user_id = #{userId}
     </select>
 
+    <!-- 全部账户 -->
     <select id="selectAll" resultMap="accountMap">
         select id, user_id, username, balance, create_time, update_time
         from user_account
         order by id asc
     </select>
 
+    <!-- 创建账户 -->
     <insert id="insert" parameterType="com.dong.lab.replica.entity.UserAccount"
             useGeneratedKeys="true" keyProperty="id">
         insert into user_account (user_id, username, balance)
         values (#{userId}, #{username}, #{balance})
     </insert>
 
+    <!-- 直接更新余额，转账事务内使用 -->
     <update id="updateBalance">
         update user_account
         set balance = #{balance}

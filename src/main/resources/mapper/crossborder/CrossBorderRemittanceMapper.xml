@@ -36,6 +36,7 @@
         compliance_status, quote_no, batch_no, fail_reason, version, create_time, update_time
     </sql>
 
+    <!-- 按汇款单号查单 -->
     <select id="selectByRemittanceNo" resultMap="remittanceMap">
         select
         <include refid="columns"/>
@@ -43,6 +44,7 @@
         where remittance_no = #{remittanceNo}
     </select>
 
+    <!-- 按幂等键查单，重放请求返回原单 -->
     <select id="selectByIdempotentKey" resultMap="remittanceMap">
         select
         <include refid="columns"/>
@@ -50,6 +52,7 @@
         where idempotent_key = #{idempotentKey}
     </select>
 
+    <!-- 按状态查单，补偿任务扫描用 -->
     <select id="selectByStatus" resultMap="remittanceMap">
         select
         <include refid="columns"/>
@@ -59,6 +62,7 @@
         limit #{limit}
     </select>
 
+    <!-- 按批次查单，批次对账用 -->
     <select id="selectByBatchNo" resultMap="remittanceMap">
         select
         <include refid="columns"/>
@@ -67,6 +71,7 @@
         order by id asc
     </select>
 
+    <!-- 分页查询，可按状态过滤 -->
     <select id="selectPage" resultMap="remittanceMap">
         select
         <include refid="columns"/>
@@ -80,6 +85,7 @@
         limit #{offset}, #{size}
     </select>
 
+    <!-- 按状态统计数量 -->
     <select id="countByStatus" resultType="long">
         select count(*)
         from cross_border_remittance
@@ -90,12 +96,14 @@
         </where>
     </select>
 
+    <!-- 按状态分组统计，一次取回全部状态计数 -->
     <select id="countGroupByStatus" resultType="java.util.LinkedHashMap">
         select status, count(*) as total
         from cross_border_remittance
         group by status
     </select>
 
+    <!-- 插入汇款单，幂等键唯一索引兜底 -->
     <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderRemittance"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_remittance (remittance_no, idempotent_key, payer_account_id, payee_account_id,
@@ -108,6 +116,7 @@
                 #{quoteNo}, #{batchNo}, #{failReason}, #{version})
     </insert>
 
+    <!-- 乐观锁推进状态，期望状态与版本号都匹配才更新 -->
     <update id="updateStatus">
         update cross_border_remittance
         set status   = #{status},
@@ -118,6 +127,7 @@
           and version = #{version}
     </update>
 
+    <!-- 回写批次号 -->
     <update id="updateBatchNo">
         update cross_border_remittance
         set batch_no = #{batchNo},
@@ -136,6 +146,7 @@
         where remittance_no = #{remittanceNo}
     </update>
 
+    <!-- 失败并记录原因 -->
     <update id="updateFailReason">
         update cross_border_remittance
         set status      = #{status},
@@ -145,6 +156,7 @@
         where remittance_no = #{remittanceNo}
     </update>
 
+    <!-- 回写报价单号 -->
     <update id="updateQuoteNo">
         update cross_border_remittance
         set quote_no = #{quoteNo},
@@ -152,6 +164,7 @@
         where remittance_no = #{remittanceNo}
     </update>
 
+    <!-- 清空汇款单，实验环境用 -->
     <delete id="clearAll">
         delete from cross_border_remittance
     </delete>

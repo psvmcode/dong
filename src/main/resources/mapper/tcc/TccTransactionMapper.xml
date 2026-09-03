@@ -26,24 +26,28 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <!-- 按全局事务 id 查事务 -->
     <select id="selectByXid" resultMap="transactionMap">
         select id, xid, status, expire_time, retry_count, create_time, update_time
         from tcc_transaction
         where xid = #{xid}
     </select>
 
+    <!-- 创建事务记录 -->
     <insert id="insert" parameterType="com.dong.lab.tcc.entity.TccTransaction"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_transaction (xid, status, expire_time, retry_count)
         values (#{xid}, #{status}, #{expireTime}, #{retryCount})
     </insert>
 
+    <!-- 推进事务状态 -->
     <update id="updateStatus">
         update tcc_transaction
         set status = #{status}
         where xid = #{xid}
     </update>
 
+    <!-- 按状态查事务，恢复任务扫描用 -->
     <select id="selectByStatus" resultMap="transactionMap">
         select id, xid, status, expire_time, retry_count, create_time, update_time
         from tcc_transaction
@@ -52,6 +56,7 @@
         limit #{limit}
     </select>
 
+    <!-- 查分支记录 -->
     <select id="selectBranch" resultMap="branchMap">
         select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
                update_time
@@ -60,12 +65,14 @@
           and branch_id = #{branchId}
     </select>
 
+    <!-- 写入分支记录 -->
     <insert id="insertBranch" parameterType="com.dong.lab.tcc.entity.TccBranch"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_branch (xid, branch_id, status, payload, error_message, next_retry_time, retry_count)
         values (#{xid}, #{branchId}, #{status}, #{payload}, #{errorMessage}, #{nextRetryTime}, #{retryCount})
     </insert>
 
+    <!-- 推进分支状态 -->
     <update id="updateBranchStatus">
         update tcc_branch
         set status        = #{status},
@@ -74,6 +81,7 @@
           and branch_id = #{branchId}
     </update>
 
+    <!-- 查事务全部分支 -->
     <select id="selectBranches" resultMap="branchMap">
         select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
                update_time
@@ -82,6 +90,7 @@
         order by id asc
     </select>
 
+    <!-- 查待重试分支，恢复任务用 -->
     <select id="selectRetryableBranches" resultMap="branchMap">
         select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
                update_time
@@ -91,6 +100,7 @@
         limit #{limit}
     </select>
 
+    <!-- 清空事务，实验环境用 -->
     <delete id="clearAll">
         delete from tcc_transaction
     </delete>

@@ -20,6 +20,7 @@
         id, order_no, activity_id, product_id, user_id, quantity, amount, status, create_time, update_time
     </sql>
 
+    <!-- 按订单号查订单 -->
     <select id="selectByOrderNo" resultMap="orderMap">
         select
         <include refid="orderColumns"/>
@@ -27,6 +28,7 @@
         where order_no = #{orderNo}
     </select>
 
+    <!-- 防重复购买检查 -->
     <select id="countByActivityAndUser" resultType="java.lang.Integer">
         select count(1)
         from seckill_order
@@ -34,6 +36,7 @@
           and user_id = #{userId}
     </select>
 
+    <!-- 查超时未支付订单，供定时任务回收 -->
     <select id="selectTimeoutCandidates" resultMap="orderMap">
         select
         <include refid="orderColumns"/>
@@ -43,12 +46,14 @@
         limit 200
     </select>
 
+    <!-- 插入订单，唯一索引兜底防重 -->
     <insert id="insert" parameterType="com.dong.lab.seckill.entity.SeckillOrder"
             useGeneratedKeys="true" keyProperty="id">
         insert into seckill_order (order_no, activity_id, product_id, user_id, quantity, amount, status)
         values (#{orderNo}, #{activityId}, #{productId}, #{userId}, #{quantity}, #{amount}, #{status})
     </insert>
 
+    <!-- 推进订单状态 -->
     <update id="updateStatus">
         update seckill_order
         set status = #{status}

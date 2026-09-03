@@ -3,18 +3,21 @@
 
 <mapper namespace="com.dong.lab.social.mapper.SocialRelationMapper">
 
+    <!-- 写关注关系 -->
     <insert id="insert" parameterType="com.dong.lab.social.entity.SocialRelation"
             useGeneratedKeys="true" keyProperty="id">
         insert into social_relation (follower_id, followee_id)
         values (#{followerId}, #{followeeId})
     </insert>
 
+    <!-- 取消关注 -->
     <delete id="delete">
         delete from social_relation
         where follower_id = #{followerId}
           and followee_id = #{followeeId}
     </delete>
 
+    <!-- 判断是否已关注 -->
     <select id="countByFollowerAndFollowee" resultType="java.lang.Integer">
         select count(1)
         from social_relation
@@ -22,24 +25,28 @@
           and followee_id = #{followeeId}
     </select>
 
+    <!-- 查关注列表 -->
     <select id="selectFollowees" resultType="java.lang.Long">
         select followee_id
         from social_relation
         where follower_id = #{followerId}
     </select>
 
+    <!-- 查粉丝列表 -->
     <select id="selectFollowers" resultType="java.lang.Long">
         select follower_id
         from social_relation
         where followee_id = #{followeeId}
     </select>
 
+    <!-- 关注数 -->
     <select id="countFollowees" resultType="java.lang.Long">
         select count(1)
         from social_relation
         where follower_id = #{followerId}
     </select>
 
+    <!-- 粉丝数 -->
     <select id="countFollowers" resultType="java.lang.Long">
         select count(1)
         from social_relation

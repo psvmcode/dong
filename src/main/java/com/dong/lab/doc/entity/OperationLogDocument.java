@@ -13,21 +13,39 @@ import java.util.Map;
 public class OperationLogDocument {
 
     @Id
+    /**
+     * 文档 id，MongoDB 自动生成
+     */
     private String id;
 
     @Indexed
+    /**
+     * 业务类型，如 order、seckill
+     */
     private String bizType;
 
     @Indexed
+    /**
+     * 业务单号
+     */
     private String bizId;
 
+    /**
+     * 操作人
+     */
     private String operator;
 
+    /**
+     * 操作动作
+     */
     private String action;
 
     private Map<String, Object> detail;
 
     @Indexed
+    /**
+     * 操作时间
+     */
     private LocalDateTime createTime;
 
 }
