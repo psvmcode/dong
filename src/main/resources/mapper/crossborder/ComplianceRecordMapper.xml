@@ -2,6 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.dong.lab.crossborder.mapper.ComplianceRecordMapper">
+    <!-- 合规检查记录表。每道检查逐条留痕，只增不改，
+         监管检查与事后审计按汇款单号取全量记录 -->
+
 
     <resultMap id="recordMap" type="com.dong.lab.crossborder.entity.ComplianceRecord">
         <id column="id" property="id"/>

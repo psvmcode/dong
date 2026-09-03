@@ -2,6 +2,10 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper">
+    <!-- 汇款单表。idempotent_key 唯一索引防重复汇款；
+         updateStatus 带 version 乐观锁，状态只能单向推进；
+         updateSettlementTerms 供人工审核放行后回填锁汇结果 -->
+
 
     <resultMap id="remittanceMap" type="com.dong.lab.crossborder.entity.CrossBorderRemittance">
         <id column="id" property="id"/>
@@ -118,6 +122,17 @@
         update cross_border_remittance
         set batch_no = #{batchNo},
             update_time = now()
+        where remittance_no = #{remittanceNo}
+    </update>
+
+    <!-- 审核放行后回填成交要素，不带 version 条件：调用前已用 updateStatus 独占抢占 -->
+    <update id="updateSettlementTerms">
+        update cross_border_remittance
+        set exchange_rate     = #{exchangeRate},
+            fee_amount        = #{feeAmount},
+            target_amount     = #{targetAmount},
+            compliance_status = #{complianceStatus},
+            update_time       = now()
         where remittance_no = #{remittanceNo}
     </update>
 

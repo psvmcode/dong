@@ -43,6 +43,18 @@ public interface CrossBorderRemittanceMapper {
 
     int updateBatchNo(@Param("remittanceNo") String remittanceNo, @Param("batchNo") String batchNo);
 
+    /**
+     * 审核放行后回填成交要素：锁定汇率、手续费、目标金额与合规结论。
+     * 挂起时这些字段还是占位的 0，锁汇完成后才有真实值。
+     * 不带 version 条件：调用前已用 updateStatus 独占抢占，
+     * 只有抢占成功的请求能走到这里，天然无并发写。
+     */
+    int updateSettlementTerms(@Param("remittanceNo") String remittanceNo,
+                              @Param("exchangeRate") java.math.BigDecimal exchangeRate,
+                              @Param("feeAmount") java.math.BigDecimal feeAmount,
+                              @Param("targetAmount") java.math.BigDecimal targetAmount,
+                              @Param("complianceStatus") int complianceStatus);
+
     int updateFailReason(@Param("remittanceNo") String remittanceNo,
                          @Param("status") RemittanceStatus status,
                          @Param("failReason") String failReason);

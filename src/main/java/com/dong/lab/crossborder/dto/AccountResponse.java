@@ -6,6 +6,10 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 账户响应。availableBalance 是真正可动用的钱：余额减去冻结部分。
+ * 只看 balance 会误判可汇额度，这是运营侧最常见的口径误解。
+ */
 @Data
 public class AccountResponse {
 

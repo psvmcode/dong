@@ -1,5 +1,6 @@
 package com.dong.lab.crossborder.mapper;
 
+import com.dong.lab.crossborder.enums.AccountEventType;
 import com.dong.lab.crossborder.enums.ComplianceCheckType;
 import com.dong.lab.crossborder.enums.ComplianceResult;
 import com.dong.lab.crossborder.enums.FxQuoteStatus;
@@ -255,6 +256,39 @@ public final class CrossBorderEnumTypeHandler {
         public ReconDiffType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ReconDiffType.of(value);
+        }
+
+    }
+
+    /**
+     * 账户事件类型（冻结/解冻）的落库转换。事件类型错映射会让
+     * 冻结记录被读成解冻，审计口径直接失真，因此未知 code 同样直接抛错。
+     */
+    @MappedTypes(AccountEventType.class)
+    public static class AccountEventTypeHandler extends BaseTypeHandler<AccountEventType> {
+
+        @Override
+        public void setNonNullParameter(PreparedStatement ps, int i, AccountEventType parameter, JdbcType jdbcType)
+                throws SQLException {
+            ps.setInt(i, parameter.getCode());
+        }
+
+        @Override
+        public AccountEventType getNullableResult(ResultSet rs, String columnName) throws SQLException {
+            int value = rs.getInt(columnName);
+            return rs.wasNull() ? null : AccountEventType.of(value);
+        }
+
+        @Override
+        public AccountEventType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
+            int value = rs.getInt(columnIndex);
+            return rs.wasNull() ? null : AccountEventType.of(value);
+        }
+
+        @Override
+        public AccountEventType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
+            int value = cs.getInt(columnIndex);
+            return cs.wasNull() ? null : AccountEventType.of(value);
         }
 
     }

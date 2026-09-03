@@ -5,6 +5,7 @@ import com.dong.lab.common.result.Result;
 import com.dong.lab.crossborder.dto.ComplianceRecordResponse;
 import com.dong.lab.crossborder.dto.RemittanceCreateRequest;
 import com.dong.lab.crossborder.dto.RemittanceResponse;
+import com.dong.lab.crossborder.dto.ReviewDecisionRequest;
 import com.dong.lab.crossborder.enums.RemittanceStatus;
 import com.dong.lab.crossborder.service.ComplianceService;
 import com.dong.lab.crossborder.service.RemittanceService;
@@ -83,6 +84,39 @@ public class CrossBorderRemittanceController {
     @Operation(summary = "查询汇款单的合规检查记录")
     public Result<List<ComplianceRecordResponse>> compliance(@PathVariable String remittanceNo) {
         return Result.success(complianceService.recordsOf(remittanceNo));
+    }
+
+    /**
+     * 待人工审核的汇款单列表。超过反洗钱阈值的大额汇款会挂起在这里，
+     * 合规人员逐单核实来源与用途后放行或驳回。
+     */
+    @GetMapping("/pending-review")
+    @Operation(summary = "查询待人工审核的汇款单")
+    public Result<PageResult<RemittanceResponse>> pendingReview(
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return Result.success(remittanceService.findByPage(RemittanceStatus.PENDING_REVIEW, pageNum, pageSize));
+    }
+
+    /**
+     * 审核放行。放行后单子继续走锁汇、扣款、清算，与自动通过的单子殊途同归。
+     * 两个审核员同时放行只有一个生效，其余返回冲突。
+     */
+    @PostMapping("/{remittanceNo}/review/approve")
+    @Operation(summary = "人工审核放行，继续锁汇扣款清算")
+    public Result<RemittanceResponse> approveReview(@PathVariable String remittanceNo,
+                                                    @Valid @RequestBody ReviewDecisionRequest decision) {
+        return Result.success(remittanceService.approveReview(remittanceNo, decision));
+    }
+
+    /**
+     * 审核驳回。资金尚未扣减，直接进入终态并释放占用的日累计限额。
+     */
+    @PostMapping("/{remittanceNo}/review/reject")
+    @Operation(summary = "人工审核驳回，终态并释放日限额")
+    public Result<RemittanceResponse> rejectReview(@PathVariable String remittanceNo,
+                                                   @Valid @RequestBody ReviewDecisionRequest decision) {
+        return Result.success(remittanceService.rejectReview(remittanceNo, decision));
     }
 
     /**

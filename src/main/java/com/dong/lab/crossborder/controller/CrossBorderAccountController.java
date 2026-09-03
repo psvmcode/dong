@@ -2,6 +2,7 @@ package com.dong.lab.crossborder.controller;
 
 import com.dong.lab.common.result.Result;
 import com.dong.lab.crossborder.dto.AccountCreateRequest;
+import com.dong.lab.crossborder.dto.AccountEventResponse;
 import com.dong.lab.crossborder.dto.AccountResponse;
 import com.dong.lab.crossborder.service.ComplianceService;
 import com.dong.lab.crossborder.service.CrossBorderAccountService;
@@ -77,6 +78,38 @@ public class CrossBorderAccountController {
                 "balance", account.getBalance(),
                 "diff", diff,
                 "consistent", diff.compareTo(java.math.BigDecimal.ZERO) == 0));
+    }
+
+    /**
+     * 冻结账户。反洗钱调查或司法冻结时使用，冻结后不能发起新汇款，
+     * 余额与流水完整保留。冻结动作与原因都会落事件表留痕。
+     */
+    @PostMapping("/accounts/{accountNo}/freeze")
+    @Operation(summary = "冻结账户，事件落库留痕")
+    public Result<AccountResponse> freeze(@PathVariable String accountNo,
+                                          @RequestParam(defaultValue = "") String reason,
+                                          @RequestParam(defaultValue = "") String operator) {
+        return Result.success(accountService.freeze(accountNo, reason, operator));
+    }
+
+    /**
+     * 解冻账户。与冻结对称，同样落事件留痕。
+     */
+    @PostMapping("/accounts/{accountNo}/unfreeze")
+    @Operation(summary = "解冻账户，事件落库留痕")
+    public Result<AccountResponse> unfreeze(@PathVariable String accountNo,
+                                            @RequestParam(defaultValue = "") String reason,
+                                            @RequestParam(defaultValue = "") String operator) {
+        return Result.success(accountService.unfreeze(accountNo, reason, operator));
+    }
+
+    /**
+     * 查询账户事件历史。谁在什么时间因为什么冻结或解冻了账户，逐条可查。
+     */
+    @GetMapping("/accounts/{accountNo}/events")
+    @Operation(summary = "查询账户冻结/解冻事件历史")
+    public Result<List<AccountEventResponse>> events(@PathVariable String accountNo) {
+        return Result.success(accountService.events(accountNo));
     }
 
     /**

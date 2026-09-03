@@ -226,6 +226,16 @@ public class ComplianceServiceImpl implements ComplianceService {
                 .toList();
     }
 
+    /**
+     * 人工复核结论落库。detail 里带上审核人与备注，
+     * 监管检查时这行记录就是「该笔大额交易经过了人工确认」的直接证据。
+     */
+    @Override
+    public void recordManualDecision(String remittanceNo, ComplianceResult result, String detail) {
+        record(remittanceNo, ComplianceCheckType.MANUAL_REVIEW, result,
+                detail == null || detail.isBlank() ? "no detail" : detail);
+    }
+
     @Override
     public void resetDailyUsage(Long accountId) {
         redisService.delete(DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId);

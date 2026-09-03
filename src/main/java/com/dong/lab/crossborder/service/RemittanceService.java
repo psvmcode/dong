@@ -3,6 +3,7 @@ package com.dong.lab.crossborder.service;
 import com.dong.lab.common.result.PageResult;
 import com.dong.lab.crossborder.dto.RemittanceCreateRequest;
 import com.dong.lab.crossborder.dto.RemittanceResponse;
+import com.dong.lab.crossborder.dto.ReviewDecisionRequest;
 import com.dong.lab.crossborder.enums.RemittanceStatus;
 
 import java.util.List;
@@ -35,6 +36,19 @@ public interface RemittanceService {
     PageResult<RemittanceResponse> findByPage(RemittanceStatus status, int pageNum, int pageSize);
 
     List<RemittanceResponse> findByBatchNo(String batchNo);
+
+    /**
+     * 人工审核放行。大额汇款挂起后由合规人员确认来源与用途合法，
+     * 放行后继续走锁汇、扣款、发送清算消息，与自动通过的单子殊途同归。
+     * 并发重复放行只有一个生效：状态抢占失败的那个直接报冲突。
+     */
+    RemittanceResponse approveReview(String remittanceNo, ReviewDecisionRequest decision);
+
+    /**
+     * 人工审核驳回。资金尚未扣减（挂起发生在扣款之前），
+     * 只需推进到终态并释放挂起时占用的日累计限额，不会产生退款动作。
+     */
+    RemittanceResponse rejectReview(String remittanceNo, ReviewDecisionRequest decision);
 
     /**
      * 推进到下一状态，供消息消费者与补偿任务调用。

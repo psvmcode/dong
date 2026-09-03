@@ -7,6 +7,10 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 合规检查记录响应。一笔汇款对应四条自动检查加最多一条人工复核，
+ * 每条记录谁检查的、结论是什么、命中了什么，监管检查时按单号逐条出示。
+ */
 @Data
 public class ComplianceRecordResponse {
 

@@ -352,3 +352,17 @@ create table if not exists cross_border_recon_diff
     key idx_remittance_no (remittance_no)
 ) engine = innodb
   default charset = utf8mb4;
+
+create table if not exists cross_border_account_event
+(
+    id          bigint unsigned not null auto_increment,
+    account_no  varchar(32)     not null default '',
+    event_type  tinyint         not null default 0,
+    reason      varchar(255)    not null default '',
+    operator    varchar(64)     not null default '',
+    create_time datetime        not null default current_timestamp,
+    update_time datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    key idx_account_no (account_no)
+) engine = innodb
+  default charset = utf8mb4;

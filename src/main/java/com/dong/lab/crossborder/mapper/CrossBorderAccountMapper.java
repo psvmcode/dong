@@ -34,6 +34,12 @@ public interface CrossBorderAccountMapper {
 
     int unfreeze(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
+    /**
+     * 账户级状态变更（冻结/解冻）。带上期望状态做条件更新，
+     * 并发冻结或重复解冻时只有一个请求生效，其余返回 0 由上层拒绝。
+     */
+    int updateStatus(@Param("id") Long id, @Param("status") int status, @Param("expectedStatus") int expectedStatus);
+
     int clearAll();
 
 }

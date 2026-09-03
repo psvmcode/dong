@@ -2,6 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.dong.lab.crossborder.mapper.ReconDiffMapper">
+    <!-- 对账差异表。长款短款逐条记录，运营按类型处理后标记，
+         handle 状态推进是差异闭环的唯一出口 -->
+
 
     <resultMap id="diffMap" type="com.dong.lab.crossborder.entity.ReconDiff">
         <id column="id" property="id"/>

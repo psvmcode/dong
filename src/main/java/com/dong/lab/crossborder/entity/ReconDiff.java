@@ -15,16 +15,22 @@ public class ReconDiff {
 
     private Long id;
 
+    /** 所属清算批次 */
     private String batchNo;
 
+    /** 有差异的汇款单号，单边账时可能为空 */
     private String remittanceNo;
 
+    /** 差异类型：长款、短款、单边账、金额不符 */
     private ReconDiffType diffType;
 
+    /** 本地账务金额 */
     private BigDecimal localAmount;
 
+    /** 渠道回单金额 */
     private BigDecimal channelAmount;
 
+    /** 处理状态：待处理、已核销、已挂账 */
     private Integer handleStatus;
 
     private LocalDateTime createTime;

@@ -2,6 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderReconMapper">
+    <!-- 对账数据源。模拟渠道回单与本地流水的比对视图，
+         reconcile 按批次比金额找差异，差异落 recon_diff 表 -->
+
 
     <resultMap id="remittanceMap" type="com.dong.lab.crossborder.entity.CrossBorderRemittance">
         <id column="id" property="id"/>

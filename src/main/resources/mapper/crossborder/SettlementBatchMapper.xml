@@ -2,6 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.dong.lab.crossborder.mapper.SettlementBatchMapper">
+    <!-- 清算批次表。渠道按批清算，批次聚合单量与金额，
+         状态推进反映「收集 → 已报文 → 已清算」的渠道节奏 -->
+
 
     <resultMap id="batchMap" type="com.dong.lab.crossborder.entity.SettlementBatch">
         <id column="id" property="id"/>

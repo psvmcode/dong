@@ -8,6 +8,7 @@ import com.dong.lab.common.util.JsonUtils;
 import com.dong.lab.common.util.Snowflake;
 import com.dong.lab.crossborder.dto.RemittanceCreateRequest;
 import com.dong.lab.crossborder.dto.RemittanceResponse;
+import com.dong.lab.crossborder.dto.ReviewDecisionRequest;
 import com.dong.lab.crossborder.entity.AccountLedger;
 import com.dong.lab.crossborder.entity.CrossBorderAccount;
 import com.dong.lab.crossborder.entity.CrossBorderRemittance;
@@ -72,6 +73,7 @@ public class RemittanceServiceImpl implements RemittanceService {
      */
     private static final int ACCOUNT_STATUS_ACTIVE = 1;
 
+
     private final CrossBorderRemittanceMapper remittanceMapper;
 
     private final CrossBorderAccountMapper accountMapper;
@@ -105,6 +107,10 @@ public class RemittanceServiceImpl implements RemittanceService {
     private final LongAdder messageSent = new LongAdder();
 
     private final LongAdder messageFailed = new LongAdder();
+
+    private final LongAdder reviewApproved = new LongAdder();
+
+    private final LongAdder reviewRejected = new LongAdder();
 
     @Override
     public RemittanceResponse create(RemittanceCreateRequest request) {
@@ -147,6 +153,9 @@ public class RemittanceServiceImpl implements RemittanceService {
         CrossBorderRemittance remittance = buildRemittance(request, payer, payee, channel);
         ComplianceResult verdict = complianceService.screen(remittance, payer, request.getSourceAmount());
         if (verdict == ComplianceResult.REJECT) {
+            // 四道检查里日限额是「先累加再判断」，被拒绝的汇款若不释放占用，
+            // 客户失败几次之后当天就一笔都汇不出去了，这是真实系统里最常见的额度泄漏事故
+            complianceService.releaseDailyLimit(payer.getId(), request.getSourceAmount());
             complianceRejected.increment();
             remittance.setStatus(RemittanceStatus.COMPLIANCE_REJECTED);
             remittance.setComplianceStatus(verdict.getCode());
@@ -155,6 +164,8 @@ public class RemittanceServiceImpl implements RemittanceService {
                     "remittance rejected by compliance check");
         }
         if (verdict == ComplianceResult.MANUAL_REVIEW) {
+            // 挂起期间日限额占用保留：单子还活着，额度就该被占着。
+            // 审核放行沿用这份占用，驳回时由 rejectReview 释放
             pendingReview.increment();
             remittance.setStatus(RemittanceStatus.PENDING_REVIEW);
             remittance.setComplianceStatus(verdict.getCode());
@@ -300,6 +311,136 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     /**
+     * 审核放行。大额汇款挂起时资金尚未扣减，放行相当于把主链路的后半段补完：
+     * 锁汇 → 计算费用 → 回填成交要素 → 扣款记账 → 发送清算消息。
+     *
+     * <p>并发防护分两层：先用乐观锁把状态从 PENDING_REVIEW 抢占为 QUOTE_LOCKED，
+     * 两个审核员同时点放行只有一个能抢到；抢占成功后的写入无并发竞争，
+     * 因为失败方已经报冲突退出。锁汇或扣款中途失败会把状态回退到 PENDING_REVIEW，
+     * 单子可以重新审核，不会卡死在中间状态。
+     *
+     * <p>审核期间付款账户可能已被冻结（反洗钱调查的常见时序），
+     * 放行前必须重新校验账户可用性，不能信任挂起时的检查结果。
+     */
+    @Override
+    public RemittanceResponse approveReview(String remittanceNo, ReviewDecisionRequest decision) {
+        CrossBorderRemittance suspended = requireRemittance(remittanceNo);
+        if (!suspended.getStatus().isPendingReview()) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " is not pending review");
+        }
+        CrossBorderAccount payer = requireAccountById(suspended.getPayerAccountId());
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.QUOTE_LOCKED,
+                RemittanceStatus.PENDING_REVIEW, suspended.getVersion());
+        if (claimed <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " has been handled by another reviewer");
+        }
+        try {
+            settleSuspended(suspended, payer);
+        } catch (RuntimeException ex) {
+            revertToPendingReview(remittanceNo, suspended.getVersion() + 1);
+            throw ex;
+        }
+        complianceService.recordManualDecision(remittanceNo, ComplianceResult.PASS,
+                "approved by " + decision.getReviewer() + appendNote(decision.getNote()));
+        reviewApproved.increment();
+        created.increment();
+        CrossBorderRemittance settled = remittanceMapper.selectByRemittanceNo(remittanceNo);
+        sendSettlementMessage(settled);
+        return toResponse(settled);
+    }
+
+    /**
+     * 补完挂起单的成交与扣款。挂起时汇率、费用、目标金额还是占位 0，
+     * 这里按放行时刻的市场报价重新锁定并回填，之后走与正常链路相同的扣款事务。
+     */
+    private void settleSuspended(CrossBorderRemittance suspended, CrossBorderAccount payer) {
+        BigDecimal rate = fxQuoteService.lock(suspended.getQuoteNo(), suspended.getRemittanceNo());
+        BigDecimal fee = fxQuoteService.fee(suspended.getSourceAmount(), suspended.getChannel());
+        BigDecimal targetAmount = suspended.getSourceAmount().multiply(rate)
+                .setScale(2, RoundingMode.HALF_UP);
+        remittanceMapper.updateSettlementTerms(suspended.getRemittanceNo(), rate, fee, targetAmount,
+                ComplianceResult.PASS.getCode());
+        CrossBorderRemittance current = remittanceMapper.selectByRemittanceNo(suspended.getRemittanceNo());
+        ledgerService.debitExisting(current, payer, suspended.getSourceAmount().add(fee));
+        fxQuoteService.markUsed(suspended.getQuoteNo());
+    }
+
+    /**
+     * 放行中途失败的回退。回到 PENDING_REVIEW 而不是直接失败：
+     * 失败原因多是报价过期或余额不足，补齐后重新审核即可，直接判死会造成误伤。
+     */
+    private void revertToPendingReview(String remittanceNo, int versionAfterClaim) {
+        try {
+            remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.PENDING_REVIEW,
+                    RemittanceStatus.QUOTE_LOCKED, versionAfterClaim);
+        } catch (Exception revertEx) {
+            log.error("failed to revert remittance to pending review remittanceNo={}", remittanceNo, revertEx);
+        }
+    }
+
+    /**
+     * 审核驳回。挂起发生在扣款之前，资金从未划出，因此没有退款动作，
+     * 只需推进到终态、释放挂起时占用的日限额、留下驳回记录。
+     * 释放日限额与驳回同样重要：不释放的话，被驳回的金额会永久占用客户当天额度。
+     */
+    @Override
+    public RemittanceResponse rejectReview(String remittanceNo, ReviewDecisionRequest decision) {
+        CrossBorderRemittance suspended = requireRemittance(remittanceNo);
+        if (!suspended.getStatus().isPendingReview()) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " is not pending review");
+        }
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED,
+                RemittanceStatus.PENDING_REVIEW, suspended.getVersion());
+        if (claimed <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " has been handled by another reviewer");
+        }
+        complianceService.releaseDailyLimit(suspended.getPayerAccountId(), suspended.getSourceAmount());
+        complianceService.recordManualDecision(remittanceNo, ComplianceResult.REJECT,
+                "rejected by " + decision.getReviewer() + appendNote(decision.getNote()));
+        String reason = "rejected by " + decision.getReviewer()
+                + (decision.getNote() == null || decision.getNote().isBlank() ? "" : ": " + decision.getNote());
+        remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED,
+                reason.substring(0, Math.min(255, reason.length())));
+        reviewRejected.increment();
+        log.warn("remittance rejected by manual review remittanceNo={} reviewer={}",
+                remittanceNo, decision.getReviewer());
+        return findByRemittanceNo(remittanceNo);
+    }
+
+    private String appendNote(String note) {
+        return note == null || note.isBlank() ? "" : ", note: " + note;
+    }
+
+    private CrossBorderRemittance requireRemittance(String remittanceNo) {
+        CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
+        if (remittance == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND,
+                    "remittance " + remittanceNo + " not found");
+        }
+        return remittance;
+    }
+
+    /**
+     * 按 id 取账户并校验可用性。审核放行时用：挂起到放行之间可能隔着数小时，
+     * 期间账户可能因反洗钱调查被冻结，必须用当前状态重新判断。
+     */
+    private CrossBorderAccount requireAccountById(Long accountId) {
+        CrossBorderAccount account = accountMapper.selectById(accountId);
+        if (account == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "account " + accountId + " not found");
+        }
+        if (account.getStatus() == null || account.getStatus() != ACCOUNT_STATUS_ACTIVE) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "account " + account.getAccountNo() + " is not active, status " + account.getStatus());
+        }
+        return account;
+    }
+
+    /**
      * 状态推进。带期望状态与版本号形成乐观锁，
      * 并发推进时只有一个成功，其余需要重读后重新决策。
      * 已处于目标状态时返回 true，保证重复消费不会出错。
@@ -375,6 +516,8 @@ public class RemittanceServiceImpl implements RemittanceService {
         runtime.put("idempotentHit", idempotentHit.sum());
         runtime.put("complianceRejected", complianceRejected.sum());
         runtime.put("pendingReview", pendingReview.sum());
+        runtime.put("reviewApproved", reviewApproved.sum());
+        runtime.put("reviewRejected", reviewRejected.sum());
         runtime.put("messageSent", messageSent.sum());
         runtime.put("messageFailed", messageFailed.sum());
         runtime.put("sanctionSize", complianceService.sanctionCount());

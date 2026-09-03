@@ -21,6 +21,13 @@ public interface CrossBorderLedgerService {
     void debitAndPersist(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit);
 
     /**
+     * 对已落库的汇款单扣款：扣余额、记借方流水、推进状态，三者同事务。
+     * 人工审核放行时使用——汇款单在挂起时已经插入，不能重复插入，
+     * 只需扣款记账并从 QUOTE_LOCKED 推进到 FUNDS_DEBITED。
+     */
+    void debitExisting(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit);
+
+    /**
      * 收款方入账：加余额、记贷方流水、推进状态，三者同事务。
      * 流水唯一索引保证重复消息只会让事务回滚，不会重复加钱。
      */

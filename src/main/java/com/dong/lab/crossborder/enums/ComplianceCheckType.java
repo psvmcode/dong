@@ -11,6 +11,8 @@ import lombok.Getter;
  * KYC 校验客户身份等级是否足以做该笔金额；
  * AML 检查交易模式是否可疑；
  * 限额检查累计与单笔是否在允许范围内。
+ * MANUAL_REVIEW 是人工复核环节：大额交易挂起后由合规人员放行或驳回，
+ * 决策结果同样要留痕，监管检查时这是必备证据。
  */
 @Getter
 @AllArgsConstructor
@@ -22,7 +24,9 @@ public enum ComplianceCheckType {
 
     AML(3),
 
-    LIMIT(4);
+    LIMIT(4),
+
+    MANUAL_REVIEW(5);
 
     private final int code;
 

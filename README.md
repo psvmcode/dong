@@ -58,7 +58,7 @@
 | 消息 | `/api/mq` | local / RocketMQ / Kafka | 顺序、延迟、批量、幂等 | 重复投递被拦截 |
 | 文档 | `/api/doc` | MongoDB | 无 schema 日志 | 字段可随业务演进 |
 | 多数据源 | `/api/replica` | MariaDB | 第二数据源、独立事务管理器 | 一致性检查通过 |
-| 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、异步清算、对账 | 金额精确到分，余额流水一致 |
+| 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、人工审核、账户冻结、异步清算、对账 | 金额精确到分，余额流水一致 |
 
 ---
 
@@ -144,7 +144,7 @@ actuator      http://127.0.0.1:8090/actuator/health
 ------------------------------------------------------------
 ```
 
-在浏览器打开 `knife4j ui` 那一行即可，共 88 个接口，支持中文界面、搜索、在线调试与导出。
+在浏览器打开 `knife4j ui` 那一行即可，共 141 个接口，支持中文界面、搜索、在线调试与导出。
 
 几个入口的区别：
 
@@ -192,7 +192,8 @@ src/main/java/com/dong/lab/
 ├── tcc/                        分布式事务 TCC：Try/Confirm/Cancel、恢复任务
 ├── mq/                         消息场景：顺序、延迟、幂等、批量
 ├── doc/                        MongoDB：无 schema 日志
-└── replica/                    MariaDB：第二数据源、独立事务管理器
+├── replica/                    MariaDB：第二数据源、独立事务管理器
+└── crossborder/                跨境支付：幂等、锁汇、合规筛查、人工审核、账户冻结、异步清算、对账
 
 src/main/resources/
 ├── application.yml             唯一配置文件，全部连接指向云服务器
@@ -546,41 +547,124 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 
 ### 5.11 跨境支付（crossborder）
 
-这是最贴近真实业务的一个场景。一笔跨境汇款从发起到到账会经过八个环节，每个环节都有对应的工程问题：
+这是最贴近真实业务的一个场景。一笔跨境汇款从发起到到账要经过九个环节，每个环节都有对应的工程问题：
 
 ```
-汇款申请 → 幂等校验 → 合规筛查 → 锁定汇率 → 扣款记账 → 异步清算 → 收款入账 → 对账核销
+汇款申请 → 幂等校验 → 合规筛查 →（大额挂起 → 人工审核）→ 锁定汇率 → 扣款记账 → 异步清算 → 收款入账 → 对账核销
 ```
+
+#### 5.11.1 业务场景讲解
 
 | 环节 | 真实问题 | 本项目的做法 |
 |---|---|---|
 | 汇款申请 | 网络超时后重试导致重复汇款 | `idempotent_key` 唯一索引 + 分布式锁，重放返回原单 |
 | 合规筛查 | 制裁名单命中必须拒绝，这是监管硬性要求 | 名单放 Redis Set（O(1) 匹配），四道检查逐条留痕 |
+| 人工审核 | 大额交易合法但可疑，机器不敢直接放行 | 超过 5 万自动挂起 PENDING_REVIEW，合规人员放行或驳回，决策落库留痕 |
+| 账户冻结 | 反洗钱调查期间账户不能继续交易 | 账户级冻结/解冻，操作原因与操作人落事件表，余额与流水完整保留 |
 | 锁定汇率 | 汇率实时波动，不锁汇银行要承担敞口风险 | 报价带有效期，乐观锁锁定，过期作废 |
-| 风控限额 | 日累计限额并发下会被突破 | Lua 脚本原子完成累加与判断 |
+| 风控限额 | 日累计限额并发下会被突破 | Lua 脚本原子完成累加与判断，失败与驳回释放占用 |
 | 扣款记账 | 扣款与记账必须原子，否则资金账实不符 | 同一本地事务，余额扣减带充足条件防负数 |
-| 异步清算 | 渠道只有批量清算窗口，做不到实时 | RocketMQ 顺序消息推进，`gapMillis` 模式由补偿任务兜底 |
+| 异步清算 | 渠道只有批量清算窗口，做不到实时 | RocketMQ 顺序消息推进，由补偿任务兜底 |
 | 收款入账 | 重复消息导致重复入账 | 消费幂等 + 流水唯一索引兜底 |
 | 对账核销 | 渠道回单与本地流水不一致 | 差异表记录长款短款，运营按类型处理 |
 
 **为什么选本地事务加消息而不是 TCC**：扣款记账用本地事务保证资金账实相符；清算要经过外部渠道，渠道本身只支持异步批量，把它拉进强一致事务既做不到也没有必要，最终一致加对账兜底才是支付系统的实际做法。
 
+**人工审核的业务闭环**：大额汇款挂起时资金分文未动，日限额已被占用——单子还活着，额度就该被占着。审核放行后补完主链路的后半段（锁汇 → 扣款 → 清算消息），与自动通过的单子殊途同归；审核驳回则进入终态并释放日限额，被驳回的金额不会永久占用客户当天额度。审核期间付款账户可能被反洗钱调查冻结，放行前必须重新校验账户可用性，不能信任挂起时的检查结果。
+
 **实测**：1000 CNY 汇往 USD，CIPS 渠道（固定费 10 加万分之五），按锁定汇率 0.14006993 成交，收款方精确收到 140.07 USD，付款方扣款 1010.50 CNY，余额与流水差额为零。
 
 **一个真实事故级别的坑**：入账逻辑最初写在消费者内部方法上，`this` 调用绕过了 Spring 事务代理，事务静默失效。并发到达的重复消息各自提交了加钱，流水唯一索引冲突却回滚不了已提交的余额变更，收款方余额被重复累加。修复方式是把账务操作拆到独立的 `CrossBorderLedgerService`，让事务真正经过代理生效。
 
-**主要接口**：
+#### 5.11.2 接口文档讲解
+
+全部 45 个接口按六个 Controller 分组，响应统一用 `Result<T>` 包装，业务错误码见全局异常处理器。文档入口 `/doc.html`（Knife4j），可在线调试。
+
+**汇款 `/api/crossborder/remittance`（10 个）**
+
+| 接口 | 说明 |
+|---|---|
+| `POST /remittance` | 发起汇款，body 含幂等键、双方账号、金额、可选渠道与报价号 |
+| `GET /remittance/{remittanceNo}` | 按汇款单号查询 |
+| `GET /remittance/by-idempotent/{idempotentKey}` | 按幂等键查询，超时重试后确认是否已受理 |
+| `GET /remittance?status=&pageNum=&pageSize=` | 分页查询，可按状态过滤 |
+| `GET /remittance/pending-review` | 待人工审核的汇款单列表 |
+| `POST /remittance/{remittanceNo}/review/approve` | 审核放行，body `{reviewer, note}`，继续锁汇扣款清算 |
+| `POST /remittance/{remittanceNo}/review/reject` | 审核驳回，终态并释放日限额占用 |
+| `GET /remittance/{remittanceNo}/compliance` | 该单的全量合规检查记录（四道自动 + 人工复核） |
+| `GET /remittance/by-batch/{batchNo}` | 按清算批次查询单子 |
+| `GET /remittance/runtime` | 运行时统计：各状态单量、幂等命中、审核计数、消息计数 |
+
+**账户 `/api/crossborder`（11 个）**
+
+| 接口 | 说明 |
+|---|---|
+| `POST /accounts` | 开户，kycLevel 决定可汇额度 |
+| `GET /accounts/{accountNo}` | 查账户，含可用余额（余额减冻结） |
+| `GET /accounts` | 全部账户 |
+| `POST /accounts/{accountNo}/freeze?reason=&operator=` | 冻结账户，事件落库留痕 |
+| `POST /accounts/{accountNo}/unfreeze?reason=&operator=` | 解冻账户，同样留痕 |
+| `GET /accounts/{accountNo}/events` | 冻结/解冻事件历史，按时间正序 |
+| `GET /accounts/{accountNo}/diff?initial=` | 校验余额与流水差额，应为 0 |
+| `POST /sanction?ownerName=` | 加入制裁名单 |
+| `DELETE /sanction?ownerName=` | 移出制裁名单 |
+| `GET /sanction/count` | 名单大小 |
+
+**汇率 `/api/crossborder/fx`（5 个）**：`POST /fx/quote` 询价、`GET /fx/{quoteNo}` 查报价、`GET /fx/available` 可用报价、`GET /fx/rate` 当前牌价、`POST /fx/expire` 批量作废过期报价。
+
+**清算 `/api/crossborder/settlement`（7 个）**：`POST /settlement/batch` 建批次、按批次号查询、`POST /settlement/batch/{batchNo}/collect` 收集进批、`POST /settlement/batch/{batchNo}/settle` 批次清算入账、`POST /settlement/close-overdue` 关闭超时批次、`GET /settlement/recon` 对账入口、`GET /settlement/status` 状态分布。
+
+**风控 `/api/crossborder/risk`（6 个）**：渠道路由试算 `GET /risk/route`、AML 客户画像、可疑名单、重置、日额度重置、汇率敞口 `GET /risk/fx-exposure`。
+
+**对账 `/api/crossborder/recon`（6 个）**：`POST /recon/{batchNo}` 执行对账、渠道回单查询、对账报告、`POST /recon/diff/{id}` 处理单条差异、`POST /recon/{batchNo}/handle-all` 批量处理、`GET /recon/overview` 总览。
+
+**典型调用序列**：
 
 ```bash
+# 1. 双方开户（不同币种）
 curl -X POST 'http://127.0.0.1:8090/api/crossborder/accounts' -H 'Content-Type: application/json' \
   -d '{"ownerName":"Alice","country":"CN","currency":"CNY","balance":100000,"kycLevel":2}'
+curl -X POST 'http://127.0.0.1:8090/api/crossborder/accounts' -H 'Content-Type: application/json' \
+  -d '{"ownerName":"Bob","country":"US","currency":"USD","balance":0,"kycLevel":2}'
+
+# 2. 询价并锁汇（也可让汇款接口自动询价）
 curl -X POST 'http://127.0.0.1:8090/api/crossborder/fx/quote?sourceCurrency=CNY&targetCurrency=USD&validSeconds=300'
+
+# 3. 发起汇款（金额超过 5 万会挂起人工审核）
 curl -X POST http://127.0.0.1:8090/api/crossborder/remittance -H 'Content-Type: application/json' \
-  -d '{"idempotentKey":"unique-key","payerAccountNo":"...","payeeAccountNo":"...","sourceAmount":1000,"channel":"CIPS"}'
+  -d '{"idempotentKey":"unique-key-1","payerAccountNo":"CB...","payeeAccountNo":"CB...","sourceAmount":60000}'
+
+# 4. 人工审核闭环
+curl http://127.0.0.1:8090/api/crossborder/remittance/pending-review
+curl -X POST 'http://127.0.0.1:8090/api/crossborder/remittance/RM.../review/approve' \
+  -H 'Content-Type: application/json' -d '{"reviewer":"compliance-dong","note":"material verified"}'
+
+# 5. 冻结可疑账户（反洗钱调查）
+curl -X POST 'http://127.0.0.1:8090/api/crossborder/accounts/CB.../freeze?reason=aml investigation&operator=risk-team'
+curl 'http://127.0.0.1:8090/api/crossborder/accounts/CB.../events'
+
+# 6. 运行时观察
 curl 'http://127.0.0.1:8090/api/crossborder/remittance/runtime'
 ```
 
+#### 5.11.3 技术场景讲解
 
+| 技术问题 | 场景 | 解法 |
+|---|---|---|
+| 接口幂等 | 客户端超时重试 | 先查幂等键 → 分布式锁内双查 → 唯一索引兜底，重放一律返回原单 |
+| 状态机并发 | 消息重复消费、双审核员同时操作 | `update ... where status=期望 and version=当前` 乐观锁，抢占失败方报冲突或幂等返回 |
+| 限额原子性 | 并发汇款突破日累计限额 | Lua 脚本内完成「累加 + 判断」，失败与驳回路径释放占用，杜绝额度泄漏 |
+| 事务边界 | 消息先于事务提交发出 | `TransactionSynchronization.afterCommit` 注册回调，提交成功才发送 |
+| 事务代理失效 | 同类内部调用绕过代理 | 账务操作独立成 `CrossBorderLedgerService` bean，事务真正生效 |
+| 失败补偿 | 消息发不出去但款已扣 | 留下 FUNDS_DEBITED 单子，定时任务扫描补偿推进，资金在本地不回滚 |
+| 留痕不可篡改 | 监管要求决策可追溯 | 合规记录与账户事件表只增不改，无更新接口 |
+| 资金自检 | 记账遗漏或重复 | 贷方减借方反推余额与实际比对，diff 接口随时可查 |
+
+**审核放行的并发设计**：两层防护。第一层用乐观锁把状态从 PENDING_REVIEW 抢占为 QUOTE_LOCKED——两个审核员同时点放行，只有一个能抢到，另一个报冲突。第二层是抢占后的写入天然无竞争，因为失败方已退出。锁汇或扣款中途失败会把状态回退到 PENDING_REVIEW，单子可重新审核，不会卡死在中间状态；回退而不是直接判死，是因为失败原因多是报价过期或余额不足，补齐后重审即可。
+
+**账户冻结的幂等语义**：条件更新 `update ... set status=冻结 where status=激活`，重复冻结第二次匹配不到行，直接报冲突而不是把事件记录写重。状态变更与事件落库在同一事务，不会出现「冻了账户却没留痕」。
+
+---
 ## 六、开关化设计
 
 中间件开关集中在唯一的 `application.yml` 中。云服务器上默认全部启用；只在本地验证某项功能时，用命令行参数临时关掉不需要的组件，不改动配置文件：

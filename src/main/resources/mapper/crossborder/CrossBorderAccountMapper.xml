@@ -2,6 +2,10 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderAccountMapper">
+    <!-- 跨境账户表。deduct 的 where 条件带余额充足性检查，
+         数据库层面保证余额不会被扣成负数；updateStatus 带期望状态，
+         并发冻结/解冻只有一个生效 -->
+
 
     <resultMap id="accountMap" type="com.dong.lab.crossborder.entity.CrossBorderAccount">
         <id column="id" property="id"/>
@@ -87,6 +91,14 @@
             update_time = now()
         where id = #{id}
           and frozen_balance >= #{amount}
+    </update>
+
+    <update id="updateStatus">
+        update cross_border_account
+        set status      = #{status},
+            update_time = now()
+        where id = #{id}
+          and status = #{expectedStatus}
     </update>
 
     <delete id="clearAll">

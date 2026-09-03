@@ -48,6 +48,28 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
         recordLedger(remittance, payer.getId(), LedgerDirection.DEBIT, totalDebit, payer.getCurrency());
     }
 
+    /**
+     * 审核放行后的扣款。与 debitAndPersist 的差别只在单据已存在：
+     * 扣余额、推进状态、记流水仍必须同事务，任一步失败整体回滚，
+     * 保证不会出现「扣了钱但状态还停在 QUOTE_LOCKED」的半完成单。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void debitExisting(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit) {
+        int deducted = accountMapper.deduct(payer.getId(), totalDebit, 0);
+        if (deducted <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "insufficient balance in account " + payer.getAccountNo());
+        }
+        int advanced = remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.FUNDS_DEBITED,
+                RemittanceStatus.QUOTE_LOCKED, remittance.getVersion());
+        if (advanced <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittance.getRemittanceNo() + " is not in quote locked status");
+        }
+        recordLedger(remittance, payer.getId(), LedgerDirection.DEBIT, totalDebit, payer.getCurrency());
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void creditAndAdvance(CrossBorderRemittance remittance) {

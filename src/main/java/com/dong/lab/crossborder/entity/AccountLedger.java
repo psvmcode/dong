@@ -16,18 +16,24 @@ public class AccountLedger {
 
     private Long id;
 
+    /** 流水号，全局唯一，便于单条追溯 */
     private String ledgerNo;
 
+    /** 关联的汇款单号 */
     private String remittanceNo;
 
+    /** 记账账户 */
     private Long accountId;
 
+    /** 方向：借方扣款、贷方入账 */
     private LedgerDirection direction;
 
     private String currency;
 
+    /** 发生金额，恒为正数，方向由 direction 表达 */
     private BigDecimal amount;
 
+    /** 记账后的余额快照，流水序列可完整还原余额变化 */
     private BigDecimal balanceAfter;
 
     private LocalDateTime createTime;

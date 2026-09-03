@@ -63,6 +63,12 @@ public interface ComplianceService {
     List<ComplianceRecordResponse> recordsOf(String remittanceNo);
 
     /**
+     * 记录人工复核结论。审核放行或驳回都要落一条 MANUAL_REVIEW 类型的检查记录，
+     * 监管检查时需要证明「谁审的、审的结果是什么」，只有系统结论没有人工决策是过不了检查的。
+     */
+    void recordManualDecision(String remittanceNo, ComplianceResult result, String detail);
+
+    /**
      * 重置某账户的日累计计数，仅用于实验环境清理。
      */
     void resetDailyUsage(Long accountId);
