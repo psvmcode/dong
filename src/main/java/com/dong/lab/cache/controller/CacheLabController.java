@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 /**
  * 缓存实验室。提供可量化对比的实验入口，
  * 核心是穿透实验，其余接口用于观察多级缓存的运行状态。
@@ -30,28 +29,53 @@ import java.util.Map;
 @RequestMapping("/api/cache/lab")
 @RequiredArgsConstructor
 @Tag(name = "缓存实验室")
+
 public class CacheLabController {
 
+    /**
+     * cacheLabService，业务服务层。
+     */
     private final CacheLabService cacheLabService;
 
+    /**
+     * productService，业务服务层。
+     */
     private final ProductService productService;
 
+    /**
+     * multiLevelCache，缓存组件。
+     */
     private final MultiLevelCache multiLevelCache;
 
+    /**
+     * cacheStats。
+     */
     private final CacheStats cacheStats;
 
+    /**
+     * l1Provider，缓存提供者。
+     */
     private final ObjectProvider<CaffeineCacheStore> l1Provider;
 
+    /**
+     * l2Provider，缓存提供者。
+     */
     private final ObjectProvider<RedisCacheStore> l2Provider;
 
     @GetMapping("/stats")
     @Operation(summary = "查看各层级缓存命中率")
+    /**
+     * stats。
+     */
     public Result<CacheStats.CacheStatsSnapshot> stats() {
         return Result.success(cacheStats.snapshot());
     }
 
     @PostMapping("/stats/reset")
     @Operation(summary = "重置缓存统计数据")
+    /**
+     * reset。
+     */
     public Result<Void> reset() {
         cacheStats.reset();
         return Result.success();
@@ -79,6 +103,9 @@ public class CacheLabController {
 
     @GetMapping("/probe")
     @Operation(summary = "读取缓存，完整走一遍 L1 到 L2 再到回源的链路")
+    /**
+     * 探测缓存 key，用于缓存穿透防护演练。
+     */
     public Result<String> probe(@RequestParam String key,
                                 @RequestParam(defaultValue = "probe-value") String value) {
         return Result.success(multiLevelCache.get(key, String.class, Duration.ofMinutes(5), () -> value));
@@ -86,6 +113,9 @@ public class CacheLabController {
 
     @DeleteMapping("/probe")
     @Operation(summary = "删除缓存并广播失效事件到其他节点")
+    /**
+     * 清除缓存，用于缓存失效演练。
+     */
     public Result<Void> evict(@RequestParam String key) {
         multiLevelCache.invalidate(key);
         return Result.success();

@@ -12,7 +12,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 /**
  * 签到实现。基于 Bitmap，每月一个 key，
  * 每个用户每月只占极少存储，一年下来也就几百字节。
@@ -22,15 +21,22 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SignInServiceImpl implements SignInService {
 
     private static final String SIGN = "lab:sign:";
 
     private static final Duration RETENTION = Duration.ofDays(400);
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
     @Override
+    /**
+     * signIn。
+     */
     public boolean signIn(String userId, LocalDate date) {
         RBitSet bitSet = bitSetOf(userId, date);
         long offset = dayOffset(date);
@@ -44,16 +50,25 @@ public class SignInServiceImpl implements SignInService {
     }
 
     @Override
+    /**
+     * hasSigned。
+     */
     public boolean hasSigned(String userId, LocalDate date) {
         return bitSetOf(userId, date).get(dayOffset(date));
     }
 
     @Override
+    /**
+     * countInMonth。
+     */
     public long countInMonth(String userId, YearMonth month) {
         return bitSetOf(userId, month).cardinality();
     }
 
     @Override
+    /**
+     * continuousDays。
+     */
     public long continuousDays(String userId, LocalDate today) {
         RBitSet bitSet = bitSetOf(userId, today);
         long streak = 0L;
@@ -67,6 +82,9 @@ public class SignInServiceImpl implements SignInService {
     }
 
     @Override
+    /**
+     * monthCalendar。
+     */
     public Map<String, Boolean> monthCalendar(String userId, YearMonth month) {
         RBitSet bitSet = bitSetOf(userId, month);
         Map<String, Boolean> calendar = new LinkedHashMap<>();
@@ -76,15 +94,24 @@ public class SignInServiceImpl implements SignInService {
         return calendar;
     }
 
+    /**
+     * bitSetOf。
+     */
     private RBitSet bitSetOf(String userId, LocalDate date) {
         return bitSetOf(userId, YearMonth.from(date));
     }
 
+    /**
+     * bitSetOf。
+     */
     private RBitSet bitSetOf(String userId, YearMonth month) {
         return redissonClient.getBitSet(SIGN + userId + ":" + month.getYear()
                 + String.format("%02d", month.getMonthValue()));
     }
 
+    /**
+     * dayOffset。
+     */
     private long dayOffset(LocalDate date) {
         return date.getDayOfMonth() - 1L;
     }

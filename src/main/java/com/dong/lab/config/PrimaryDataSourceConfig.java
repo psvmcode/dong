@@ -12,8 +12,11 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
-
+/**
+ * PrimaryDataSourceConfig，配置类。
+ */
 @Configuration
+
 public class PrimaryDataSourceConfig {
 
     public static final String SESSION_FACTORY = "sqlSessionFactory";
@@ -23,6 +26,9 @@ public class PrimaryDataSourceConfig {
     @Bean
     @Primary
     @ConfigurationProperties(prefix = "spring.datasource.hikari")
+    /**
+     * primaryDataSource。
+     */
     public HikariDataSource primaryDataSource(org.springframework.boot.autoconfigure.jdbc.DataSourceProperties properties) {
         return DataSourceBuilder.create(properties.getClassLoader())
                 .type(HikariDataSource.class)
@@ -35,6 +41,9 @@ public class PrimaryDataSourceConfig {
 
     @Bean(SESSION_FACTORY)
     @Primary
+    /**
+     * sqlSessionFactory。
+     */
     public SqlSessionFactory sqlSessionFactory(DataSource primaryDataSource) throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(primaryDataSource);
@@ -52,6 +61,9 @@ public class PrimaryDataSourceConfig {
 
     @Bean(TRANSACTION_MANAGER)
     @Primary
+    /**
+     * primaryTransactionManager。
+     */
     public DataSourceTransactionManager primaryTransactionManager(DataSource primaryDataSource) {
         return new DataSourceTransactionManager(primaryDataSource);
     }

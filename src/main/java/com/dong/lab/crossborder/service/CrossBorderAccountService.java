@@ -13,12 +13,24 @@ import java.util.List;
  */
 public interface CrossBorderAccountService {
 
+    /**
+     * 创建记录。
+     */
     Long create(AccountCreateRequest request);
 
+    /**
+     * findByAccountNo。
+     */
     AccountResponse findByAccountNo(String accountNo);
 
+    /**
+     * 根据 id 查询。
+     */
     AccountResponse findById(Long id);
 
+    /**
+     * 查询全部。
+     */
     List<AccountResponse> findAll();
 
     /**
@@ -44,6 +56,9 @@ public interface CrossBorderAccountService {
      */
     BigDecimal balanceDiff(Long accountId, BigDecimal initialBalance);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

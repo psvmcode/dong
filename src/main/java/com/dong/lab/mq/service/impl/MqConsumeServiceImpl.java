@@ -14,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
-
 /**
  * 消息消费实现。所有传输共用同一套处理逻辑，
  * 幂等靠消息日志的唯一索引保证。
@@ -22,10 +21,14 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class MqConsumeServiceImpl implements MqConsumeService {
 
     private static final int MAX_RETRY = 3;
 
+    /**
+     * mqMessageLogMapper，MyBatis Mapper 数据访问层。
+     */
     private final MqMessageLogMapper mqMessageLogMapper;
 
     private final LongAdder consumed = new LongAdder();
@@ -36,6 +39,9 @@ public class MqConsumeServiceImpl implements MqConsumeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * consume。
+     */
     public boolean consume(String topic, String msgId, String payload) {
         if (mqMessageLogMapper.countByMsgId(msgId) > 0) {
             duplicated.increment();
@@ -83,11 +89,17 @@ public class MqConsumeServiceImpl implements MqConsumeService {
     }
 
     @Override
+    /**
+     * recent。
+     */
     public List<MqMessageLog> recent(int limit) {
         return mqMessageLogMapper.selectRecent(limit);
     }
 
     @Override
+    /**
+     * stats。
+     */
     public Map<String, Object> stats() {
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("consumed", consumed.sum());

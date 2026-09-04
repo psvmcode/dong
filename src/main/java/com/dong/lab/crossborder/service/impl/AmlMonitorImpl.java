@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
 /**
  * 拆分交易检测实现。全部状态放 Redis，窗口按自然日滚动。
  *
@@ -29,6 +28,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class AmlMonitorImpl implements AmlMonitor {
 
     /**
@@ -71,9 +71,15 @@ public class AmlMonitorImpl implements AmlMonitor {
 
     private static final Duration WINDOW_TTL = Duration.ofHours(48);
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
     @Override
+    /**
+     * detectStructuring。
+     */
     public Optional<String> detectStructuring(Long payerAccountId, BigDecimal amount) {
         String key = keyOf(payerAccountId);
         long cents = amount.multiply(new BigDecimal("100")).longValue();
@@ -94,6 +100,9 @@ public class AmlMonitorImpl implements AmlMonitor {
     }
 
     @Override
+    /**
+     * structuringProfile。
+     */
     public Map<String, Object> structuringProfile(Long payerAccountId) {
         String key = keyOf(payerAccountId);
         Map<String, String> entries = redisService.hashGetAll(key);
@@ -132,6 +141,9 @@ public class AmlMonitorImpl implements AmlMonitor {
     }
 
     @Override
+    /**
+     * reset。
+     */
     public void reset() {
         Set<String> keys = scanAmlKeys();
         if (keys != null && !keys.isEmpty()) {
@@ -154,6 +166,9 @@ public class AmlMonitorImpl implements AmlMonitor {
         return result;
     }
 
+    /**
+     * keyOf。
+     */
     private String keyOf(Long payerAccountId) {
         return KEY_PREFIX + LocalDate.now() + ":" + payerAccountId;
     }

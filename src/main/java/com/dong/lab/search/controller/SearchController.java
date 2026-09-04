@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 /**
  * 商品搜索。索引映射由启动时显式创建，category 为 keyword 以支持聚合，
  * name 和 description 用 ik_max_word 索引、ik_smart 查询。
@@ -28,10 +27,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/search")
 @RequiredArgsConstructor
 @Tag(name = "搜索")
+
 public class SearchController {
 
+    /**
+     * searchServiceProvider，缓存提供者。
+     */
     private final ObjectProvider<SearchService> searchServiceProvider;
 
+    /**
+     * searchSyncServiceProvider，缓存提供者。
+     */
     private final ObjectProvider<SearchSyncService> searchSyncServiceProvider;
 
     /**
@@ -75,6 +81,9 @@ public class SearchController {
         return Result.success(requireSearchService().count());
     }
 
+    /**
+     * requireSearchService。
+     */
     private SearchService requireSearchService() {
         SearchService service = searchServiceProvider.getIfAvailable();
         if (service == null) {
@@ -84,6 +93,9 @@ public class SearchController {
         return service;
     }
 
+    /**
+     * requireSyncService。
+     */
     private SearchSyncService requireSyncService() {
         SearchSyncService service = searchSyncServiceProvider.getIfAvailable();
         if (service == null) {

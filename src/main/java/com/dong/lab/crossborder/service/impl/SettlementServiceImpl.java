@@ -23,21 +23,39 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
+/**
+ * SettlementServiceImpl，Settlement 业务服务实现。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SettlementServiceImpl implements SettlementService {
 
+    /**
+     * batchMapper，MyBatis Mapper 数据访问层。
+     */
     private final SettlementBatchMapper batchMapper;
 
+    /**
+     * remittanceMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderRemittanceMapper remittanceMapper;
 
+    /**
+     * ledgerService，业务服务层。
+     */
     private final CrossBorderLedgerService ledgerService;
 
+    /**
+     * snowflake。
+     */
     private final Snowflake snowflake;
 
     @Override
+    /**
+     * createBatch。
+     */
     public String createBatch(SettlementChannel channel, String currency, long cutoffMinutes) {
         SettlementBatch batch = new SettlementBatch();
         batch.setBatchNo("SB" + snowflake.nextId());
@@ -52,6 +70,9 @@ public class SettlementServiceImpl implements SettlementService {
     }
 
     @Override
+    /**
+     * findByBatchNo。
+     */
     public SettlementBatchResponse findByBatchNo(String batchNo) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
@@ -61,6 +82,9 @@ public class SettlementServiceImpl implements SettlementService {
     }
 
     @Override
+    /**
+     * 查询全部。
+     */
     public List<SettlementBatchResponse> findAll() {
         return batchMapper.selectAll().stream().map(SettlementBatchResponse::from).toList();
     }
@@ -95,6 +119,9 @@ public class SettlementServiceImpl implements SettlementService {
     }
 
     @Override
+    /**
+     * 关闭到期的批次。
+     */
     public int closeOverdue() {
         return batchMapper.closeOverdue(LocalDateTime.now());
     }
@@ -123,6 +150,9 @@ public class SettlementServiceImpl implements SettlementService {
     }
 
     @Override
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     public int clearAll() {
         return batchMapper.clearAll();
     }

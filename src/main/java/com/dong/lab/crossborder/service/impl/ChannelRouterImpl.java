@@ -14,7 +14,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 渠道路由实现。对每个可用渠道计算总成本并叠加时效权重后择优。
  *
@@ -25,6 +24,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class ChannelRouterImpl implements ChannelRouter {
 
     /**
@@ -51,9 +51,15 @@ public class ChannelRouterImpl implements ChannelRouter {
 
     private static final BigDecimal URGENT_ETA_WEIGHT = new BigDecimal("0.05");
 
+    /**
+     * fxQuoteService，业务服务层。
+     */
     private final FxQuoteService fxQuoteService;
 
     @Override
+    /**
+     * route。
+     */
     public RouteDecision route(BigDecimal sourceAmount, boolean urgent) {
         BigDecimal weight = urgent ? URGENT_ETA_WEIGHT : ETA_WEIGHT;
         List<String> reasons = new ArrayList<>();

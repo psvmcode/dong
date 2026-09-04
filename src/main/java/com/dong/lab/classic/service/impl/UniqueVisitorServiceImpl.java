@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
-
 /**
  * 独立访客实现。基于 HyperLogLog，每个页面每天固定占用约 12KB，
  * 代价是结果有约百分之零点八的误差，金额类场景不能使用。
@@ -18,15 +17,22 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class UniqueVisitorServiceImpl implements UniqueVisitorService {
 
     private static final String UV = "lab:uv:";
 
     private static final Duration RETENTION = Duration.ofDays(90);
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
     @Override
+    /**
+     * record。
+     */
     public long record(String page, String visitorId, LocalDate date) {
         RHyperLogLog<String> counter = counter(page, date);
         counter.add(visitorId);
@@ -35,11 +41,17 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
     }
 
     @Override
+    /**
+     * count。
+     */
     public long count(String page, LocalDate date) {
         return counter(page, date).count();
     }
 
     @Override
+    /**
+     * countBetween。
+     */
     public long countBetween(String page, LocalDate from, LocalDate to) {
         List<String> keys = from.datesUntil(to.plusDays(1))
                 .map(date -> keyOf(page, date))
@@ -56,10 +68,16 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
         return merged.count();
     }
 
+    /**
+     * counter。
+     */
     private RHyperLogLog<String> counter(String page, LocalDate date) {
         return redissonClient.getHyperLogLog(keyOf(page, date));
     }
 
+    /**
+     * keyOf。
+     */
     private String keyOf(String page, LocalDate date) {
         return UV + page + ":" + date;
     }

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.LongAdder;
-
 /**
  * 本地售罄标记。库存归零后在本地缓存一份标记，
  * 后续请求直接返回，连 Redis 都不用访问，这是四道防线里的第二道。
@@ -17,6 +16,7 @@ import java.util.concurrent.atomic.LongAdder;
  */
 @Slf4j
 @Service
+
 public class SoldOutFlag {
 
     private static final Duration FLAG_TTL = Duration.ofSeconds(10);
@@ -28,10 +28,16 @@ public class SoldOutFlag {
 
     private final LongAdder shortCircuited = new LongAdder();
 
+    /**
+     * 标记某活动已售罄。
+     */
     public void mark(Long activityId) {
         flags.put(activityId, Boolean.TRUE);
     }
 
+    /**
+     * 判断某活动是否已售罄。
+     */
     public boolean isSoldOut(Long activityId) {
         if (Boolean.TRUE.equals(flags.getIfPresent(activityId))) {
             shortCircuited.increment();
@@ -40,10 +46,16 @@ public class SoldOutFlag {
         return false;
     }
 
+    /**
+     * 清除某活动的售罄标记。
+     */
     public void clear(Long activityId) {
         flags.invalidate(activityId);
     }
 
+    /**
+     * 获取被本地标记直接拦截的请求数。
+     */
     public long shortCircuitedCount() {
         return shortCircuited.sum();
     }

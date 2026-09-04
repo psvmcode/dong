@@ -13,7 +13,6 @@ import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.nio.charset.StandardCharsets;
-
 /**
  * 缓存装配。L1 与 L2 都按开关决定是否注册，
  * 因此多级缓存拿到的某一层可能是 null，调用处必须判空。
@@ -21,33 +20,52 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 @EnableConfigurationProperties(CacheProperties.class)
 @RequiredArgsConstructor
+
 public class CacheConfig {
 
+    /**
+     * applicationContext。
+     */
     private final ApplicationContext applicationContext;
 
     @Bean
+    /**
+     * cacheStats。
+     */
     public CacheStats cacheStats() {
         return new CacheStats();
     }
 
     @Bean
     @ConditionalOnProperty(prefix = "lab.cache", name = "l2-enabled", havingValue = "true", matchIfMissing = true)
+    /**
+     * redisCacheStore。
+     */
     public RedisCacheStore redisCacheStore(RedisService redisService, CacheProperties properties) {
         return new RedisCacheStore(redisService, properties.getTtlJitterRatio());
     }
 
     @Bean
     @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
+    /**
+     * caffeineCacheStore。
+     */
     public CaffeineCacheStore caffeineCacheStore(CacheProperties properties) {
         return new CaffeineCacheStore(properties.getL1MaxSize());
     }
 
     @Bean
+    /**
+     * cacheEventBus。
+     */
     public CacheEventBus cacheEventBus(RedisService redisService, CacheProperties properties) {
         return new CacheEventBus(redisService, properties.getInvalidationChannel());
     }
 
     @Bean
+    /**
+     * multiLevelCache。
+     */
     public MultiLevelCache multiLevelCache(CacheEventBus eventBus,
                                            com.dong.lab.framework.lock.DistributedLockService distributedLockService,
                                            ExecutorConfig.DelayedTaskRunner delayedTaskRunner,
@@ -60,6 +78,9 @@ public class CacheConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
+    /**
+     * cacheInvalidationContainer。
+     */
     public RedisMessageListenerContainer cacheInvalidationContainer(RedisConnectionFactory connectionFactory,
                                                                     CacheEventBus eventBus) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();

@@ -20,7 +20,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-
 /**
  * 合规筛查实现。
  *
@@ -31,6 +30,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class ComplianceServiceImpl implements ComplianceService {
 
     private static final String SANCTION_KEY = "lab:crossborder:sanction";
@@ -80,11 +80,20 @@ public class ComplianceServiceImpl implements ComplianceService {
      */
     private static final long DAILY_USAGE_TTL_SECONDS = 48 * 3600L;
 
+    /**
+     * complianceRecordMapper，MyBatis Mapper 数据访问层。
+     */
     private final ComplianceRecordMapper complianceRecordMapper;
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
     @Override
+    /**
+     * screen。
+     */
     public ComplianceResult screen(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal sourceAmount) {
         List<ComplianceResult> results = new ArrayList<>();
         ComplianceResult sanction = checkSanction(remittance, payer);
@@ -184,22 +193,34 @@ public class ComplianceServiceImpl implements ComplianceService {
     }
 
     @Override
+    /**
+     * addSanction。
+     */
     public void addSanction(String ownerName) {
         redisService.template().opsForSet().add(SANCTION_KEY, ownerName);
     }
 
     @Override
+    /**
+     * removeSanction。
+     */
     public void removeSanction(String ownerName) {
         redisService.template().opsForSet().remove(SANCTION_KEY, ownerName);
     }
 
     @Override
+    /**
+     * sanctionCount。
+     */
     public long sanctionCount() {
         Long size = redisService.template().opsForSet().size(SANCTION_KEY);
         return size == null ? 0L : size;
     }
 
     @Override
+    /**
+     * checkAndAccumulateDailyLimit。
+     */
     public boolean checkAndAccumulateDailyLimit(Long accountId, BigDecimal amount, BigDecimal dailyLimit) {
         String key = DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId;
         long cents = amount.multiply(new BigDecimal("100")).longValue();
@@ -213,6 +234,9 @@ public class ComplianceServiceImpl implements ComplianceService {
     }
 
     @Override
+    /**
+     * releaseDailyLimit。
+     */
     public void releaseDailyLimit(Long accountId, BigDecimal amount) {
         String key = DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId;
         long cents = amount.multiply(new BigDecimal("100")).longValue();
@@ -220,6 +244,9 @@ public class ComplianceServiceImpl implements ComplianceService {
     }
 
     @Override
+    /**
+     * recordsOf。
+     */
     public List<ComplianceRecordResponse> recordsOf(String remittanceNo) {
         return complianceRecordMapper.selectByRemittanceNo(remittanceNo).stream()
                 .map(ComplianceRecordResponse::from)
@@ -237,10 +264,16 @@ public class ComplianceServiceImpl implements ComplianceService {
     }
 
     @Override
+    /**
+     * resetDailyUsage。
+     */
     public void resetDailyUsage(Long accountId) {
         redisService.delete(DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId);
     }
 
+    /**
+     * record。
+     */
     private void record(String remittanceNo, ComplianceCheckType type, ComplianceResult result, String detail) {
         ComplianceRecord record = new ComplianceRecord();
         record.setRemittanceNo(remittanceNo);

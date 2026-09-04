@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 /**
  * 消息门面。业务代码只依赖 MessageProducer 接口，
  * 由它按 lab.mq.active 把请求路由到本地总线、RocketMQ 或 Kafka，
@@ -21,14 +20,27 @@ import java.util.Map;
 @Slf4j
 @Primary
 @Component
+
 public class MqFacade implements MessageProducer {
 
+    /**
+     * localMessageBus。
+     */
     private final LocalMessageBus localMessageBus;
 
+    /**
+     * rocketMqProducer。
+     */
     private final ObjectProvider<RocketMqProducer> rocketMqProducer;
 
+    /**
+     * kafkaProducerAdapter。
+     */
     private final ObjectProvider<KafkaProducerAdapter> kafkaProducerAdapter;
 
+    /**
+     * active。
+     */
     private final String active;
 
     public MqFacade(LocalMessageBus localMessageBus,
@@ -42,25 +54,40 @@ public class MqFacade implements MessageProducer {
     }
 
     @Override
+    /**
+     * send。
+     */
     public void send(String topic, String key, Object payload) {
         resolve().send(topic, key, payload);
     }
 
     @Override
+    /**
+     * sendDelayed。
+     */
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
         resolve().sendDelayed(topic, key, payload, delay);
     }
 
     @Override
+    /**
+     * sendOrdered。
+     */
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
         resolve().sendOrdered(topic, key, payload, shardingKey);
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return resolve().name();
     }
 
+    /**
+     * status。
+     */
     public Map<String, Object> status() {
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("active", active);
@@ -70,6 +97,9 @@ public class MqFacade implements MessageProducer {
         return status;
     }
 
+    /**
+     * resolve。
+     */
     private MessageProducer resolve() {
         return switch (active.toLowerCase()) {
             case "rocketmq" -> require(rocketMqProducer.getIfAvailable(), "rocketmq");

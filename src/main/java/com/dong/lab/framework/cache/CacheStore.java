@@ -9,6 +9,9 @@ import java.time.Duration;
  */
 public interface CacheStore {
 
+    /**
+     * name。
+     */
     String name();
 
     /**
@@ -16,14 +19,29 @@ public interface CacheStore {
      */
     <T> CacheLookup<T> lookup(String key, Class<T> type);
 
+    /**
+     * 查询缓存值。
+     */
     <T> CacheLookup<T> lookup(String key, TypeReference<T> type);
 
+    /**
+     * 放入缓存。
+     */
     void put(String key, Object value, Duration ttl);
 
+    /**
+     * 放入空值占位，用于防止缓存穿透。
+     */
     void putEmpty(String key, Duration ttl);
 
+    /**
+     * 清除缓存，用于缓存失效演练。
+     */
     void evict(String key);
 
+    /**
+     * 估算缓存大小。
+     */
     long estimatedSize();
 
 }

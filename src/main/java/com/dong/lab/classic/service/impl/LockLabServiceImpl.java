@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * 分布式锁对照实验。不加锁的模式会大量丢失更新，加锁的模式结果精确，
  * 代价是耗时高出一到两个数量级，这就是正确性的成本。
@@ -29,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class LockLabServiceImpl implements LockLabService {
 
     private static final String COUNTER = "lab:lock:counter:";
@@ -37,20 +37,35 @@ public class LockLabServiceImpl implements LockLabService {
 
     private static final Duration WAIT_TIME = Duration.ofSeconds(30);
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
+    /**
+     * distributedLockService，业务服务层。
+     */
     private final DistributedLockService distributedLockService;
 
     @Override
+    /**
+     * withoutLock。
+     */
     public Map<String, Object> withoutLock(int threads, int loops) {
         return run(threads, loops, false);
     }
 
     @Override
+    /**
+     * withLock。
+     */
     public Map<String, Object> withLock(int threads, int loops) {
         return run(threads, loops, true);
     }
 
+    /**
+     * run。
+     */
     private Map<String, Object> run(int threads, int loops, boolean guarded) {
         String key = COUNTER + System.nanoTime();
         redisService.set(key, "0");

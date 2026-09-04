@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-
 /**
  * 跨境账户实现。账户本身只有状态字段，冻结/解冻的历史
  * 全部落在事件表里：状态回答「现在能不能用」，事件回答「怎么变成这样的」。
@@ -30,17 +29,33 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class CrossBorderAccountServiceImpl implements CrossBorderAccountService {
 
+    /**
+     * accountMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderAccountMapper accountMapper;
 
+    /**
+     * ledgerMapper，MyBatis Mapper 数据访问层。
+     */
     private final AccountLedgerMapper ledgerMapper;
 
+    /**
+     * eventMapper，MyBatis Mapper 数据访问层。
+     */
     private final AccountEventMapper eventMapper;
 
+    /**
+     * snowflake。
+     */
     private final Snowflake snowflake;
 
     @Override
+    /**
+     * 创建记录。
+     */
     public Long create(AccountCreateRequest request) {
         CrossBorderAccount account = new CrossBorderAccount();
         account.setAccountNo("CB" + snowflake.nextId());
@@ -59,6 +74,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     }
 
     @Override
+    /**
+     * findByAccountNo。
+     */
     public AccountResponse findByAccountNo(String accountNo) {
         CrossBorderAccount account = accountMapper.selectByAccountNo(accountNo);
         if (account == null) {
@@ -68,6 +86,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     }
 
     @Override
+    /**
+     * 根据 id 查询。
+     */
     public AccountResponse findById(Long id) {
         CrossBorderAccount account = accountMapper.selectById(id);
         if (account == null) {
@@ -77,6 +98,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     }
 
     @Override
+    /**
+     * 查询全部。
+     */
     public List<AccountResponse> findAll() {
         return accountMapper.selectAll().stream().map(AccountResponse::from).toList();
     }
@@ -121,6 +145,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     }
 
     @Override
+    /**
+     * events。
+     */
     public List<AccountEventResponse> events(String accountNo) {
         requireAccount(accountNo);
         return eventMapper.selectByAccountNo(accountNo).stream()
@@ -141,6 +168,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
         eventMapper.insert(event);
     }
 
+    /**
+     * requireAccount。
+     */
     private CrossBorderAccount requireAccount(String accountNo) {
         CrossBorderAccount account = accountMapper.selectByAccountNo(accountNo);
         if (account == null) {
@@ -166,6 +196,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     }
 
     @Override
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     public int clearAll() {
         int affected = accountMapper.clearAll();
         ledgerMapper.clearAll();

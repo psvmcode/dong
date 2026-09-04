@@ -20,6 +20,9 @@ public interface FxQuoteService {
      */
     FxQuoteResponse quote(String sourceCurrency, String targetCurrency, long validSeconds);
 
+    /**
+     * findByQuoteNo。
+     */
     FxQuoteResponse findByQuoteNo(String quoteNo);
 
     /**
@@ -49,8 +52,14 @@ public interface FxQuoteService {
      */
     int expireOverdue();
 
+    /**
+     * available。
+     */
     List<FxQuoteResponse> available(String currencyPair);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

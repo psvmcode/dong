@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 敞口监控实现。取已锁汇但尚未清算完成的汇款单，
  * 按货币对汇总锁定量，用当前中间价重估并与锁定汇率比对得出浮动盈亏。
@@ -27,6 +26,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class FxExposureServiceImpl implements FxExposureService {
 
     /**
@@ -35,11 +35,20 @@ public class FxExposureServiceImpl implements FxExposureService {
      */
     private static final BigDecimal EXPOSURE_ALERT = new BigDecimal("50000");
 
+    /**
+     * remittanceMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderRemittanceMapper remittanceMapper;
 
+    /**
+     * fxQuoteService，业务服务层。
+     */
     private final FxQuoteService fxQuoteService;
 
     @Override
+    /**
+     * exposureByPair。
+     */
     public List<Map<String, Object>> exposureByPair() {
         List<CrossBorderRemittance> open = new ArrayList<>();
         open.addAll(remittanceMapper.selectByStatus(RemittanceStatus.QUOTE_LOCKED, 200));
@@ -83,6 +92,9 @@ public class FxExposureServiceImpl implements FxExposureService {
     }
 
     @Override
+    /**
+     * summary。
+     */
     public Map<String, Object> summary() {
         List<Map<String, Object>> rows = exposureByPair();
         BigDecimal totalNotional = BigDecimal.ZERO;

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-
 /**
  * 分布式锁实现，基于 Redisson 的 RLock。
  *
@@ -20,8 +19,12 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class DistributedLockServiceImpl implements DistributedLockService {
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
     /**

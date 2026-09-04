@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-
 /**
  * RocketMQ 发送实现。
  *
@@ -24,6 +23,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "lab.rocketmq", name = "enabled", havingValue = "true")
+
 public class RocketMqProducer implements MessageProducer {
 
     /**
@@ -36,9 +36,15 @@ public class RocketMqProducer implements MessageProducer {
             Duration.ofMinutes(9), Duration.ofMinutes(10), Duration.ofMinutes(20), Duration.ofMinutes(30),
             Duration.ofHours(1), Duration.ofHours(2));
 
+    /**
+     * rocketMqTemplate。
+     */
     private final RocketMQTemplate rocketMqTemplate;
 
     @Override
+    /**
+     * send。
+     */
     public void send(String topic, String key, Object payload) {
         sendSync(topic, key, payload, 0);
     }
@@ -68,10 +74,16 @@ public class RocketMqProducer implements MessageProducer {
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "rocketmq";
     }
 
+    /**
+     * sendSync。
+     */
     private void sendSync(String topic, String key, Object payload, int delayLevel) {
         Message message = build(topic, key, payload);
         if (delayLevel > 0) {
@@ -85,6 +97,9 @@ public class RocketMqProducer implements MessageProducer {
         }
     }
 
+    /**
+     * 构建对象。
+     */
     private Message build(String topic, String key, Object payload) {
         String body = payload instanceof String text ? text : JsonUtils.toJson(payload);
         Message message = new Message(topic, body.getBytes(StandardCharsets.UTF_8));
@@ -109,6 +124,9 @@ public class RocketMqProducer implements MessageProducer {
 
     }
 
+    /**
+     * delayLevel。
+     */
     private int delayLevel(Duration delay) {
         for (int i = 0; i < DELAY_LEVELS.size(); i++) {
             if (!DELAY_LEVELS.get(i).minus(delay).isNegative()) {

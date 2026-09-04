@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * 本地消息总线。在 JVM 内完成投递，不需要任何中间件，
  * 因此默认配置下也能跑通全部消息流程。
@@ -24,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @Component
+
 public class LocalMessageBus implements MessageProducer {
 
     private final Map<String, List<MessageHandler>> handlers = new ConcurrentHashMap<>();
@@ -35,17 +35,26 @@ public class LocalMessageBus implements MessageProducer {
 
     private final AtomicLong dispatched = new AtomicLong();
 
+    /**
+     * register。
+     */
     public void register(MessageHandler handler) {
         handlers.computeIfAbsent(handler.topic(), topic -> new CopyOnWriteArrayList<>()).add(handler);
         log.info("handler {} registered on topic {}", handler.getClass().getSimpleName(), handler.topic());
     }
 
     @Override
+    /**
+     * send。
+     */
     public void send(String topic, String key, Object payload) {
         dispatch(topic, key, payload);
     }
 
     @Override
+    /**
+     * sendDelayed。
+     */
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
         delayScheduler.schedule(() -> dispatch(topic, key, payload), delay.toMillis(), TimeUnit.MILLISECONDS);
     }
@@ -62,10 +71,16 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "local";
     }
 
+    /**
+     * dispatchedCount。
+     */
     public long dispatchedCount() {
         return dispatched.get();
     }
@@ -91,6 +106,9 @@ public class LocalMessageBus implements MessageProducer {
         });
     }
 
+    /**
+     * factory。
+     */
     private static ThreadFactory factory(String prefix) {
         AtomicLong counter = new AtomicLong();
         return runnable -> {

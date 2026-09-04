@@ -10,8 +10,11 @@ import org.apache.ibatis.annotations.Param;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
+/**
+ * CrossBorderReconMapper，MyBatis 数据访问接口。
+ */
 @Mapper
+
 public interface CrossBorderReconMapper {
 
     /**

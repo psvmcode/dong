@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 /**
  * 对账核销。每日对账把渠道回单与本地流水逐笔比对，
  * 差异记入差异表，运营按差异类型逐笔处理。
@@ -28,8 +27,12 @@ import java.util.Map;
 @RequestMapping("/api/crossborder/recon")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-对账")
+
 public class CrossBorderReconController {
 
+    /**
+     * reconciliationService，业务服务层。
+     */
     private final ReconciliationService reconciliationService;
 
     /**

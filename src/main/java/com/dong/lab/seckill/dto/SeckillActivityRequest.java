@@ -10,28 +10,52 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 秒杀活动请求参数。
+ */
 public class SeckillActivityRequest {
 
     @NotNull
+    /**
+     * 参与秒杀的商品 id。
+     */
     private Long productId;
 
     @NotBlank
+    /**
+     * 活动标题。
+     */
     private String title;
 
     @NotNull
     @Min(1)
+    /**
+     * 活动总库存。
+     */
     private Integer totalStock;
 
     @NotNull
     @DecimalMin("0.01")
+    /**
+     * 秒杀单价。
+     */
     private BigDecimal unitPrice;
 
     @NotNull
+    /**
+     * 活动开始时间。
+     */
     private LocalDateTime startTime;
 
     @NotNull
+    /**
+     * 活动结束时间。
+     */
     private LocalDateTime endTime;
 
+    /**
+     * 转换为秒杀活动实体。
+     */
     public SeckillActivity toEntity() {
         SeckillActivity activity = new SeckillActivity();
         activity.setProductId(productId);
@@ -46,50 +70,86 @@ public class SeckillActivityRequest {
         return activity;
     }
 
+    /**
+     * 获取参与秒杀的商品 id。
+     */
     public Long getProductId() {
         return productId;
     }
 
+    /**
+     * 设置参与秒杀的商品 id。
+     */
     public void setProductId(Long productId) {
         this.productId = productId;
     }
 
+    /**
+     * 获取活动标题。
+     */
     public String getTitle() {
         return title;
     }
 
+    /**
+     * 设置活动标题。
+     */
     public void setTitle(String title) {
         this.title = title;
     }
 
+    /**
+     * 获取活动总库存。
+     */
     public Integer getTotalStock() {
         return totalStock;
     }
 
+    /**
+     * 设置活动总库存。
+     */
     public void setTotalStock(Integer totalStock) {
         this.totalStock = totalStock;
     }
 
+    /**
+     * 获取秒杀单价。
+     */
     public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
+    /**
+     * 设置秒杀单价。
+     */
     public void setUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
     }
 
+    /**
+     * 获取活动开始时间。
+     */
     public LocalDateTime getStartTime() {
         return startTime;
     }
 
+    /**
+     * 设置活动开始时间。
+     */
     public void setStartTime(LocalDateTime startTime) {
         this.startTime = startTime;
     }
 
+    /**
+     * 获取活动结束时间。
+     */
     public LocalDateTime getEndTime() {
         return endTime;
     }
 
+    /**
+     * 设置活动结束时间。
+     */
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }

@@ -4,8 +4,12 @@ import com.dong.lab.tcc.enums.TccBranchStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * TCC 分支事务。记录某个参与者在全局事务中的状态与参数快照，
+ * 恢复任务根据 nextRetryTime 扫描并推进分支状态。
+ */
 @Data
+
 public class TccBranch {
 
     /**

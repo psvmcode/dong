@@ -13,17 +13,20 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 地理位置实现。基于 Redis GEO，
  * 本质是把经纬度编码进 ZSet 再做范围查询。
  */
 @Slf4j
 @Service
+
 public class GeoServiceImpl implements GeoService {
 
     private static final String GEO = "lab:geo:";
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
     public GeoServiceImpl(RedissonClient redissonClient) {
@@ -31,6 +34,9 @@ public class GeoServiceImpl implements GeoService {
     }
 
     @Override
+    /**
+     * add。
+     */
     public Long add(String city, double longitude, double latitude, String member) {
         Long added = geoOf(city).add(longitude, latitude, member);
         log.info("geo added city={} member={}", city, member);
@@ -38,6 +44,9 @@ public class GeoServiceImpl implements GeoService {
     }
 
     @Override
+    /**
+     * nearby。
+     */
     public List<NearbyPlaceResponse> nearby(String city, double longitude, double latitude, double radiusKm, int limit) {
         RGeo<String> geo = geoOf(city);
         Map<String, Double> distances =
@@ -55,15 +64,24 @@ public class GeoServiceImpl implements GeoService {
     }
 
     @Override
+    /**
+     * distance。
+     */
     public Double distance(String city, String first, String second) {
         return geoOf(city).dist(first, second, GeoUnit.KILOMETERS);
     }
 
     @Override
+    /**
+     * remove。
+     */
     public void remove(String city, String member) {
         geoOf(city).remove(member);
     }
 
+    /**
+     * geoOf。
+     */
     private RGeo<String> geoOf(String city) {
         return redissonClient.getGeo(GEO + city);
     }

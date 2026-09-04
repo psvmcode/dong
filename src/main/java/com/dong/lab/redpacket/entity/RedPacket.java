@@ -5,8 +5,12 @@ import com.dong.lab.redpacket.enums.RedPacketType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * 红包。记录红包的总金额、总份数与剩余情况，
+ * 剩余金额为零或过期后状态流转到结束。
+ */
 @Data
+
 public class RedPacket {
 
     /**

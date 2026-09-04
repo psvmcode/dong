@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
-
 /**
  * 秒杀订单异步建单。库存扣减已在 Redis 完成，这里只负责落库。
  *
@@ -23,10 +22,14 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SeckillOrderCreatedHandler implements MessageHandler {
 
     private static final String TOPIC = "seckill-order-created";
 
+    /**
+     * seckillOrderMapper，MyBatis Mapper 数据访问层。
+     */
     private final SeckillOrderMapper seckillOrderMapper;
 
     private final LongAdder created = new LongAdder();
@@ -34,11 +37,17 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
     private final LongAdder duplicated = new LongAdder();
 
     @Override
+    /**
+     * 返回监听的消息主题。
+     */
     public String topic() {
         return TOPIC;
     }
 
     @Override
+    /**
+     * 处理秒杀订单创建消息，落库并统计重复订单。
+     */
     public boolean handle(String key, String payload) {
         Map<String, Object> message = JsonUtils.fromJson(payload,
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
@@ -73,10 +82,16 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
         }
     }
 
+    /**
+     * 获取成功创建订单数。
+     */
     public long createdCount() {
         return created.sum();
     }
 
+    /**
+     * 获取重复订单数。
+     */
     public long duplicatedCount() {
         return duplicated.sum();
     }

@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 秒杀。核心思路是把库存决策从数据库搬到 Redis：
  * 用一条 Lua 脚本原子完成查余额、扣减、记录用户，全程无锁无事务，
@@ -36,10 +35,17 @@ import java.util.Map;
 @RequestMapping("/api/seckill")
 @RequiredArgsConstructor
 @Tag(name = "秒杀")
+
 public class SeckillController {
 
+    /**
+     * seckillService，业务服务层。
+     */
     private final SeckillService seckillService;
 
+    /**
+     * 消息队列门面，用于查看消息通道状态。
+     */
     private final MqFacade mqFacade;
 
     /**

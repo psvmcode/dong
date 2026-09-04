@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
 /**
  * 索引同步实现，把 MySQL 全量商品重建到 Elasticsearch。
  */
@@ -19,13 +18,23 @@ import java.util.List;
 @Service
 @ConditionalOnProperty(prefix = "lab.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
+
 public class SearchSyncServiceImpl implements SearchSyncService {
 
+    /**
+     * productMapper，MyBatis Mapper 数据访问层。
+     */
     private final ProductMapper productMapper;
 
+    /**
+     * searchService，业务服务层。
+     */
     private final SearchService searchService;
 
     @Override
+    /**
+     * syncAll。
+     */
     public int syncAll() {
         List<Product> products = productMapper.selectAll();
         List<ProductDocument> documents = products.stream().map(this::toDocument).toList();
@@ -34,6 +43,9 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         return documents.size();
     }
 
+    /**
+     * toDocument。
+     */
     private ProductDocument toDocument(Product product) {
         ProductDocument document = new ProductDocument();
         document.setId(String.valueOf(product.getId()));

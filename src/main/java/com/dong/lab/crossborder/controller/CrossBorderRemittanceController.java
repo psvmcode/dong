@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 /**
  * 跨境汇款主流程。发起一笔汇款会依次经过幂等校验、合规筛查、锁汇、扣款，
  * 清算由消息队列异步推进。
@@ -32,10 +31,17 @@ import java.util.Map;
 @RequestMapping("/api/crossborder/remittance")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-汇款")
+
 public class CrossBorderRemittanceController {
 
+    /**
+     * remittanceService，业务服务层。
+     */
     private final RemittanceService remittanceService;
 
+    /**
+     * complianceService，业务服务层。
+     */
     private final ComplianceService complianceService;
 
     /**

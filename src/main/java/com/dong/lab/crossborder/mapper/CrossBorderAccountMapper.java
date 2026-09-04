@@ -6,14 +6,26 @@ import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
-
+/**
+ * CrossBorderAccountMapper，MyBatis 数据访问接口。
+ */
 @Mapper
+
 public interface CrossBorderAccountMapper {
 
+    /**
+     * 按 AccountNo 查询记录。
+     */
     CrossBorderAccount selectByAccountNo(String accountNo);
 
+    /**
+     * 根据 id 查询记录。
+     */
     CrossBorderAccount selectById(Long id);
 
+    /**
+     * 查询所有记录。
+     */
     List<CrossBorderAccount> selectAll();
 
     /**
@@ -21,6 +33,9 @@ public interface CrossBorderAccountMapper {
      */
     List<CrossBorderAccount> selectByIds(@Param("ids") java.util.Collection<Long> ids);
 
+    /**
+     * 插入记录，返回影响行数。
+     */
     int insert(CrossBorderAccount account);
 
     /**
@@ -28,10 +43,19 @@ public interface CrossBorderAccountMapper {
      */
     int deduct(@Param("id") Long id, @Param("amount") BigDecimal amount, @Param("version") int version);
 
+    /**
+     * 增加余额。
+     */
     int credit(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
+    /**
+     * 冻结余额。
+     */
     int freeze(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
+    /**
+     * 解冻余额。
+     */
     int unfreeze(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
     /**
@@ -40,6 +64,9 @@ public interface CrossBorderAccountMapper {
      */
     int updateStatus(@Param("id") Long id, @Param("status") int status, @Param("expectedStatus") int expectedStatus);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

@@ -26,7 +26,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
-
 /**
  * 对账服务实现。
  *
@@ -41,12 +40,22 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class ReconciliationServiceImpl implements ReconciliationService {
 
+    /**
+     * reconDiffMapper，MyBatis Mapper 数据访问层。
+     */
     private final ReconDiffMapper reconDiffMapper;
 
+    /**
+     * reconMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderReconMapper reconMapper;
 
+    /**
+     * batchMapper，MyBatis Mapper 数据访问层。
+     */
     private final SettlementBatchMapper batchMapper;
 
     /**
@@ -148,6 +157,9 @@ public class ReconciliationServiceImpl implements ReconciliationService {
     }
 
     @Override
+    /**
+     * report。
+     */
     public ReconReportResponse report(String batchNo) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
@@ -179,6 +191,9 @@ public class ReconciliationServiceImpl implements ReconciliationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * handleAllUnhandled。
+     */
     public int handleAllUnhandled(String batchNo, String decision) {
         int count = reconDiffMapper.markHandled(batchNo);
         log.info("batch diffs handled batchNo={} count={} decision={}", batchNo, count, decision);
@@ -186,6 +201,9 @@ public class ReconciliationServiceImpl implements ReconciliationService {
     }
 
     @Override
+    /**
+     * overview。
+     */
     public Map<String, Object> overview() {
         long unhandled = reconDiffMapper.countUnhandled();
         List<ReconDiff> recent = reconDiffMapper.selectAll(200);
@@ -203,6 +221,9 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         return overview;
     }
 
+    /**
+     * buildDiff。
+     */
     private ReconDiff buildDiff(String batchNo, String remittanceNo, ReconDiffType type,
                                 BigDecimal localAmount, BigDecimal channelAmount) {
         ReconDiff diff = new ReconDiff();
@@ -215,6 +236,9 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         return diff;
     }
 
+    /**
+     * buildReport。
+     */
     private ReconReportResponse buildReport(SettlementBatch batch, List<CrossBorderRemittance> localItems,
                                             List<Map<String, Object>> channelStatement,
                                             int matched, List<ReconDiff> diffs) {

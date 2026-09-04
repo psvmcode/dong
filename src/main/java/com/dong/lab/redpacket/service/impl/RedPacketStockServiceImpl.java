@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
-
 /**
  * 红包库存实现。金额在发红包时就预分配好并整体推入 List，
  * 抢的时候只是一次 RPOP，原子性由 Redis 单线程保证，全程无锁无事务。
@@ -21,6 +20,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class RedPacketStockServiceImpl implements RedPacketStockService {
 
     private static final String COUNT = "lab:redpacket:count:";
@@ -61,9 +61,15 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
 
     private static final RedisScript<Long> GRAB = new DefaultRedisScript<>(GRAB_SCRIPT, Long.class);
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
     @Override
+    /**
+     * 预分配红包库存，将金额列表整体推入 Redis。
+     */
     public void prepare(String packetNo, List<Long> amounts, long totalAmount) {
         redisService.delete(List.of(COUNT + packetNo, AMOUNT + packetNo, LIST + packetNo, USERS + packetNo));
         redisService.set(COUNT + packetNo, String.valueOf(amounts.size()), TTL);
@@ -75,6 +81,9 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
     }
 
     @Override
+    /**
+     * 抢一份红包，原子弹出并返回金额，已抢完或重复抢返回 -1。
+     */
     public long grab(String packetNo, Long userId) {
         Long result = redisService.executeToLong(GRAB,
                 List.of(COUNT + packetNo, AMOUNT + packetNo, LIST + packetNo, USERS + packetNo), userId);
@@ -82,11 +91,17 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
     }
 
     @Override
+    /**
+     * 查询红包剩余份数。
+     */
     public int remainCount(String packetNo) {
         return Integer.parseInt(redisService.get(COUNT + packetNo).orElse("0"));
     }
 
     @Override
+    /**
+     * 查询红包剩余金额。
+     */
     public long remainAmount(String packetNo) {
         return Long.parseLong(redisService.get(AMOUNT + packetNo).orElse("0"));
     }

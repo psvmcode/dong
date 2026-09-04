@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-
 /**
  * 独立访客统计。用 HyperLogLog，每个页面每天固定占用约 12KB，
  * 与访问量无关，代价是结果有约百分之零点八的误差。
@@ -23,8 +22,12 @@ import java.time.LocalDate;
 @RequestMapping("/api/classic/uv")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-独立访客")
+
 public class UniqueVisitorController {
 
+    /**
+     * uniqueVisitorService，业务服务层。
+     */
     private final UniqueVisitorService uniqueVisitorService;
 
     /**

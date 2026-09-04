@@ -24,6 +24,9 @@ public interface MessageProducer {
      */
     void sendOrdered(String topic, String key, Object payload, String shardingKey);
 
+    /**
+     * name。
+     */
     String name();
 
 }

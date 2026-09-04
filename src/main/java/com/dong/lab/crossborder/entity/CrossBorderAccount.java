@@ -4,12 +4,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 /**
  * 跨境账户。同一用户在不同币种下会有不同账户，
  * 因为跨境场景下各币种资金是分开清算的，不能混在一个余额里。
  */
 @Data
+
 public class CrossBorderAccount {
 
     /**

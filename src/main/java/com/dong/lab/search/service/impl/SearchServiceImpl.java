@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 搜索实现。索引映射由启动时显式创建，
  * category 为 keyword 以支持聚合，name 与 description 用 IK 分词。
@@ -43,13 +42,23 @@ import java.util.Map;
 @Service
 @ConditionalOnProperty(prefix = "lab.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
+
 public class SearchServiceImpl implements SearchService {
 
+    /**
+     * elasticsearchClient。
+     */
     private final ElasticsearchClient elasticsearchClient;
 
+    /**
+     * indexNameResolver。
+     */
     private final IndexNameResolver indexNameResolver;
 
     @Override
+    /**
+     * index。
+     */
     public void index(ProductDocument document) {
         try {
             elasticsearchClient.index(builder -> builder
@@ -63,6 +72,9 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
+    /**
+     * bulkIndex。
+     */
     public void bulkIndex(Iterable<ProductDocument> documents) {
         List<ProductDocument> list = new ArrayList<>();
         documents.forEach(list::add);
@@ -99,6 +111,9 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
+    /**
+     * 根据 id 删除记录。
+     */
     public void deleteById(String id) {
         try {
             elasticsearchClient.delete(builder -> builder.index(indexName()).id(id));
@@ -108,6 +123,9 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
+    /**
+     * search。
+     */
     public ProductSearchResponse search(ProductSearchRequest request) {
         try {
             BoolQuery.Builder bool = new BoolQuery.Builder();
@@ -154,6 +172,9 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
+    /**
+     * count。
+     */
     public long count() {
         try {
             CountRequest request = CountRequest.of(builder -> builder.index(indexName()));
@@ -163,6 +184,9 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
+    /**
+     * toHits。
+     */
     private List<ProductSearchResponse.Hit> toHits(List<Hit<ProductDocument>> hits) {
         List<ProductSearchResponse.Hit> results = new ArrayList<>(hits.size());
         for (Hit<ProductDocument> hit : hits) {
@@ -182,6 +206,9 @@ public class SearchServiceImpl implements SearchService {
         return results;
     }
 
+    /**
+     * toFacets。
+     */
     private Map<String, Long> toFacets(Map<String, Aggregate> aggregations) {
         if (aggregations == null || aggregations.isEmpty()) {
             return Map.of();
@@ -198,6 +225,9 @@ public class SearchServiceImpl implements SearchService {
         return result;
     }
 
+    /**
+     * indexName。
+     */
     private String indexName() {
         return indexNameResolver.resolve("product");
     }

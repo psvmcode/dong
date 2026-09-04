@@ -5,8 +5,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
+/**
+ * 商品。缓存实验场景的核心实体，演示缓存失效、缓存穿透、
+ * 缓存击穿与 Redis 分布式锁等场景。
+ */
 @Data
+
 public class Product {
 
     /**

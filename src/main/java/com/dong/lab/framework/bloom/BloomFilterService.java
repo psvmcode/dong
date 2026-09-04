@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
-
 /**
  * 基于 Redisson 的布隆过滤器，用来在查询前挡掉根本不可能存在的 id。
  *
@@ -17,8 +16,12 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @Slf4j
+
 public class BloomFilterService {
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
     public BloomFilterService(RedissonClient redissonClient) {
@@ -35,6 +38,9 @@ public class BloomFilterService {
         return filter;
     }
 
+    /**
+     * 删除关注关系。
+     */
     public void delete(String name) {
         RBloomFilter<Object> filter = redissonClient.getBloomFilter(name);
         filter.delete();

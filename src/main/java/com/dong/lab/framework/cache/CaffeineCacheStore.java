@@ -17,6 +17,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class CaffeineCacheStore implements CacheStore {
 
+    /**
+     * cache，缓存组件。
+     */
     private final Cache<String, CacheEntry> cache;
 
     public CaffeineCacheStore(long maxSize) {
@@ -28,6 +31,9 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "caffeine";
     }
@@ -54,6 +60,9 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     @Override
+    /**
+     * 查询缓存值。
+     */
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
         CacheEntry entry = cache.getIfPresent(key);
         if (entry == null || entry.expired()) {
@@ -66,38 +75,62 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     @Override
+    /**
+     * 放入缓存。
+     */
     public void put(String key, Object value, Duration ttl) {
         cache.put(key, CacheEntry.of(value, ttl));
     }
 
     @Override
+    /**
+     * 放入空值占位，用于防止缓存穿透。
+     */
     public void putEmpty(String key, Duration ttl) {
         cache.put(key, CacheEntry.of(CacheEmpty.INSTANCE, ttl));
     }
 
     @Override
+    /**
+     * 清除缓存，用于缓存失效演练。
+     */
     public void evict(String key) {
         cache.invalidate(key);
     }
 
     @Override
+    /**
+     * 估算缓存大小。
+     */
     public long estimatedSize() {
         return cache.estimatedSize();
     }
 
+    /**
+     * clear。
+     */
     public void clear() {
         cache.invalidateAll();
     }
 
+    /**
+     * snapshot。
+     */
     public CacheStatsSnapshot snapshot() {
         var stats = cache.stats();
         return new CacheStatsSnapshot(stats.hitCount(), stats.missCount(), stats.evictionCount(), cache.estimatedSize());
     }
 
+    /**
+     * CacheStatsSnapshot。
+     */
     public record CacheStatsSnapshot(long hitCount, long missCount, long evictionCount, long size) {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * convert。
+     */
     private static <T> T convert(Object value, Class<T> type) {
         return type.isInstance(value) ? (T) value : JsonUtils.fromJson(JsonUtils.toJson(value), type);
     }

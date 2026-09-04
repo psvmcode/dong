@@ -4,8 +4,11 @@ import com.dong.lab.common.constant.Constants;
 import com.dong.lab.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
+/**
+ * Snowflake。
+ */
 @Component
+
 public class Snowflake {
 
     private static final long MAX_BACKWARD_MS = 5L;
@@ -30,12 +33,24 @@ public class Snowflake {
 
     private static final long TIMESTAMP_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS + DATA_CENTER_ID_BITS;
 
+    /**
+     * workerId。
+     */
     private final long workerId;
 
+    /**
+     * dataCenterId。
+     */
     private final long dataCenterId;
 
+    /**
+     * 0L。
+     */
     private long sequence = 0L;
 
+    /**
+     * 1L。
+     */
     private long lastTimestamp = -1L;
 
     public Snowflake(@Value("${lab.snowflake.worker-id:1}") long workerId,
@@ -47,6 +62,9 @@ public class Snowflake {
         this.dataCenterId = dataCenterId;
     }
 
+    /**
+     * nextId。
+     */
     public synchronized long nextId() {
         long timestamp = currentMillis();
         long offset = timestamp - lastTimestamp;
@@ -74,10 +92,16 @@ public class Snowflake {
                 | sequence;
     }
 
+    /**
+     * nextIdStr。
+     */
     public String nextIdStr() {
         return Long.toString(nextId());
     }
 
+    /**
+     * waitUntilNextMillis。
+     */
     private long waitUntilNextMillis(long lastTs) {
         long timestamp = currentMillis();
         while (timestamp <= lastTs) {
@@ -87,6 +111,9 @@ public class Snowflake {
         return timestamp;
     }
 
+    /**
+     * currentMillis。
+     */
     private long currentMillis() {
         return System.currentTimeMillis();
     }

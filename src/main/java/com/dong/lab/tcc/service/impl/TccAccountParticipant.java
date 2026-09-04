@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
-
 /**
  * 账户参与者。Try 冻结余额，Confirm 真正扣减，Cancel 释放冻结。
  *
@@ -19,17 +18,27 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class TccAccountParticipant implements TccParticipant {
 
+    /**
+     * tccParticipantMapper，MyBatis Mapper 数据访问层。
+     */
     private final TccParticipantMapper tccParticipantMapper;
 
     @Override
+    /**
+     * 返回分支标识。
+     */
     public String branchId() {
         return "account";
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 冻结账户余额。
+     */
     public void tryPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
@@ -46,6 +55,9 @@ public class TccAccountParticipant implements TccParticipant {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 确认扣减账户余额。
+     */
     public void confirmPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
@@ -55,6 +67,9 @@ public class TccAccountParticipant implements TccParticipant {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 释放冻结的账户余额。
+     */
     public void cancelPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
@@ -62,6 +77,9 @@ public class TccAccountParticipant implements TccParticipant {
         log.info("account cancel xid={} user={} amount={}", xid, userId, amount);
     }
 
+    /**
+     * 从 payload 中读取长整型值。
+     */
     private long longValue(Map<String, Object> payload, String key) {
         return Long.parseLong(String.valueOf(payload.get(key)));
     }

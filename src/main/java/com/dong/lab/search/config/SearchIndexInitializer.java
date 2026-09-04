@@ -13,22 +13,34 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-
+/**
+ * SearchIndexInitializer。
+ */
 @Slf4j
 @Component
 @ConditionalOnProperty(prefix = "lab.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
+
 public class SearchIndexInitializer {
 
     private static final String ANALYZER_INDEX = "ik_max_word";
 
     private static final String ANALYZER_SEARCH = "ik_smart";
 
+    /**
+     * elasticsearchClient。
+     */
     private final ElasticsearchClient elasticsearchClient;
 
+    /**
+     * indexNameResolver。
+     */
     private final IndexNameResolver indexNameResolver;
 
     @PostConstruct
+    /**
+     * createMapping。
+     */
     public void createMapping() {
         String index = indexNameResolver.resolve("product");
         try {

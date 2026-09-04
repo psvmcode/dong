@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-
 /**
  * 把容器中所有 MessageHandler 注册到本地总线。
  *
@@ -16,13 +15,23 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+
 public class MessageHandlerRegistrar {
 
+    /**
+     * localMessageBus。
+     */
     private final LocalMessageBus localMessageBus;
 
+    /**
+     * handlers。
+     */
     private final List<MessageHandler> handlers;
 
     @PostConstruct
+    /**
+     * register。
+     */
     public void register() {
         handlers.forEach(localMessageBus::register);
         log.info("{} message handler(s) registered on the local bus", handlers.size());

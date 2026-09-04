@@ -13,6 +13,9 @@ public interface RateLimiter {
      */
     boolean tryAcquire(String key, RateLimitRule rule, long permits);
 
+    /**
+     * tryAcquire。
+     */
     default boolean tryAcquire(String key, RateLimitRule rule) {
         return tryAcquire(key, rule, 1L);
     }
@@ -22,6 +25,9 @@ public interface RateLimiter {
      */
     Set<RateLimitAlgorithm> supportedAlgorithms();
 
+    /**
+     * name。
+     */
     String name();
 
 }

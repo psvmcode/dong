@@ -27,6 +27,9 @@ public interface DistributedLockService {
         }
     }
 
+    /**
+     * execute。
+     */
     default void execute(String key, Duration leaseTime, Duration waitTime, Runnable task) {
         execute(key, leaseTime, waitTime, () -> {
             task.run();

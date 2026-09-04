@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
-
 /**
  * 库存参与者。Try 冻结库存，Confirm 真正扣减，Cancel 释放冻结。
  *
@@ -19,17 +18,27 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class TccInventoryParticipant implements TccParticipant {
 
+    /**
+     * tccParticipantMapper，MyBatis Mapper 数据访问层。
+     */
     private final TccParticipantMapper tccParticipantMapper;
 
     @Override
+    /**
+     * 返回分支标识。
+     */
     public String branchId() {
         return "inventory";
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 冻结库存。
+     */
     public void tryPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");
@@ -42,6 +51,9 @@ public class TccInventoryParticipant implements TccParticipant {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 确认扣减库存。
+     */
     public void confirmPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");
@@ -51,6 +63,9 @@ public class TccInventoryParticipant implements TccParticipant {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 释放冻结的库存。
+     */
     public void cancelPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");
@@ -58,10 +73,16 @@ public class TccInventoryParticipant implements TccParticipant {
         log.info("inventory cancel xid={} product={} quantity={}", xid, productId, quantity);
     }
 
+    /**
+     * 从 payload 中读取长整型值。
+     */
     private Long longValue(Map<String, Object> payload, String key) {
         return Long.valueOf(String.valueOf(payload.get(key)));
     }
 
+    /**
+     * 从 payload 中读取整型值。
+     */
     private int intValue(Map<String, Object> payload, String key) {
         return Integer.parseInt(String.valueOf(payload.get(key)));
     }

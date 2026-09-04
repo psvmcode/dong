@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 /**
  * 本地限流器。状态存在进程内的 Caffeine 里，因此只在单节点内有效，
  * 多实例部署时每个节点各自计数，实际放放量是单节点配额乘以节点数。
@@ -15,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>只实现了令牌桶与固定窗口两种，滑动窗口与漏桶需要 Redisson 实现。
  */
 @Component
+
 public class LocalRateLimiter implements RateLimiter {
 
     // 空闲 key 十分钟后清理，避免长期不访问的 key 白占内存
@@ -28,6 +28,9 @@ public class LocalRateLimiter implements RateLimiter {
             .build();
 
     @Override
+    /**
+     * tryAcquire。
+     */
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
         return switch (rule.algorithm()) {
             case TOKEN_BUCKET -> acquireTokenBucket(key, rule, permits);
@@ -38,11 +41,17 @@ public class LocalRateLimiter implements RateLimiter {
     }
 
     @Override
+    /**
+     * supportedAlgorithms。
+     */
     public Set<RateLimitAlgorithm> supportedAlgorithms() {
         return Set.of(RateLimitAlgorithm.TOKEN_BUCKET, RateLimitAlgorithm.FIXED_WINDOW);
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "local";
     }
@@ -88,8 +97,14 @@ public class LocalRateLimiter implements RateLimiter {
     }
 
     private static final class Bucket {
+    /**
+     * tokens。
+     */
         private double tokens;
 
+    /**
+     * lastRefillNanos。
+     */
         private long lastRefillNanos;
         private Bucket(double tokens, long lastRefillNanos) {
             this.tokens = tokens;

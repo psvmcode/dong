@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
 /**
  * Redis 门面，统一封装常用操作与脚本执行。
  *
@@ -24,75 +23,130 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 @RequiredArgsConstructor
+
 public class RedisService {
 
+    /**
+     * stringRedisTemplate。
+     */
     private final StringRedisTemplate stringRedisTemplate;
 
+    /**
+     * template。
+     */
     public StringRedisTemplate template() {
         return stringRedisTemplate;
     }
 
+    /**
+     * set。
+     */
     public void set(String key, String value) {
         stringRedisTemplate.opsForValue().set(key, value);
     }
 
+    /**
+     * set。
+     */
     public void set(String key, String value, Duration ttl) {
         stringRedisTemplate.opsForValue().set(key, value, ttl);
     }
 
+    /**
+     * setIfAbsent。
+     */
     public boolean setIfAbsent(String key, String value, Duration ttl) {
         return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, value, ttl));
     }
 
+    /**
+     * get。
+     */
     public Optional<String> get(String key) {
         return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key));
     }
 
+    /**
+     * setObject。
+     */
     public <T> void setObject(String key, T value, Duration ttl) {
         set(key, JsonUtils.toJson(value), ttl);
     }
 
+    /**
+     * getObject。
+     */
     public <T> Optional<T> getObject(String key, Class<T> type) {
         return get(key).map(json -> JsonUtils.fromJson(json, type));
     }
 
+    /**
+     * increment。
+     */
     public Long increment(String key) {
         return stringRedisTemplate.opsForValue().increment(key);
     }
 
+    /**
+     * incrementBy。
+     */
     public Long incrementBy(String key, long delta) {
         return stringRedisTemplate.opsForValue().increment(key, delta);
     }
 
+    /**
+     * decrementBy。
+     */
     public Long decrementBy(String key, long delta) {
         return stringRedisTemplate.opsForValue().decrement(key, delta);
     }
 
+    /**
+     * expire。
+     */
     public void expire(String key, Duration ttl) {
         stringRedisTemplate.expire(key, ttl);
     }
 
+    /**
+     * ttlMillis。
+     */
     public long ttlMillis(String key) {
         Long expire = stringRedisTemplate.getExpire(key, TimeUnit.MILLISECONDS);
         return expire == null ? -1L : expire;
     }
 
+    /**
+     * 删除关注关系。
+     */
     public Boolean delete(String key) {
         return stringRedisTemplate.delete(key);
     }
 
+    /**
+     * 删除关注关系。
+     */
     public Long delete(Collection<String> keys) {
         return stringRedisTemplate.delete(keys);
     }
 
+    /**
+     * hasKey。
+     */
     public boolean hasKey(String key) {
         return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
     }
 
+    /**
+     * keys。
+     */
     public Set<String> keys(String pattern) {
         return stringRedisTemplate.keys(pattern);
     }
 
+    /**
+     * publish。
+     */
     public void publish(String channel, String message) {
         stringRedisTemplate.convertAndSend(channel, message);
     }
@@ -110,6 +164,9 @@ public class RedisService {
         return result;
     }
 
+    /**
+     * hashPutAll。
+     */
     public void hashPutAll(String key, Map<String, String> fields, Duration ttl) {
         stringRedisTemplate.opsForHash().putAll(key, fields);
         if (ttl != null) {

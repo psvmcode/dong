@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * 发号器实现。四种策略各有取舍：
  * 雪花算法趋势递增但依赖机器时钟，号段模式对数据库有压力但绝对递增，
@@ -24,17 +23,30 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class IdGeneratorServiceImpl implements IdGeneratorService {
 
     private static final String SEGMENT_KEY = "lab:id:segment";
 
+    /**
+     * snowflake。
+     */
     private final Snowflake snowflake;
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
     @Override
+    /**
+     * generate。
+     */
     public Map<String, Object> generate(String strategy, int count) {
         AtomicLong last = new AtomicLong();
         long start = System.nanoTime();

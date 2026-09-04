@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Map;
-
 /**
  * 用户签到。底层用 Bitmap 存储，每个用户每月只占几条到几十条记录，
  * 一年下来一个用户也就几百字节，这是 Bitmap 相比记录表的最大优势。
@@ -24,8 +23,12 @@ import java.util.Map;
 @RequestMapping("/api/classic/sign")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-签到")
+
 public class SignInController {
 
+    /**
+     * signInService，业务服务层。
+     */
     private final SignInService signInService;
 
     /**

@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 风控与路由。智能渠道路由回答"这笔汇款走哪个渠道最划算"，
  * AML 监控回答"这个付款人的行为模式是否可疑"，
@@ -29,14 +28,27 @@ import java.util.Map;
 @RequestMapping("/api/crossborder/risk")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-风控")
+
 public class CrossBorderRiskController {
 
+    /**
+     * channelRouter。
+     */
     private final ChannelRouter channelRouter;
 
+    /**
+     * amlMonitor。
+     */
     private final AmlMonitor amlMonitor;
 
+    /**
+     * fxExposureService，业务服务层。
+     */
     private final FxExposureService fxExposureService;
 
+    /**
+     * complianceService，业务服务层。
+     */
     private final ComplianceService complianceService;
 
     /**

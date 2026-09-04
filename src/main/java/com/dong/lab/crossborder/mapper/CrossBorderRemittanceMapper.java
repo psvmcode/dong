@@ -6,22 +6,43 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-
+/**
+ * CrossBorderRemittanceMapper，MyBatis 数据访问接口。
+ */
 @Mapper
+
 public interface CrossBorderRemittanceMapper {
 
+    /**
+     * 按 RemittanceNo 查询记录。
+     */
     CrossBorderRemittance selectByRemittanceNo(String remittanceNo);
 
+    /**
+     * 按 IdempotentKey 查询记录。
+     */
     CrossBorderRemittance selectByIdempotentKey(String idempotentKey);
 
+    /**
+     * 按 Status 查询记录。
+     */
     List<CrossBorderRemittance> selectByStatus(@Param("status") RemittanceStatus status, @Param("limit") int limit);
 
+    /**
+     * 按 BatchNo 查询记录。
+     */
     List<CrossBorderRemittance> selectByBatchNo(String batchNo);
 
+    /**
+     * 分页查询记录。
+     */
     List<CrossBorderRemittance> selectPage(@Param("status") RemittanceStatus status,
                                            @Param("offset") int offset,
                                            @Param("size") int size);
 
+    /**
+     * 按状态统计记录数。
+     */
     long countByStatus(@Param("status") RemittanceStatus status);
 
     /**
@@ -30,6 +51,9 @@ public interface CrossBorderRemittanceMapper {
      */
     List<java.util.Map<String, Object>> countGroupByStatus();
 
+    /**
+     * 插入记录，返回影响行数。
+     */
     int insert(CrossBorderRemittance remittance);
 
     /**
@@ -41,6 +65,9 @@ public interface CrossBorderRemittanceMapper {
                      @Param("expectedStatus") RemittanceStatus expectedStatus,
                      @Param("version") int version);
 
+    /**
+     * 更新批次号。
+     */
     int updateBatchNo(@Param("remittanceNo") String remittanceNo, @Param("batchNo") String batchNo);
 
     /**
@@ -55,12 +82,21 @@ public interface CrossBorderRemittanceMapper {
                               @Param("targetAmount") java.math.BigDecimal targetAmount,
                               @Param("complianceStatus") int complianceStatus);
 
+    /**
+     * 更新失败原因。
+     */
     int updateFailReason(@Param("remittanceNo") String remittanceNo,
                          @Param("status") RemittanceStatus status,
                          @Param("failReason") String failReason);
 
+    /**
+     * 更新报价编号。
+     */
     int updateQuoteNo(@Param("remittanceNo") String remittanceNo, @Param("quoteNo") String quoteNo);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

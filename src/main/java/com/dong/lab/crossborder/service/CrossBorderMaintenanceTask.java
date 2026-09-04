@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
-
 /**
  * 跨境支付维护任务。三个兜底动作缺一不可：
  * 汇率过期保证过期报价不再可被锁定；
@@ -27,14 +26,27 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+
 public class CrossBorderMaintenanceTask {
 
+    /**
+     * fxQuoteService，业务服务层。
+     */
     private final FxQuoteService fxQuoteService;
 
+    /**
+     * settlementService，业务服务层。
+     */
     private final SettlementService settlementService;
 
+    /**
+     * remittanceMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderRemittanceMapper remittanceMapper;
 
+    /**
+     * mqFacade。
+     */
     private final MqFacade mqFacade;
 
     /**
@@ -110,14 +122,23 @@ public class CrossBorderMaintenanceTask {
         }
     }
 
+    /**
+     * compensationRoundsCount。
+     */
     public long compensationRoundsCount() {
         return compensationRounds.sum();
     }
 
+    /**
+     * compensatedMessagesCount。
+     */
     public long compensatedMessagesCount() {
         return compensatedMessages.sum();
     }
 
+    /**
+     * skippedInQuietPeriodCount。
+     */
     public long skippedInQuietPeriodCount() {
         return skippedInQuietPeriod.sum();
     }

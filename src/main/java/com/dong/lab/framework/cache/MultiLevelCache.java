@@ -9,7 +9,6 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
-
 /**
  * 多级缓存，读取顺序为 L1 本地缓存、L2 分布式缓存、回源数据库。
  *
@@ -21,6 +20,7 @@ import java.util.function.Supplier;
  * </ul>
  */
 @Slf4j
+
 public class MultiLevelCache implements SmartInitializingSingleton {
 
     private static final String REBUILD_LOCK_PREFIX = "lab:cache:rebuild:";
@@ -28,18 +28,39 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     // 本地缓存跨节点无法感知失效，生命周期压到 60 秒，是正确性对性能的妥协
     private static final long L1_TTL_CAP_MILLIS = 60_000L;
 
+    /**
+     * l1。
+     */
     private final CacheStore l1;
 
+    /**
+     * l2。
+     */
     private final CacheStore l2;
 
+    /**
+     * eventBus。
+     */
     private final CacheEventBus eventBus;
 
+    /**
+     * distributedLockService，业务服务层。
+     */
     private final DistributedLockService distributedLockService;
 
+    /**
+     * delayedTaskRunner。
+     */
     private final ExecutorConfig.DelayedTaskRunner delayedTaskRunner;
 
+    /**
+     * properties。
+     */
     private final CacheProperties properties;
 
+    /**
+     * stats。
+     */
     private final CacheStats stats;
 
     public MultiLevelCache(CacheStore l1,
@@ -114,6 +135,9 @@ public class MultiLevelCache implements SmartInitializingSingleton {
         return loaded;
     }
 
+    /**
+     * get。
+     */
     public <T> T get(String key, Class<T> type, Supplier<T> loader) {
         return get(key, type, properties.getDefaultTtl(), loader);
     }
@@ -157,6 +181,9 @@ public class MultiLevelCache implements SmartInitializingSingleton {
         }
     }
 
+    /**
+     * writeThrough。
+     */
     private void writeThrough(String key, Object value, Duration ttl) {
         if (l2 != null) {
             l2.put(key, value, ttl);
@@ -175,12 +202,18 @@ public class MultiLevelCache implements SmartInitializingSingleton {
         putEmptyL1(key);
     }
 
+    /**
+     * putEmptyL1。
+     */
     private void putEmptyL1(String key) {
         if (l1 != null) {
             l1.putEmpty(key, properties.getNullValueTtl());
         }
     }
 
+    /**
+     * backfillL1。
+     */
     private void backfillL1(String key, Object value, Duration ttl) {
         if (l1 != null) {
             l1.put(key, value, l1Ttl(ttl));

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
-
 /**
  * 排行榜。底层用 Redis ZSet，写入和查询都是对数复杂度，
  * 相比数据库 order by 加 limit，在高频更新场景下代价低得多。
@@ -24,8 +23,12 @@ import java.util.List;
 @RequestMapping("/api/classic/rank")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-排行榜")
+
 public class LeaderboardController {
 
+    /**
+     * leaderboardService，业务服务层。
+     */
     private final LeaderboardService leaderboardService;
 
     /**

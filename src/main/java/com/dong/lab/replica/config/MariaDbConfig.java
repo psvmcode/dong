@@ -19,21 +19,39 @@ import javax.sql.DataSource;
 @ConditionalOnProperty(prefix = "lab.mariadb", name = "enabled", havingValue = "true")
 @MapperScan(basePackages = "com.dong.lab.replica.mapper",
         sqlSessionFactoryRef = "replicaSqlSessionFactory")
+/**
+ * MariaDbConfig，配置类。
+ */
 public class MariaDbConfig {
 
     @Value("${lab.mariadb.url}")
+    /**
+     * url。
+     */
     private String url;
 
     @Value("${lab.mariadb.username}")
+    /**
+     * username。
+     */
     private String username;
 
     @Value("${lab.mariadb.password}")
+    /**
+     * password。
+     */
     private String password;
 
     @Value("${lab.mariadb.driver-class-name:org.mariadb.jdbc.Driver}")
+    /**
+     * driverClassName。
+     */
     private String driverClassName;
 
     @Bean(name = "replicaDataSource")
+    /**
+     * replicaDataSource。
+     */
     public DataSource replicaDataSource() {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
@@ -48,6 +66,9 @@ public class MariaDbConfig {
     }
 
     @Bean(name = "replicaSqlSessionFactory")
+    /**
+     * replicaSqlSessionFactory。
+     */
     public SqlSessionFactory replicaSqlSessionFactory(@Qualifier("replicaDataSource") DataSource dataSource)
             throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
@@ -61,6 +82,9 @@ public class MariaDbConfig {
     }
 
     @Bean(name = "replicaTransactionManager")
+    /**
+     * replicaTransactionManager。
+     */
     public DataSourceTransactionManager replicaTransactionManager(
             @Qualifier("replicaDataSource") DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);

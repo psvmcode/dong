@@ -21,8 +21,14 @@ public class RedisCacheStore implements CacheStore {
     // 空值标记用字符串，不能用真正的 null，Redis 里 null 和不存在的 key 无法区分
     private static final String EMPTY_MARKER = "null";
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
+    /**
+     * jitterRatio。
+     */
     private final double jitterRatio;
 
     public RedisCacheStore(RedisService redisService, double jitterRatio) {
@@ -31,38 +37,59 @@ public class RedisCacheStore implements CacheStore {
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "redis";
     }
 
     @Override
+    /**
+     * 查询缓存值。
+     */
     public <T> CacheLookup<T> lookup(String key, Class<T> type) {
         String raw = redisService.get(prefixed(key)).orElse(null);
         return decode(raw, json -> JsonUtils.fromJson(json, type));
     }
 
     @Override
+    /**
+     * 查询缓存值。
+     */
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
         String raw = redisService.get(prefixed(key)).orElse(null);
         return decode(raw, json -> JsonUtils.fromJson(json, type));
     }
 
     @Override
+    /**
+     * 放入缓存。
+     */
     public void put(String key, Object value, Duration ttl) {
         redisService.set(prefixed(key), JsonUtils.toJson(value), jitter(ttl));
     }
 
     @Override
+    /**
+     * 放入空值占位，用于防止缓存穿透。
+     */
     public void putEmpty(String key, Duration ttl) {
         redisService.set(prefixed(key), EMPTY_MARKER, ttl);
     }
 
     @Override
+    /**
+     * 清除缓存，用于缓存失效演练。
+     */
     public void evict(String key) {
         redisService.delete(prefixed(key));
     }
 
     @Override
+    /**
+     * 估算缓存大小。
+     */
     public long estimatedSize() {
         Long size = redisService.template().execute(
                 (org.springframework.data.redis.core.RedisCallback<Long>)
@@ -70,6 +97,9 @@ public class RedisCacheStore implements CacheStore {
         return size == null ? 0L : size;
     }
 
+    /**
+     * decode。
+     */
     private <T> CacheLookup<T> decode(String raw, Function<String, T> decoder) {
         if (raw == null) {
             return new CacheLookup.Miss<>();
@@ -91,6 +121,9 @@ public class RedisCacheStore implements CacheStore {
         return ttl.plusMillis(extra);
     }
 
+    /**
+     * prefixed。
+     */
     private String prefixed(String key) {
         return KEY_PREFIX + key;
     }

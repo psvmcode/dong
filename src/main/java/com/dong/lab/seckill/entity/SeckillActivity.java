@@ -5,8 +5,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
+/**
+ * 秒杀活动。记录秒杀商品的库存、价格与时间窗口，
+ * 是 Redis 预减库存、异步落库与限流等实验的载体。
+ */
 @Data
+
 public class SeckillActivity {
 
     /**

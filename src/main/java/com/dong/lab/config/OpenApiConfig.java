@@ -5,11 +5,17 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
+/**
+ * OpenApiConfig，配置类。
+ */
 @Configuration
+
 public class OpenApiConfig {
 
     @Bean
+    /**
+     * dongLabOpenApi。
+     */
     public OpenAPI dongLabOpenApi() {
         return new OpenAPI()
                 .info(new Info()

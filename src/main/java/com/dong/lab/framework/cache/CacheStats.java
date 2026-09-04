@@ -20,26 +20,44 @@ public class CacheStats {
     // 真正回源查数据库的次数，这个值高说明缓存没起作用
     private final LongAdder rebuild = new LongAdder();
 
+    /**
+     * recordL1Hit。
+     */
     public void recordL1Hit() {
         l1Hit.increment();
     }
 
+    /**
+     * recordL2Hit。
+     */
     public void recordL2Hit() {
         l2Hit.increment();
     }
 
+    /**
+     * recordMiss。
+     */
     public void recordMiss() {
         miss.increment();
     }
 
+    /**
+     * recordPenetrationBlocked。
+     */
     public void recordPenetrationBlocked() {
         penetrationBlocked.increment();
     }
 
+    /**
+     * recordRebuild。
+     */
     public void recordRebuild() {
         rebuild.increment();
     }
 
+    /**
+     * reset。
+     */
     public void reset() {
         l1Hit.reset();
         l2Hit.reset();
@@ -59,6 +77,9 @@ public class CacheStats {
                 total == 0 ? 0.0 : (l1Hit.sum() + l2Hit.sum()) * 100.0 / total);
     }
 
+    /**
+     * CacheStatsSnapshot。
+     */
     public record CacheStatsSnapshot(long l1Hit, long l2Hit, long miss,
                                      long penetrationBlocked, long rebuild, double hitRatioPercent) {
     }

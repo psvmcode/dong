@@ -2,17 +2,23 @@ package com.dong.lab.framework.limiter;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-
 /**
  * 限流入口。根据 distributed 选择分布式或本地实现，
  * 并在调用前校验算法是否被该实现支持。
  */
 @Component
 @RequiredArgsConstructor
+
 public class RateLimitManager {
 
+    /**
+     * localRateLimiter。
+     */
     private final LocalRateLimiter localRateLimiter;
 
+    /**
+     * luaRateLimiter。
+     */
     private final LuaRateLimiter luaRateLimiter;
 
     /**

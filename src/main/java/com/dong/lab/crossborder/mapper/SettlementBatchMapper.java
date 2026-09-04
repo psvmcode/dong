@@ -8,14 +8,26 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+/**
+ * SettlementBatchMapper，MyBatis 数据访问接口。
+ */
 @Mapper
+
 public interface SettlementBatchMapper {
 
+    /**
+     * 按 BatchNo 查询记录。
+     */
     SettlementBatch selectByBatchNo(String batchNo);
 
+    /**
+     * 按 Status 查询记录。
+     */
     List<SettlementBatch> selectByStatus(@Param("status") SettlementStatus status, @Param("limit") int limit);
 
+    /**
+     * 查询所有记录。
+     */
     List<SettlementBatch> selectAll();
 
     /**
@@ -25,10 +37,19 @@ public interface SettlementBatchMapper {
     SettlementBatch selectOpenByChannelAndCurrency(@Param("channel") SettlementChannel channel,
                                                    @Param("currency") String currency);
 
+    /**
+     * 插入记录，返回影响行数。
+     */
     int insert(SettlementBatch batch);
 
+    /**
+     * 更新状态，返回影响行数。
+     */
     int updateStatus(@Param("batchNo") String batchNo, @Param("status") SettlementStatus status);
 
+    /**
+     * 更新批次总金额与总笔数。
+     */
     int updateTotal(@Param("batchNo") String batchNo,
                     @Param("totalCount") int totalCount,
                     @Param("totalAmount") java.math.BigDecimal totalAmount);
@@ -38,6 +59,9 @@ public interface SettlementBatchMapper {
      */
     int closeOverdue(@Param("now") LocalDateTime now);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

@@ -19,10 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
-
+/**
+ * ProductServiceImpl，Product 业务服务实现。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class ProductServiceImpl implements ProductService {
 
     private static final String CACHE_KEY_PREFIX = "product:";
@@ -36,12 +39,24 @@ public class ProductServiceImpl implements ProductService {
 
     private static final Duration PRODUCT_TTL = Duration.ofMinutes(10);
 
+    /**
+     * productMapper，MyBatis Mapper 数据访问层。
+     */
     private final ProductMapper productMapper;
 
+    /**
+     * multiLevelCache，缓存组件。
+     */
     private final MultiLevelCache multiLevelCache;
 
+    /**
+     * bloomFilterService，业务服务层。
+     */
     private final BloomFilterService bloomFilterService;
 
+    /**
+     * cacheStats。
+     */
     private final CacheStats cacheStats;
 
     /**
@@ -73,12 +88,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    /**
+     * 分页查询。
+     */
     public PageResult<Product> findByPage(PageRequest request) {
         List<Product> list = productMapper.selectByPage(request.getOffset(), request.getPageSize());
         return PageResult.of(list, productMapper.countAll(), request);
     }
 
     @Override
+    /**
+     * 查询全部。
+     */
     public List<Product> findAll() {
         return productMapper.selectAll();
     }
@@ -120,6 +141,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 删除关注关系。
+     */
     public void delete(Long id) {
         productMapper.deleteById(id);
         multiLevelCache.invalidateEventually(cacheKey(id));
@@ -141,6 +165,9 @@ public class ProductServiceImpl implements ProductService {
         return products.size();
     }
 
+    /**
+     * cacheKey。
+     */
     private String cacheKey(Long id) {
         return CACHE_KEY_PREFIX + id;
     }

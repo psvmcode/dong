@@ -6,12 +6,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 /**
  * 清算批次。cutoffTime 是清算截止时间，渠道每天有固定的清算窗口，
  * 错过就要等下一个窗口，这是跨境汇款到账时间差异的主要原因之一。
  */
 @Data
+
 public class SettlementBatch {
 
     /**

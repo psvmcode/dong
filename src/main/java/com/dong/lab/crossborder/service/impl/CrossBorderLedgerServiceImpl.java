@@ -18,25 +18,40 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-
 /**
  * 账务操作实现。这里的事务能生效，是因为调用方注入的是本 bean 的代理。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
 
+    /**
+     * accountMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderAccountMapper accountMapper;
 
+    /**
+     * remittanceMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderRemittanceMapper remittanceMapper;
 
+    /**
+     * ledgerMapper，MyBatis Mapper 数据访问层。
+     */
     private final AccountLedgerMapper ledgerMapper;
 
+    /**
+     * snowflake。
+     */
     private final Snowflake snowflake;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * debitAndPersist。
+     */
     public void debitAndPersist(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit) {
         int deducted = accountMapper.deduct(payer.getId(), totalDebit, 0);
         if (deducted <= 0) {
@@ -72,6 +87,9 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * creditAndAdvance。
+     */
     public void creditAndAdvance(CrossBorderRemittance remittance) {
         accountMapper.credit(remittance.getPayeeAccountId(), remittance.getTargetAmount());
         recordLedger(remittance, remittance.getPayeeAccountId(), LedgerDirection.CREDIT,

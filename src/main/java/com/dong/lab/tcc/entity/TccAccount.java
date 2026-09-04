@@ -3,8 +3,12 @@ package com.dong.lab.tcc.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * TCC 账户。在 Try-Confirm-Cancel 分布式事务中承担账户余额的预留与扣减，
+ * balance 与 frozen 配合实现资源隔离。
+ */
 @Data
+
 public class TccAccount {
 
     /**

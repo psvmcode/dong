@@ -7,12 +7,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 /**
  * 清算批次响应。渠道按批次清算，cutoffTime 是本批的截止时刻，
  * 之后进来的单子只能等下一批，跨境资金的时效由批次节奏决定。
  */
 @Data
+
 public class SettlementBatchResponse {
 
     /**
@@ -60,6 +60,9 @@ public class SettlementBatchResponse {
      */
     private LocalDateTime updateTime;
 
+    /**
+     * 从实体转换为 DTO。
+     */
     public static SettlementBatchResponse from(SettlementBatch entity) {
         SettlementBatchResponse response = new SettlementBatchResponse();
         response.setBatchNo(entity.getBatchNo());

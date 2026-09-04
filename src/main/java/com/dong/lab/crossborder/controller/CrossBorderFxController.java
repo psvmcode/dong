@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 汇率报价。锁汇是跨境支付的核心概念：
  * 报价在有效期内按锁定汇率成交，过期自动失效需要重新询价。
@@ -25,8 +24,12 @@ import java.util.Map;
 @RequestMapping("/api/crossborder/fx")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-汇率")
+
 public class CrossBorderFxController {
 
+    /**
+     * fxQuoteService，业务服务层。
+     */
     private final FxQuoteService fxQuoteService;
 
     /**

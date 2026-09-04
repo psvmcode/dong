@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
 /**
  * 超时未支付订单回收。库存扣减是即时生效的，
  * 若不回收，用户拍下不付款就会永久占用库存，这是秒杀场景必须处理的漏洞。
@@ -21,15 +20,28 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "lab.seckill", name = "timeout-task-enabled", havingValue = "true", matchIfMissing = true)
+
 public class SeckillTimeoutTask {
 
+    /**
+     * seckillOrderMapper，MyBatis Mapper 数据访问层。
+     */
     private final SeckillOrderMapper seckillOrderMapper;
 
+    /**
+     * seckillStockService，业务服务层。
+     */
     private final SeckillStockService seckillStockService;
 
+    /**
+     * 本地售罄标记，回滚库存后需清除。
+     */
     private final SoldOutFlag soldOutFlag;
 
     @Value("${lab.seckill.payment-timeout-minutes:15}")
+    /**
+     * 支付超时时间，单位分钟。
+     */
     private int paymentTimeoutMinutes;
 
     /**
@@ -48,6 +60,9 @@ public class SeckillTimeoutTask {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 释放单个超时订单，回滚库存并清除售罄标记。
+     */
     public void release(SeckillOrder order) {
         seckillOrderMapper.updateStatus(order.getOrderNo(), SeckillOrderStatus.CANCELLED.getCode());
         seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());

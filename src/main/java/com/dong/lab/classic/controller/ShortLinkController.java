@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
-
 /**
  * 短链接。短码由发号器生成后做 Base62 编码，
  * 因此同一个原始链接每次生成的短码都不同，这是刻意设计，避免被批量遍历。
@@ -25,8 +24,12 @@ import java.net.URI;
 @RequestMapping("/api/classic/short-link")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-短链接")
+
 public class ShortLinkController {
 
+    /**
+     * shortLinkService，业务服务层。
+     */
     private final ShortLinkService shortLinkService;
 
     /**

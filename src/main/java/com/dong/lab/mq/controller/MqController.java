@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 消息实验入口。业务代码只依赖 MessageProducer 接口，
  * 具体走本地总线、RocketMQ 还是 Kafka 由 MqFacade 按配置路由，切换不需要改代码。
@@ -26,10 +25,17 @@ import java.util.Map;
 @RequestMapping("/api/mq")
 @RequiredArgsConstructor
 @Tag(name = "消息")
+
 public class MqController {
 
+    /**
+     * mqProduceService，业务服务层。
+     */
     private final MqProduceService mqProduceService;
 
+    /**
+     * mqConsumeService，业务服务层。
+     */
     private final MqConsumeService mqConsumeService;
 
     /**

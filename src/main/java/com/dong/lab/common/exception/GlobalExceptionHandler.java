@@ -15,18 +15,27 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-
+/**
+ * GlobalExceptionHandler。
+ */
 @Slf4j
 @RestControllerAdvice
+
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
+    /**
+     * handleBusinessException。
+     */
     public Result<Void> handleBusinessException(BusinessException ex) {
         log.info("business exception code={} message={}", ex.getCode(), ex.getMessage());
         return Result.fail(ex.getCode(), ex.getMessage());
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    /**
+     * handleBindException。
+     */
     public Result<Void> handleBindException(BindException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
@@ -36,6 +45,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
+    /**
+     * handleConstraintViolation。
+     */
     public Result<Void> handleConstraintViolation(ConstraintViolationException ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
@@ -44,21 +56,33 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException.class,
             HttpMessageNotReadableException.class,
             HttpRequestMethodNotSupportedException.class})
+    /**
+     * handleRequestException。
+     */
     public Result<Void> handleRequestException(Exception ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
+    /**
+     * handleIllegalArgument。
+     */
     public Result<Void> handleIllegalArgument(IllegalArgumentException ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)
+    /**
+     * handleIllegalState。
+     */
     public Result<Void> handleIllegalState(IllegalStateException ex) {
         return Result.fail(Constants.CODE_OPERATION_CONFLICT, Constants.MESSAGE_OPERATION_CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(DuplicateKeyException.class)
+    /**
+     * handleDuplicateKey。
+     */
     public Result<Void> handleDuplicateKey(DuplicateKeyException ex) {
         log.info("duplicate key rejected: {}", ex.getMessage());
         return Result.fail(Constants.CODE_OPERATION_CONFLICT, Constants.MESSAGE_OPERATION_CONFLICT, "record already exists");
@@ -66,6 +90,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    /**
+     * handleUnexpected。
+     */
     public Result<Void> handleUnexpected(Exception ex) {
         log.error("unexpected error", ex);
         return Result.fail(Constants.CODE_INTERNAL_ERROR, Constants.MESSAGE_INTERNAL_ERROR, ex.getMessage());

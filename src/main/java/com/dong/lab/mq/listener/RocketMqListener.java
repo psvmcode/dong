@@ -20,8 +20,14 @@ import java.util.List;
         consumerGroup = "dong-lab-consumer",
         messageModel = MessageModel.CLUSTERING
 )
+/**
+ * RocketMqListener。
+ */
 public class RocketMqListener implements RocketMQListener<MessageExt> {
 
+    /**
+     * handlers。
+     */
     private final List<MessageHandler> handlers;
 
     public RocketMqListener(List<MessageHandler> handlers) {
@@ -29,6 +35,9 @@ public class RocketMqListener implements RocketMQListener<MessageExt> {
     }
 
     @Override
+    /**
+     * onMessage。
+     */
     public void onMessage(MessageExt message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         String topic = message.getTopic();

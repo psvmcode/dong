@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
-
 /**
  * {@code @RateLimited} 注解切面。在方法执行前尝试获取配额，
  * 拿不到就抛业务异常，由全局异常处理器转成 429 对应的错误码。
@@ -30,15 +29,22 @@ import java.time.Duration;
 @Aspect
 @Component
 @RequiredArgsConstructor
+
 public class RateLimitAspect {
 
     private static final ExpressionParser PARSER = new SpelExpressionParser();
 
     private static final ParameterNameDiscoverer NAME_DISCOVERER = new DefaultParameterNameDiscoverer();
 
+    /**
+     * rateLimitManager。
+     */
     private final RateLimitManager rateLimitManager;
 
     @Around("@annotation(rateLimited)")
+    /**
+     * around。
+     */
     public Object around(ProceedingJoinPoint joinPoint, RateLimited rateLimited) throws Throwable {
         Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
         String key = resolveKey(rateLimited.key(), method, joinPoint.getArgs());
@@ -57,6 +63,9 @@ public class RateLimitAspect {
         return joinPoint.proceed();
     }
 
+    /**
+     * resolveKey。
+     */
     private String resolveKey(String expression, Method method, Object[] args) {
         if (!expression.contains("#") && !expression.contains("'")) {
             return expression;

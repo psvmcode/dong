@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 第二数据源账户实现。数据源与事务管理器都与主库独立，
  * 用于演示多数据源配置与本地事务边界。
@@ -23,12 +22,19 @@ import java.util.Map;
 @Service
 @ConditionalOnProperty(prefix = "lab.mariadb", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
+
 public class UserAccountServiceImpl implements UserAccountService {
 
+    /**
+     * userAccountMapper，MyBatis Mapper 数据访问层。
+     */
     private final UserAccountMapper userAccountMapper;
 
     @Override
     @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
+    /**
+     * 创建记录。
+     */
     public Long create(Long userId, String username, long balance) {
         UserAccount existing = userAccountMapper.selectByUserId(userId);
         if (existing != null) {
@@ -46,17 +52,26 @@ public class UserAccountServiceImpl implements UserAccountService {
     }
 
     @Override
+    /**
+     * findByUserId。
+     */
     public UserAccount findByUserId(Long userId) {
         return userAccountMapper.selectByUserId(userId);
     }
 
     @Override
+    /**
+     * 查询全部。
+     */
     public List<UserAccount> findAll() {
         return userAccountMapper.selectAll();
     }
 
     @Override
     @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
+    /**
+     * transfer。
+     */
     public long transfer(Long fromUserId, Long toUserId, long amount) {
         UserAccount from = requireAccount(fromUserId);
         UserAccount to = requireAccount(toUserId);
@@ -71,6 +86,9 @@ public class UserAccountServiceImpl implements UserAccountService {
     }
 
     @Override
+    /**
+     * consistencyCheck。
+     */
     public Map<String, Object> consistencyCheck(Long userId) {
         UserAccount first = userAccountMapper.selectByUserId(userId);
         UserAccount second = userAccountMapper.selectByUserId(userId);
@@ -82,6 +100,9 @@ public class UserAccountServiceImpl implements UserAccountService {
         return result;
     }
 
+    /**
+     * requireAccount。
+     */
     private UserAccount requireAccount(Long userId) {
         UserAccount account = userAccountMapper.selectByUserId(userId);
         if (account == null) {

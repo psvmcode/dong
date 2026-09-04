@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
-
 /**
  * 秒杀库存实现。查余额、扣减、记录用户三步由一条 Lua 脚本完成，
  * 原子性由 Redis 单线程保证，因此不需要分布式锁，也不存在读改写竞态。
@@ -24,6 +23,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SeckillStockServiceImpl implements SeckillStockService {
 
     private static final String STOCK = "lab:seckill:stock:";
@@ -58,11 +58,20 @@ public class SeckillStockServiceImpl implements SeckillStockService {
 
     private static final RedisScript<Long> DEDUCT = new DefaultRedisScript<>(DEDUCT_SCRIPT, Long.class);
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
+    /**
+     * 本地售罄标记，库存归零后短路后续请求。
+     */
     private final SoldOutFlag soldOutFlag;
 
     @Override
+    /**
+     * 预热库存到 Redis。
+     */
     public void prepare(Long activityId, int totalStock) {
         redisService.set(stockKey(activityId), String.valueOf(totalStock), STOCK_TTL);
         redisService.delete(participantsKey(activityId));
@@ -70,6 +79,9 @@ public class SeckillStockServiceImpl implements SeckillStockService {
     }
 
     @Override
+    /**
+     * 扣减库存，返回扣减后的剩余库存或负数表示失败。
+     */
     public int deduct(Long activityId, Long userId, int quantity) {
         Long result = redisService.execute(DEDUCT,
                 List.of(stockKey(activityId), participantsKey(activityId)), quantity, userId);
@@ -94,19 +106,31 @@ public class SeckillStockServiceImpl implements SeckillStockService {
     }
 
     @Override
+    /**
+     * 查询剩余库存。
+     */
     public int available(Long activityId) {
         return Integer.parseInt(redisService.get(stockKey(activityId)).orElse("-1"));
     }
 
     @Override
+    /**
+     * 清空库存记录。
+     */
     public void clear(Long activityId) {
         redisService.delete(List.of(stockKey(activityId), participantsKey(activityId)));
     }
 
+    /**
+     * 构造库存 Redis Key。
+     */
     private String stockKey(Long activityId) {
         return STOCK + activityId;
     }
 
+    /**
+     * 构造参与者集合 Redis Key。
+     */
     private String participantsKey(Long activityId) {
         return PARTICIPANTS + activityId;
     }

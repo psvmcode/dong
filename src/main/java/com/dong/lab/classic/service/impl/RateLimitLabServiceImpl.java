@@ -12,7 +12,6 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-
 /**
  * 限流算法对比实现。四种算法在同一突发流量下放行数量差异明显：
  * 固定窗口在边界处最多放过两倍配额，滑动窗口精确但占内存，
@@ -21,16 +20,26 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class RateLimitLabServiceImpl implements RateLimitLabService {
 
+    /**
+     * rateLimitManager。
+     */
     private final RateLimitManager rateLimitManager;
 
     @Override
+    /**
+     * 对比限流效果。
+     */
     public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts, boolean distributed) {
         return compare(bizKey, limit, windowSeconds, attempts, distributed, 0L);
     }
 
     @Override
+    /**
+     * 对比限流效果。
+     */
     public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts,
                                        boolean distributed, long delayMillis) {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -75,6 +84,9 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
         return allowed;
     }
 
+    /**
+     * 模拟耗时操作。
+     */
     private void sleep(long millis) {
         try {
             Thread.sleep(millis);

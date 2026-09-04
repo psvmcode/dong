@@ -25,6 +25,9 @@ import java.sql.SQLException;
  */
 public final class CrossBorderEnumTypeHandler {
 
+    /**
+     * CrossBorderEnumTypeHandler。
+     */
     private CrossBorderEnumTypeHandler() {
     }
 
@@ -38,18 +41,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public RemittanceStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : RemittanceStatus.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public RemittanceStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : RemittanceStatus.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public RemittanceStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : RemittanceStatus.of(value);
@@ -67,18 +94,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public FxQuoteStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : FxQuoteStatus.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public FxQuoteStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : FxQuoteStatus.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public FxQuoteStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : FxQuoteStatus.of(value);
@@ -96,18 +147,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ComplianceCheckType getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : ComplianceCheckType.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ComplianceCheckType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : ComplianceCheckType.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ComplianceCheckType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ComplianceCheckType.of(value);
@@ -125,18 +200,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ComplianceResult getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : ComplianceResult.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ComplianceResult getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : ComplianceResult.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ComplianceResult getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ComplianceResult.of(value);
@@ -154,18 +253,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public LedgerDirection getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : LedgerDirection.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public LedgerDirection getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : LedgerDirection.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public LedgerDirection getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : LedgerDirection.of(value);
@@ -183,18 +306,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public SettlementChannel getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : SettlementChannel.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public SettlementChannel getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : SettlementChannel.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public SettlementChannel getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : SettlementChannel.of(value);
@@ -212,18 +359,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public SettlementStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : SettlementStatus.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public SettlementStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : SettlementStatus.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public SettlementStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : SettlementStatus.of(value);
@@ -241,18 +412,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ReconDiffType getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : ReconDiffType.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ReconDiffType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : ReconDiffType.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public ReconDiffType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ReconDiffType.of(value);
@@ -274,18 +469,42 @@ public final class CrossBorderEnumTypeHandler {
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnName 列名
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public AccountEventType getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : AccountEventType.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public AccountEventType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : AccountEventType.of(value);
         }
 
         @Override
+    /**
+     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     *
+     * @param rs 结果集
+     * @param columnIndex 列索引
+     * @return 枚举值或 null
+     * @throws SQLException SQL 异常
+     */
         public AccountEventType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : AccountEventType.of(value);

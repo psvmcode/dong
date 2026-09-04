@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 /**
  * TCC 协调者实现。依次驱动各参与者的 Try、Confirm、Cancel。
  *
@@ -39,6 +38,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class TccCoordinatorServiceImpl implements TccCoordinatorService {
 
     private static final String ORDER_NO_PREFIX = "TC";
@@ -47,12 +47,24 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
 
     private static final long UNIT_PRICE = 1000L;
 
+    /**
+     * tccTransactionMapper，MyBatis Mapper 数据访问层。
+     */
     private final TccTransactionMapper tccTransactionMapper;
 
+    /**
+     * tccParticipantMapper，MyBatis Mapper 数据访问层。
+     */
     private final TccParticipantMapper tccParticipantMapper;
 
+    /**
+     * TCC 参与者列表。
+     */
     private final List<TccParticipant> participants;
 
+    /**
+     * 雪花 ID 生成器。
+     */
     private final Snowflake snowflake;
 
     /**
@@ -127,6 +139,9 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
     }
 
     @Override
+    /**
+     * 查询事务状态。
+     */
     public Map<String, Object> status(String xid) {
         TccTransaction transaction = tccTransactionMapper.selectByXid(xid);
         if (transaction == null) {
@@ -145,6 +160,9 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
     }
 
     @Override
+    /**
+     * 查询事务的各分支记录。
+     */
     public List<TccBranch> branches(String xid) {
         return tccTransactionMapper.selectBranches(xid);
     }
@@ -185,6 +203,9 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 初始化演示用的库存与账户。
+     */
     public void seed(Long userId, Long productId, int available, long balance) {
         TccInventory inventory = tccParticipantMapper.selectInventory(productId);
         if (inventory == null) {
@@ -230,6 +251,9 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
     }
 
+    /**
+     * 取消指定事务下的所有分支。
+     */
     private void cancelBranches(String xid, List<TccBranch> branches) {
         Map<String, Object> payload = branches.isEmpty()
                 ? Map.of()
@@ -273,6 +297,9 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         tccTransactionMapper.insertBranch(branch);
     }
 
+    /**
+     * 获取最大重试次数。
+     */
     private int maxRetry() {
         return MAX_RETRY;
     }

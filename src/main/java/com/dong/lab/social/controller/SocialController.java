@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 /**
  * 微博模型。关注关系用 Set 存储，天然支持交集运算，
  * 共同关注就是一次求交，不需要在应用层循环比对。
@@ -27,8 +26,12 @@ import java.util.Map;
 @RequestMapping("/api/social")
 @RequiredArgsConstructor
 @Tag(name = "社交关系")
+
 public class SocialController {
 
+    /**
+     * socialService，业务服务层。
+     */
     private final SocialService socialService;
 
     /**

@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-
 /**
  * 失效事件总线，基于 Redis 发布订阅，把失效广播给所有节点。
  *
@@ -17,13 +16,20 @@ import java.util.function.Consumer;
  * 注意事件必须带来源节点并做过滤，否则自己发的消息又触发自己清理一遍。
  */
 @Slf4j
+
 public class CacheEventBus {
 
     @Getter
     private final String nodeId = UUID.randomUUID().toString().substring(0, 8);
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
+    /**
+     * channel。
+     */
     private final String channel;
 
     private final List<Consumer<CacheInvalidationEvent>> listeners = new CopyOnWriteArrayList<>();
@@ -33,14 +39,23 @@ public class CacheEventBus {
         this.channel = channel;
     }
 
+    /**
+     * register。
+     */
     public void register(Consumer<CacheInvalidationEvent> listener) {
         listeners.add(listener);
     }
 
+    /**
+     * getChannel。
+     */
     public String getChannel() {
         return channel;
     }
 
+    /**
+     * publishInvalidation。
+     */
     public void publishInvalidation(String key) {
         CacheInvalidationEvent event = new CacheInvalidationEvent(key, nodeId, System.currentTimeMillis());
         redisService.publish(channel, JsonUtils.toJson(event));

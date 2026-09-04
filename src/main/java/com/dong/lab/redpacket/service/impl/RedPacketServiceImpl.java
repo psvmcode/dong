@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
 /**
  * 抢红包实现。发红包时就把金额算好并推入 Redis，
  * 抢的时候只是一次原子弹出，因此不需要锁，金额也能精确守恒。
@@ -27,18 +26,31 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class RedPacketServiceImpl implements RedPacketService {
 
     private static final String PACKET_NO_PREFIX = "RP";
 
+    /**
+     * redPacketMapper，MyBatis Mapper 数据访问层。
+     */
     private final RedPacketMapper redPacketMapper;
 
+    /**
+     * redPacketStockService，业务服务层。
+     */
     private final RedPacketStockService redPacketStockService;
 
+    /**
+     * snowflake，分布式唯一 ID 生成器。
+     */
     private final Snowflake snowflake;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 发红包，预分配金额后写入 Redis 并返回红包编号。
+     */
     public String send(RedPacketSendRequest request) {
         String packetNo = PACKET_NO_PREFIX + snowflake.nextId();
         RedPacket redPacket = request.toEntity(packetNo);
@@ -54,6 +66,9 @@ public class RedPacketServiceImpl implements RedPacketService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 抢红包，从预分配列表中原子弹出一份。
+     */
     public GrabResultResponse grab(String packetNo, Long userId) {
         RedPacket redPacket = findByPacketNo(packetNo);
         if (redPacket.getStatus() == RedPacketStatus.FINISHED) {
@@ -81,6 +96,9 @@ public class RedPacketServiceImpl implements RedPacketService {
     }
 
     @Override
+    /**
+     * 按红包编号查询红包详情。
+     */
     public RedPacket findByPacketNo(String packetNo) {
         RedPacket redPacket = redPacketMapper.selectByPacketNo(packetNo);
         if (redPacket == null) {
@@ -90,16 +108,25 @@ public class RedPacketServiceImpl implements RedPacketService {
     }
 
     @Override
+    /**
+     * 查询红包领取记录。
+     */
     public List<RedPacketRecord> records(String packetNo) {
         return redPacketMapper.selectRecords(packetNo);
     }
 
     @Override
+    /**
+     * 查询红包剩余份数。
+     */
     public int remainCount(String packetNo) {
         return redPacketStockService.remainCount(packetNo);
     }
 
     @Override
+    /**
+     * 查询红包剩余金额。
+     */
     public long remainAmount(String packetNo) {
         return redPacketStockService.remainAmount(packetNo);
     }

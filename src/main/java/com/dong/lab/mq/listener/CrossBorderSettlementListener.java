@@ -25,8 +25,14 @@ import java.util.List;
         consumerGroup = "dong-lab-crossborder-consumer",
         messageModel = MessageModel.CLUSTERING
 )
+/**
+ * CrossBorderSettlementListener。
+ */
 public class CrossBorderSettlementListener implements RocketMQListener<MessageExt> {
 
+    /**
+     * handlers。
+     */
     private final List<MessageHandler> handlers;
 
     public CrossBorderSettlementListener(List<MessageHandler> handlers) {
@@ -34,6 +40,9 @@ public class CrossBorderSettlementListener implements RocketMQListener<MessageEx
     }
 
     @Override
+    /**
+     * onMessage。
+     */
     public void onMessage(MessageExt message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         String topic = message.getTopic();

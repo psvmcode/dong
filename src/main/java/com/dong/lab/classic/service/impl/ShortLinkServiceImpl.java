@@ -15,7 +15,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-
 /**
  * 短链接实现。短码由发号器生成后做 Base62 编码，
  * 同一原始链接每次生成的短码都不同，避免被批量遍历。
@@ -23,6 +22,7 @@ import java.time.Duration;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class ShortLinkServiceImpl implements ShortLinkService {
 
     private static final String CODE_CACHE = "lab:short:";
@@ -35,15 +35,30 @@ public class ShortLinkServiceImpl implements ShortLinkService {
 
     private static final Duration NULL_TTL = Duration.ofMinutes(10);
 
+    /**
+     * shortLinkMapper，MyBatis Mapper 数据访问层。
+     */
     private final ShortLinkMapper shortLinkMapper;
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
+    /**
+     * redissonClient。
+     */
     private final RedissonClient redissonClient;
 
+    /**
+     * snowflake。
+     */
     private final Snowflake snowflake;
 
     @Override
+    /**
+     * 创建记录。
+     */
     public String create(String originUrl) {
         String code = Base62Utils.encode(snowflake.nextId());
         ShortLink shortLink = new ShortLink();
@@ -81,6 +96,9 @@ public class ShortLinkServiceImpl implements ShortLinkService {
     }
 
     @Override
+    /**
+     * findByCode。
+     */
     public ShortLink findByCode(String code) {
         ShortLink shortLink = shortLinkMapper.selectByCode(code);
         if (shortLink == null) {
@@ -90,10 +108,16 @@ public class ShortLinkServiceImpl implements ShortLinkService {
     }
 
     @Override
+    /**
+     * hitCount。
+     */
     public long hitCount(String code) {
         return redissonClient.getAtomicLong(HIT_COUNTER + code).get();
     }
 
+    /**
+     * countHit。
+     */
     private void countHit(String code) {
         RAtomicLong counter = redissonClient.getAtomicLong(HIT_COUNTER + code);
         counter.incrementAndGet();

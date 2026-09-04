@@ -11,7 +11,6 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-
 /**
  * Kafka 发送适配器。
  *
@@ -23,14 +22,21 @@ import java.time.Duration;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "lab.kafka", name = "enabled", havingValue = "true")
+
 public class KafkaProducerAdapter implements MessageProducer {
 
     // Kafka 无原生延迟消息，用这个头记录生效时间戳，消费端据此暂存
     public static final String NOT_BEFORE_HEADER = "lab-not-before";
 
+    /**
+     * kafkaTemplate。
+     */
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     @Override
+    /**
+     * send。
+     */
     public void send(String topic, String key, Object payload) {
         send(topic, key, payload, null, 0L);
     }
@@ -53,10 +59,16 @@ public class KafkaProducerAdapter implements MessageProducer {
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "kafka";
     }
 
+    /**
+     * send。
+     */
     private void send(String topic, String key, Object payload, String shardingKey, long notBefore) {
         String body = payload instanceof String text ? text : JsonUtils.toJson(payload);
         MessageBuilder<String> builder = MessageBuilder.withPayload(body)
@@ -77,6 +89,9 @@ public class KafkaProducerAdapter implements MessageProducer {
         });
     }
 
+    /**
+     * partitionOf。
+     */
     private int partitionOf(String shardingKey, int partitions) {
         if (partitions <= 1) {
             return 0;
@@ -84,6 +99,9 @@ public class KafkaProducerAdapter implements MessageProducer {
         return Math.floorMod(shardingKey.hashCode(), partitions);
     }
 
+    /**
+     * partitionCount。
+     */
     private int partitionCount(String topic) {
         try {
             var partitions = kafkaTemplate.partitionsFor(topic);

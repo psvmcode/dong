@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
 /**
  * 抢红包。核心设计是发红包时就把金额算好并放进 Redis List，
  * 抢的时候只是一次原子弹出，全程没有锁也没有事务，再多人同时点也不会竞争。
@@ -27,8 +26,12 @@ import java.util.List;
 @RequestMapping("/api/red-packet")
 @RequiredArgsConstructor
 @Tag(name = "抢红包")
+
 public class RedPacketController {
 
+    /**
+     * redPacketService，业务服务层。
+     */
     private final RedPacketService redPacketService;
 
     /**

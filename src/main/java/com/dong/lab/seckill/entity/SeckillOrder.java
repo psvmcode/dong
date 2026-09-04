@@ -5,8 +5,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
+/**
+ * 秒杀订单。记录用户在某场秒杀活动中购买的商品、数量与支付状态，
+ * 订单生成依赖 Redis 预减库存结果，后续进入支付超时处理。
+ */
 @Data
+
 public class SeckillOrder {
 
     /**

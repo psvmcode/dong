@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
 /**
  * 操作日志实现。基于 MongoDB，
  * 适合字段会随业务演进、结构不固定的日志数据。
@@ -27,13 +26,23 @@ import java.util.List;
 @Service
 @ConditionalOnProperty(prefix = "lab.mongodb", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
+
 public class OperationLogServiceImpl implements OperationLogService {
 
+    /**
+     * operationLogRepository，数据仓库层。
+     */
     private final OperationLogRepository operationLogRepository;
 
+    /**
+     * mongoTemplate。
+     */
     private final MongoTemplate mongoTemplate;
 
     @Override
+    /**
+     * 保存记录。
+     */
     public String save(OperationLogRequest request) {
         OperationLogDocument document = new OperationLogDocument();
         document.setBizType(request.getBizType());
@@ -48,6 +57,9 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     @Override
+    /**
+     * 分页查询。
+     */
     public PageResult<OperationLogDocument> findByPage(String bizType, int pageNum, int pageSize) {
         PageRequest request = PageRequest.of(pageNum, pageSize);
         Query query = new Query();
@@ -62,6 +74,9 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     @Override
+    /**
+     * count。
+     */
     public long count() {
         return operationLogRepository.count();
     }

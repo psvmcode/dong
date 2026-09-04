@@ -19,7 +19,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
-
 /**
  * 清算消息消费者。收到扣款成功的消息后给收款方入账。
  *
@@ -38,14 +37,24 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class CrossBorderSettlementHandler implements MessageHandler {
 
     private static final long DEFAULT_CUTOFF_MINUTES = 30L;
 
+    /**
+     * remittanceMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderRemittanceMapper remittanceMapper;
 
+    /**
+     * batchMapper，MyBatis Mapper 数据访问层。
+     */
     private final SettlementBatchMapper batchMapper;
 
+    /**
+     * ledgerService，业务服务层。
+     */
     private final CrossBorderLedgerService ledgerService;
 
     private final LongAdder processed = new LongAdder();
@@ -55,11 +64,17 @@ public class CrossBorderSettlementHandler implements MessageHandler {
     private final LongAdder skipped = new LongAdder();
 
     @Override
+    /**
+     * topic。
+     */
     public String topic() {
         return "cross-border-settlement";
     }
 
     @Override
+    /**
+     * handle。
+     */
     public boolean handle(String key, String payload) {
         Map<String, Object> message = JsonUtils.fromJson(payload, new TypeReference<>() {
         });
@@ -118,18 +133,30 @@ public class CrossBorderSettlementHandler implements MessageHandler {
         }
     }
 
+    /**
+     * creditAndAdvance。
+     */
     private void creditAndAdvance(CrossBorderRemittance remittance) {
         ledgerService.creditAndAdvance(remittance);
     }
 
+    /**
+     * processedCount。
+     */
     public long processedCount() {
         return processed.sum();
     }
 
+    /**
+     * duplicatedCount。
+     */
     public long duplicatedCount() {
         return duplicated.sum();
     }
 
+    /**
+     * skippedCount。
+     */
     public long skippedCount() {
         return skipped.sum();
     }

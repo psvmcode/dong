@@ -7,12 +7,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-
 /**
  * 对账报告。一轮对账跑完后的完整结论，
  * 含本地与渠道的汇总数、差异明细与处理状态。
  */
 @Data
+
 public class ReconReportResponse {
 
     /**

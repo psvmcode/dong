@@ -16,8 +16,14 @@ public interface SettlementService {
      */
     String createBatch(SettlementChannel channel, String currency, long cutoffMinutes);
 
+    /**
+     * findByBatchNo。
+     */
     SettlementBatchResponse findByBatchNo(String batchNo);
 
+    /**
+     * 查询全部。
+     */
     List<SettlementBatchResponse> findAll();
 
     /**
@@ -37,6 +43,9 @@ public interface SettlementService {
      */
     int settle(String batchNo);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

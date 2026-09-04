@@ -3,8 +3,12 @@ package com.dong.lab.replica.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * 用户账户。读写分离实验场景中的核心账户，
+ * 写走主库、读走从库，验证主从延迟与读写路由策略。
+ */
 @Data
+
 public class UserAccount {
 
     /**

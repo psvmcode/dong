@@ -23,7 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 /**
  * 微博模型实现。关注关系用两个 Set 双向维护：
  * following 记录我关注的人，follower 记录关注我的人。
@@ -32,24 +31,43 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SocialServiceImpl implements SocialService {
 
     private static final String FOLLOWING = "lab:social:following:";
 
     private static final String FOLLOWER = "lab:social:follower:";
 
+    /**
+     * socialRelationMapper，MyBatis Mapper 数据访问层。
+     */
     private final SocialRelationMapper socialRelationMapper;
 
+    /**
+     * socialFeedMapper，MyBatis Mapper 数据访问层。
+     */
     private final SocialFeedMapper socialFeedMapper;
 
+    /**
+     * socialTimelineService，业务服务层。
+     */
     private final SocialTimelineService socialTimelineService;
 
+    /**
+     * Redisson 客户端，用于操作分布式 Set。
+     */
     private final RedissonClient redissonClient;
 
+    /**
+     * 雪花 ID 生成器。
+     */
     private final Snowflake snowflake;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 关注指定用户。
+     */
     public void follow(Long followerId, Long followeeId) {
         if (followerId.equals(followeeId)) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "cannot follow yourself");
@@ -70,6 +88,9 @@ public class SocialServiceImpl implements SocialService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 取消关注指定用户。
+     */
     public void unfollow(Long followerId, Long followeeId) {
         socialRelationMapper.delete(followerId, followeeId);
         followingSet(followerId).remove(followeeId);
@@ -79,11 +100,17 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 判断是否已关注。
+     */
     public boolean isFollowing(Long followerId, Long followeeId) {
         return followingSet(followerId).contains(followeeId);
     }
 
     @Override
+    /**
+     * 查询关注列表。
+     */
     public List<Long> followees(Long followerId) {
         Collection<Long> cached = followingSet(followerId).readAll();
         return cached == null || cached.isEmpty()
@@ -92,6 +119,9 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 查询粉丝列表。
+     */
     public List<Long> followers(Long followeeId) {
         Collection<Long> cached = followerSet(followeeId).readAll();
         return cached == null || cached.isEmpty()
@@ -100,6 +130,9 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 查询关注数与粉丝数。
+     */
     public Map<String, Long> counts(Long userId) {
         Map<String, Long> counts = new LinkedHashMap<>();
         long following = followingSet(userId).size();
@@ -110,6 +143,9 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 查询两个用户的共同关注。
+     */
     public List<Long> commonFollowees(Long firstUserId, Long secondUserId) {
         Set<Long> first = new HashSet<>(followees(firstUserId));
         Set<Long> second = new HashSet<>(followees(secondUserId));
@@ -119,6 +155,9 @@ public class SocialServiceImpl implements SocialService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 发布动态，并分发给所有粉丝。
+     */
     public long publishFeed(Long authorId, String content) {
         long feedId = snowflake.nextId();
         SocialFeed feed = new SocialFeed();
@@ -133,6 +172,9 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 查询推模式时间线。
+     */
     public List<FeedResponse> timelinePush(Long userId, int size) {
         return socialTimelineService.readTimeline(userId, size).stream()
                 .map(this::toResponse)
@@ -140,6 +182,9 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 查询拉模式时间线。
+     */
     public List<FeedResponse> timelinePull(Long userId, int pageNum, int pageSize) {
         List<Long> followees = followees(userId);
         if (followees.isEmpty()) {
@@ -153,6 +198,9 @@ public class SocialServiceImpl implements SocialService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 给动态点赞，返回点赞后总数。
+     */
     public long like(Long feedId) {
         socialFeedMapper.increaseLikeCount(feedId);
         SocialFeed feed = socialFeedMapper.selectByFeedId(feedId);
@@ -160,6 +208,9 @@ public class SocialServiceImpl implements SocialService {
     }
 
     @Override
+    /**
+     * 查询用户关系总览。
+     */
     public Map<String, Object> relationSummary(Long userId) {
         Map<String, Object> summary = new LinkedHashMap<>(counts(userId));
         summary.put("followeeList", followees(userId));
@@ -167,14 +218,23 @@ public class SocialServiceImpl implements SocialService {
         return summary;
     }
 
+    /**
+     * 将动态实体转换为响应对象。
+     */
     private FeedResponse toResponse(SocialFeed feed) {
         return FeedResponse.from(feed);
     }
 
+    /**
+     * 获取某用户的关注集合。
+     */
     private RSet<Long> followingSet(Long userId) {
         return redissonClient.getSet(FOLLOWING + userId);
     }
 
+    /**
+     * 获取某用户的粉丝集合。
+     */
     private RSet<Long> followerSet(Long userId) {
         return redissonClient.getSet(FOLLOWER + userId);
     }

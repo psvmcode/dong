@@ -3,8 +3,12 @@ package com.dong.lab.redpacket.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * 红包领取记录。记录某个用户抢到某个红包的金额与时间，
+ * 与红包表配合用于展示领取明细和核对总金额。
+ */
 @Data
+
 public class RedPacketRecord {
 
     /**

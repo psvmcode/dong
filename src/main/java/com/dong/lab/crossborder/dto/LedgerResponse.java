@@ -6,12 +6,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 /**
  * 账户流水响应。balanceAfter 是记账后的余额快照，
  * 把全部流水按时间排列即可还原每一步之后的余额，这是审计核对的基础。
  */
 @Data
+
 public class LedgerResponse {
 
     /**
@@ -59,6 +59,9 @@ public class LedgerResponse {
      */
     private LocalDateTime createTime;
 
+    /**
+     * 从实体转换为 DTO。
+     */
     public static LedgerResponse from(AccountLedger entity) {
         LedgerResponse response = new LedgerResponse();
         response.setLedgerNo(entity.getLedgerNo());
@@ -72,6 +75,9 @@ public class LedgerResponse {
         return response;
     }
 
+    /**
+     * 从实体转换为 DTO。
+     */
     public static LedgerResponse from(AccountLedger entity, String accountNo) {
         LedgerResponse response = from(entity);
         response.setAccountNo(accountNo);

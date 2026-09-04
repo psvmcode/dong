@@ -16,21 +16,36 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.net.URI;
-
+/**
+ * ElasticsearchConfig，配置类。
+ */
 @Configuration
 @ConditionalOnProperty(prefix = "lab.elasticsearch", name = "enabled", havingValue = "true")
+
 public class ElasticsearchConfig {
 
     @Value("${spring.elasticsearch.uris:127.0.0.1:9200}")
+    /**
+     * uris。
+     */
     private String uris;
 
     @Value("${spring.elasticsearch.username:}")
+    /**
+     * username。
+     */
     private String username;
 
     @Value("${spring.elasticsearch.password:}")
+    /**
+     * password。
+     */
     private String password;
 
     @Bean(destroyMethod = "close")
+    /**
+     * restClient。
+     */
     public RestClient restClient() {
         HttpHost[] hosts = java.util.Arrays.stream(uris.split(","))
                 .map(String::trim)
@@ -47,12 +62,18 @@ public class ElasticsearchConfig {
     }
 
     @Bean(destroyMethod = "")
+    /**
+     * elasticsearchClient。
+     */
     public ElasticsearchClient elasticsearchClient(RestClient restClient) {
         RestClientTransport transport =
                 new RestClientTransport(restClient, new JacksonJsonpMapper(JsonUtils.mapper()));
         return new ElasticsearchClient(transport);
     }
 
+    /**
+     * toHttpHost。
+     */
     private static HttpHost toHttpHost(String value) {
         String normalized = value.contains("://") ? value : "http://" + value;
         URI uri = URI.create(normalized);

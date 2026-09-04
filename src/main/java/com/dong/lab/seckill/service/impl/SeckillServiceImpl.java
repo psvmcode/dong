@@ -31,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 /**
  * 秒杀实现。四道防线依次生效：
  * 限流令牌桶挡住超出承载力的流量，
@@ -42,28 +41,53 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SeckillServiceImpl implements SeckillService {
 
     private static final String ORDER_NO_PREFIX = "SK";
 
     private static final String TOPIC = "seckill-order-created";
 
+    /**
+     * seckillActivityMapper，MyBatis Mapper 数据访问层。
+     */
     private final SeckillActivityMapper seckillActivityMapper;
 
+    /**
+     * seckillOrderMapper，MyBatis Mapper 数据访问层。
+     */
     private final SeckillOrderMapper seckillOrderMapper;
 
+    /**
+     * seckillStockService，业务服务层。
+     */
     private final SeckillStockService seckillStockService;
 
+    /**
+     * 本地售罄标记，库存归零后短路后续请求。
+     */
     private final SoldOutFlag soldOutFlag;
 
+    /**
+     * 消息生产者，用于异步创建订单。
+     */
     private final MessageProducer messageProducer;
 
+    /**
+     * 秒杀订单创建处理器，用于统计运行时状态。
+     */
     private final SeckillOrderCreatedHandler seckillOrderCreatedHandler;
 
+    /**
+     * 雪花 ID 生成器。
+     */
     private final Snowflake snowflake;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 创建秒杀活动。
+     */
     public Long createActivity(SeckillActivityRequest request) {
         SeckillActivity activity = request.toEntity();
         seckillActivityMapper.insert(activity);
@@ -73,6 +97,9 @@ public class SeckillServiceImpl implements SeckillService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 预热库存到 Redis 并开启活动。
+     */
     public int prepare(Long activityId) {
         SeckillActivity activity = requireActivity(activityId);
         seckillStockService.prepare(activityId, activity.getTotalStock());
@@ -91,6 +118,9 @@ public class SeckillServiceImpl implements SeckillService {
     @RateLimited(key = "'seckill:activity:' + #activityId",
             limit = 200, window = 1, unit = TimeUnit.SECONDS,
             algorithm = RateLimitAlgorithm.TOKEN_BUCKET)
+    /**
+     * 秒杀下单，先扣 Redis 库存再异步建单。
+     */
     public SeckillReceiptResponse seckill(Long activityId, Long userId, int quantity) {
         if (quantity <= 0) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "quantity must be positive");
@@ -137,16 +167,25 @@ public class SeckillServiceImpl implements SeckillService {
     }
 
     @Override
+    /**
+     * 查询 Redis 中的剩余库存。
+     */
     public int stockOf(Long activityId) {
         return seckillStockService.available(activityId);
     }
 
     @Override
+    /**
+     * 查询全部活动。
+     */
     public List<SeckillActivity> activities() {
         return seckillActivityMapper.selectAll();
     }
 
     @Override
+    /**
+     * 按订单号查询订单。
+     */
     public SeckillOrder order(String orderNo) {
         SeckillOrder order = seckillOrderMapper.selectByOrderNo(orderNo);
         if (order == null) {
@@ -157,6 +196,9 @@ public class SeckillServiceImpl implements SeckillService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 支付秒杀订单。
+     */
     public void pay(String orderNo) {
         SeckillOrder order = order(orderNo);
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
@@ -169,6 +211,9 @@ public class SeckillServiceImpl implements SeckillService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    /**
+     * 取消订单并回滚库存。
+     */
     public void cancel(String orderNo) {
         SeckillOrder order = order(orderNo);
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
@@ -182,6 +227,9 @@ public class SeckillServiceImpl implements SeckillService {
     }
 
     @Override
+    /**
+     * 查看运行时状态，含售罄标记与订单统计。
+     */
     public Map<String, Object> runtime() {
         Map<String, Object> runtime = new LinkedHashMap<>();
         runtime.put("soldOutShortCircuited", soldOutFlag.shortCircuitedCount());
@@ -190,6 +238,9 @@ public class SeckillServiceImpl implements SeckillService {
         return runtime;
     }
 
+    /**
+     * 判断活动是否处于可参与状态。
+     */
     private boolean isActive(SeckillActivity activity) {
         LocalDateTime now = LocalDateTime.now();
         return activity.getStatus() == SeckillActivityStatus.ONLINE
@@ -197,6 +248,9 @@ public class SeckillServiceImpl implements SeckillService {
                 && !now.isAfter(activity.getEndTime());
     }
 
+    /**
+     * 根据活动 id 查询活动，不存在则抛出异常。
+     */
     private SeckillActivity requireActivity(Long activityId) {
         SeckillActivity activity = seckillActivityMapper.selectById(activityId);
         if (activity == null) {

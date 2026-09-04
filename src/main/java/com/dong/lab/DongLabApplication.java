@@ -19,8 +19,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         ElasticsearchClientAutoConfiguration.class,
         ElasticsearchDataAutoConfiguration.class
 })
+/**
+ * DongLabApplication。
+ */
 public class DongLabApplication {
 
+    /**
+     * 程序入口。
+     */
     public static void main(String[] args) {
         SpringApplication.run(DongLabApplication.class, args);
     }

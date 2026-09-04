@@ -10,10 +10,13 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
+/**
+ * SwaggerUiConfig，配置类。
+ */
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
+
 public class SwaggerUiConfig implements WebMvcConfigurer {
 
     private static final String WEBJAR_VERSION = "5.32.11";
@@ -22,9 +25,15 @@ public class SwaggerUiConfig implements WebMvcConfigurer {
 
     private static final String SWAGGER_WEB_MVC_CONFIGURER = "swaggerWebMvcConfigurer";
 
+    /**
+     * environment。
+     */
     private final Environment environment;
 
     @Bean
+    /**
+     * springdocResourceConfigurerRemover。
+     */
     public static BeanDefinitionRegistryPostProcessor springdocResourceConfigurerRemover() {
         return registry -> {
             if (registry.containsBeanDefinition(SWAGGER_WEB_MVC_CONFIGURER)) {
@@ -34,11 +43,17 @@ public class SwaggerUiConfig implements WebMvcConfigurer {
     }
 
     @Override
+    /**
+     * addViewControllers。
+     */
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addRedirectViewController("/swagger-ui.html", "/swagger-ui/index.html");
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    /**
+     * logEndpoints。
+     */
     public void logEndpoints() {
         String port = environment.getProperty("local.server.port", "8090");
         String host = "http://127.0.0.1:" + port;

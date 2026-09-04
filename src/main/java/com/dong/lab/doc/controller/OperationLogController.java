@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 /**
  * 操作日志。用 MongoDB 存储，因为日志字段会随业务不断演进，
  * 无 schema 的特性避免了每次加字段都要改表结构。
@@ -27,9 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/doc/operation-log")
 @RequiredArgsConstructor
 @Tag(name = "文档-操作日志")
+
 public class OperationLogController {
 
     // ObjectProvider 是因为 MongoDB 默认关闭，关闭时容器里没有对应 bean
+    /**
+     * operationLogServiceProvider，缓存提供者。
+     */
     private final ObjectProvider<OperationLogService> operationLogServiceProvider;
 
     /**
@@ -61,6 +64,9 @@ public class OperationLogController {
         return Result.success(requireService().count());
     }
 
+    /**
+     * requireService。
+     */
     private OperationLogService requireService() {
         OperationLogService service = operationLogServiceProvider.getIfAvailable();
         if (service == null) {

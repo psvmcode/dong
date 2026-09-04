@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
 /**
  * 商品接口。它是缓存实验的载体，
  * findById 与 findByIdGuarded 构成一对可直接对比的读路径。
@@ -30,8 +29,12 @@ import java.util.List;
 @RequestMapping("/api/cache/products")
 @RequiredArgsConstructor
 @Tag(name = "缓存-商品")
+
 public class ProductController {
 
+    /**
+     * productService，业务服务层。
+     */
     private final ProductService productService;
 
     /**

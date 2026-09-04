@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 /**
  * 跨境账户与制裁名单。账户按币种分开，
  * 因为各币种资金分开清算，不能混在一个余额里。
@@ -30,10 +29,17 @@ import java.util.Map;
 @RequestMapping("/api/crossborder")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-账户")
+
 public class CrossBorderAccountController {
 
+    /**
+     * accountService，业务服务层。
+     */
     private final CrossBorderAccountService accountService;
 
+    /**
+     * complianceService，业务服务层。
+     */
     private final ComplianceService complianceService;
 
     /**

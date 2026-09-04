@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-
 /**
  * 延迟队列实现。基于 Redisson 的延迟队列，
  * 到期后转入目标队列再被消费。
@@ -19,10 +18,14 @@ import java.util.List;
  */
 @Slf4j
 @Service
+
 public class DelayQueueServiceImpl implements DelayQueueService {
 
     private static final String QUEUE = "lab:delay:queue";
 
+    /**
+     * delayedQueue。
+     */
     private final RDelayedQueue<String> delayedQueue;
 
     public DelayQueueServiceImpl(RedissonClient redissonClient) {
@@ -31,12 +34,18 @@ public class DelayQueueServiceImpl implements DelayQueueService {
     }
 
     @Override
+    /**
+     * offer。
+     */
     public void offer(String payload, Duration delay) {
         delayedQueue.offer(payload, delay.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
         log.info("delay queue offered payload={} delay={}ms", payload, delay.toMillis());
     }
 
     @Override
+    /**
+     * take。
+     */
     public List<String> take(int limit) {
         List<String> items = new ArrayList<>();
         for (int i = 0; i < limit; i++) {
@@ -50,6 +59,9 @@ public class DelayQueueServiceImpl implements DelayQueueService {
     }
 
     @Override
+    /**
+     * size。
+     */
     public long size() {
         return delayedQueue.size();
     }

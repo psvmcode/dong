@@ -2,6 +2,9 @@ package com.dong.lab.cache.service;
 
 import java.util.Map;
 
+/**
+ * CacheLabService，业务服务接口。
+ */
 public interface CacheLabService {
 
     /**

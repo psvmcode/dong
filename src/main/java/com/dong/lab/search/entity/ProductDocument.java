@@ -4,8 +4,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
+/**
+ * 商品搜索文档。与 MySQL 商品表对应，用于 Elasticsearch 全文检索、
+ * 聚合分析与搜索高亮演示。
+ */
 @Data
+
 public class ProductDocument {
 
     /**

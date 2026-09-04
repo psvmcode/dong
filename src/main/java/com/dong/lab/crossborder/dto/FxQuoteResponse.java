@@ -6,12 +6,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 /**
  * 汇率报价响应。expired 与 validSeconds 由服务端按当前时间计算，
  * 客户端不再自行判断有效期，避免客户端时钟偏差导致拿过期报价去成交。
  */
 @Data
+
 public class FxQuoteResponse {
 
     /**
@@ -59,6 +59,9 @@ public class FxQuoteResponse {
      */
     private long validSeconds;
 
+    /**
+     * 从实体转换为 DTO。
+     */
     public static FxQuoteResponse from(FxQuote entity) {
         FxQuoteResponse response = new FxQuoteResponse();
         response.setQuoteNo(entity.getQuoteNo());

@@ -41,6 +41,9 @@ public interface ComplianceService {
      */
     void removeSanction(String ownerName);
 
+    /**
+     * sanctionCount。
+     */
     long sanctionCount();
 
     /**

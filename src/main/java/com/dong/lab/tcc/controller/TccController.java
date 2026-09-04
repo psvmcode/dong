@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 /**
  * 分布式事务 TCC。三阶段依次是 Try 冻结资源、Confirm 确认扣减、Cancel 释放冻结。
  *
@@ -32,8 +31,12 @@ import java.util.Map;
 @RequestMapping("/api/tcc")
 @RequiredArgsConstructor
 @Tag(name = "分布式事务-TCC")
+
 public class TccController {
 
+    /**
+     * tccCoordinatorService，业务服务层。
+     */
     private final TccCoordinatorService tccCoordinatorService;
 
     /**

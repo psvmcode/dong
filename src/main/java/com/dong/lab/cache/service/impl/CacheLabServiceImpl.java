@@ -11,14 +11,23 @@ import org.springframework.stereotype.Service;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
-
+/**
+ * CacheLabServiceImpl，CacheLab 业务服务实现。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class CacheLabServiceImpl implements CacheLabService {
 
+    /**
+     * productService，业务服务层。
+     */
     private final ProductService productService;
 
+    /**
+     * cacheStats。
+     */
     private final CacheStats cacheStats;
 
     /**

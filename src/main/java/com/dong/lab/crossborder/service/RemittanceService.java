@@ -29,12 +29,24 @@ public interface RemittanceService {
      */
     RemittanceResponse create(RemittanceCreateRequest request);
 
+    /**
+     * findByRemittanceNo。
+     */
     RemittanceResponse findByRemittanceNo(String remittanceNo);
 
+    /**
+     * findByIdempotentKey。
+     */
     RemittanceResponse findByIdempotentKey(String idempotentKey);
 
+    /**
+     * 分页查询。
+     */
     PageResult<RemittanceResponse> findByPage(RemittanceStatus status, int pageNum, int pageSize);
 
+    /**
+     * findByBatchNo。
+     */
     List<RemittanceResponse> findByBatchNo(String batchNo);
 
     /**
@@ -66,6 +78,9 @@ public interface RemittanceService {
      */
     Map<String, Object> runtime();
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

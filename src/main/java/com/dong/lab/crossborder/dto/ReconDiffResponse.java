@@ -6,12 +6,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 /**
  * 对账差异响应。diffAmount 为正表示渠道比本地多（长款），
  * 为负表示渠道比本地少（短款），零差异才是核销的前提。
  */
 @Data
+
 public class ReconDiffResponse {
 
     /**
@@ -54,6 +54,9 @@ public class ReconDiffResponse {
      */
     private LocalDateTime createTime;
 
+    /**
+     * 从实体转换为 DTO。
+     */
     public static ReconDiffResponse from(ReconDiff entity) {
         ReconDiffResponse response = new ReconDiffResponse();
         response.setBatchNo(entity.getBatchNo());

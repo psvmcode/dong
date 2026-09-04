@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
 /**
  * 清算与对账。清算按批次走，渠道有固定的清算窗口；
  * 对账把渠道回单与本地流水比对，差异逐笔记账由运营处理。
@@ -28,10 +27,17 @@ import java.util.Map;
 @RequestMapping("/api/crossborder/settlement")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-清算")
+
 public class CrossBorderSettlementController {
 
+    /**
+     * settlementService，业务服务层。
+     */
     private final SettlementService settlementService;
 
+    /**
+     * reconDiffMapper，MyBatis Mapper 数据访问层。
+     */
     private final ReconDiffMapper reconDiffMapper;
 
     /**

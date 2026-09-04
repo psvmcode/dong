@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.LongAdder;
-
 /**
  * 跨境汇款实现。
  *
@@ -62,6 +61,7 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class RemittanceServiceImpl implements RemittanceService {
 
     public static final String SETTLEMENT_TOPIC = "cross-border-settlement";
@@ -74,26 +74,59 @@ public class RemittanceServiceImpl implements RemittanceService {
     private static final int ACCOUNT_STATUS_ACTIVE = 1;
 
 
+    /**
+     * remittanceMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderRemittanceMapper remittanceMapper;
 
+    /**
+     * accountMapper，MyBatis Mapper 数据访问层。
+     */
     private final CrossBorderAccountMapper accountMapper;
 
+    /**
+     * ledgerMapper，MyBatis Mapper 数据访问层。
+     */
     private final AccountLedgerMapper ledgerMapper;
 
+    /**
+     * ledgerService，业务服务层。
+     */
     private final CrossBorderLedgerService ledgerService;
 
+    /**
+     * complianceService，业务服务层。
+     */
     private final ComplianceService complianceService;
 
+    /**
+     * fxQuoteService，业务服务层。
+     */
     private final FxQuoteService fxQuoteService;
 
+    /**
+     * distributedLockService，业务服务层。
+     */
     private final DistributedLockService distributedLockService;
 
+    /**
+     * channelRouter。
+     */
     private final ChannelRouter channelRouter;
 
+    /**
+     * amlMonitor。
+     */
     private final AmlMonitor amlMonitor;
 
+    /**
+     * mqFacade。
+     */
     private final MqFacade mqFacade;
 
+    /**
+     * snowflake。
+     */
     private final Snowflake snowflake;
 
     private final LongAdder created = new LongAdder();
@@ -113,6 +146,9 @@ public class RemittanceServiceImpl implements RemittanceService {
     private final LongAdder reviewRejected = new LongAdder();
 
     @Override
+    /**
+     * 创建记录。
+     */
     public RemittanceResponse create(RemittanceCreateRequest request) {
         CrossBorderRemittance existing = remittanceMapper.selectByIdempotentKey(request.getIdempotentKey());
         if (existing != null) {
@@ -141,6 +177,9 @@ public class RemittanceServiceImpl implements RemittanceService {
         }
     }
 
+    /**
+     * doCreate。
+     */
     private RemittanceResponse doCreate(RemittanceCreateRequest request) {
         CrossBorderAccount payer = requireAccount(request.getPayerAccountNo());
         CrossBorderAccount payee = requireAccount(request.getPayeeAccountNo());
@@ -253,6 +292,9 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
+    /**
+     * findByRemittanceNo。
+     */
     public RemittanceResponse findByRemittanceNo(String remittanceNo) {
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null) {
@@ -263,6 +305,9 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
+    /**
+     * findByIdempotentKey。
+     */
     public RemittanceResponse findByIdempotentKey(String idempotentKey) {
         CrossBorderRemittance remittance = remittanceMapper.selectByIdempotentKey(idempotentKey);
         if (remittance == null) {
@@ -273,6 +318,9 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
+    /**
+     * 分页查询。
+     */
     public PageResult<RemittanceResponse> findByPage(RemittanceStatus status, int pageNum, int pageSize) {
         PageRequest pageRequest = PageRequest.of(pageNum, pageSize);
         List<CrossBorderRemittance> list = remittanceMapper.selectPage(status,
@@ -282,6 +330,9 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
+    /**
+     * findByBatchNo。
+     */
     public List<RemittanceResponse> findByBatchNo(String batchNo) {
         return toResponses(remittanceMapper.selectByBatchNo(batchNo));
     }
@@ -411,10 +462,16 @@ public class RemittanceServiceImpl implements RemittanceService {
         return findByRemittanceNo(remittanceNo);
     }
 
+    /**
+     * appendNote。
+     */
     private String appendNote(String note) {
         return note == null || note.isBlank() ? "" : ", note: " + note;
     }
 
+    /**
+     * requireRemittance。
+     */
     private CrossBorderRemittance requireRemittance(String remittanceNo) {
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null) {
@@ -503,6 +560,9 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
+    /**
+     * runtime。
+     */
     public Map<String, Object> runtime() {
         Map<String, Object> runtime = new LinkedHashMap<>();
         Map<Integer, Long> grouped = new HashMap<>();
@@ -526,12 +586,18 @@ public class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     public int clearAll() {
         int affected = remittanceMapper.clearAll();
         ledgerMapper.clearAll();
         return affected;
     }
 
+    /**
+     * buildRemittance。
+     */
     private CrossBorderRemittance buildRemittance(RemittanceCreateRequest request, CrossBorderAccount payer,
                                                   CrossBorderAccount payee, SettlementChannel channel) {
         CrossBorderRemittance remittance = new CrossBorderRemittance();
@@ -588,6 +654,9 @@ public class RemittanceServiceImpl implements RemittanceService {
         return account;
     }
 
+    /**
+     * toResponse。
+     */
     private RemittanceResponse toResponse(CrossBorderRemittance remittance) {
         CrossBorderAccount payer = accountMapper.selectById(remittance.getPayerAccountId());
         CrossBorderAccount payee = accountMapper.selectById(remittance.getPayeeAccountId());

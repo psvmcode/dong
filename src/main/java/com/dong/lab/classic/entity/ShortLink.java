@@ -3,8 +3,12 @@ package com.dong.lab.classic.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * 短链接。code 字段由发号器生成后 Base62 编码，
+ * 通过 code 上的唯一索引实现短码到原始链接的快速映射。
+ */
 @Data
+
 public class ShortLink {
 
     /**

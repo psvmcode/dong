@@ -5,16 +5,31 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-
+/**
+ * ReconDiffMapper，MyBatis 数据访问接口。
+ */
 @Mapper
+
 public interface ReconDiffMapper {
 
+    /**
+     * 按 BatchNo 查询记录。
+     */
     List<ReconDiff> selectByBatchNo(String batchNo);
 
+    /**
+     * 查询所有记录。
+     */
     List<ReconDiff> selectAll(@Param("limit") int limit);
 
+    /**
+     * 查询未处理的差异记录。
+     */
     List<ReconDiff> selectUnhandled(@Param("limit") int limit);
 
+    /**
+     * 插入记录，返回影响行数。
+     */
     int insert(ReconDiff diff);
 
     /**
@@ -22,10 +37,19 @@ public interface ReconDiffMapper {
      */
     int batchInsert(@Param("items") List<ReconDiff> items);
 
+    /**
+     * 统计未处理的差异记录数。
+     */
     long countUnhandled();
 
+    /**
+     * 按批次和差异类型统计记录数。
+     */
     long countByBatchAndType(@Param("batchNo") String batchNo, @Param("diffType") int diffType);
 
+    /**
+     * 批量标记差异为已处理。
+     */
     int markHandled(@Param("batchNo") String batchNo);
 
     /**
@@ -39,6 +63,9 @@ public interface ReconDiffMapper {
      */
     int deleteByBatchNo(@Param("batchNo") String batchNo);
 
+    /**
+     * 清空全部数据，仅测试场景使用。
+     */
     int clearAll();
 
 }

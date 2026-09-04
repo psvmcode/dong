@@ -3,8 +3,12 @@ package com.dong.lab.social.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-
+/**
+ * 社交动态。记录用户发布的内容、点赞数等，
+ * 点赞数通过 Redis 异步自增，定时任务刷回数据库。
+ */
 @Data
+
 public class SocialFeed {
 
     /**

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Set;
-
 /**
  * 分布式限流器，四种算法全部用 Lua 脚本在 Redis 上实现，计数全局共享。
  *
@@ -33,6 +32,7 @@ import java.util.Set;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+
 public class LuaRateLimiter implements RateLimiter {
 
     /**
@@ -161,9 +161,15 @@ public class LuaRateLimiter implements RateLimiter {
 
     private static final RedisScript<Long> LEAKY_BUCKET = new DefaultRedisScript<>(LEAKY_BUCKET_SCRIPT, Long.class);
 
+    /**
+     * redisService，业务服务层。
+     */
     private final RedisService redisService;
 
     @Override
+    /**
+     * tryAcquire。
+     */
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
         long windowMs = Math.max(1L, rule.window().toMillis());
         String base = KEY_PREFIX + rule.algorithm().name().toLowerCase() + ":" + key
@@ -190,11 +196,17 @@ public class LuaRateLimiter implements RateLimiter {
     }
 
     @Override
+    /**
+     * supportedAlgorithms。
+     */
     public Set<RateLimitAlgorithm> supportedAlgorithms() {
         return Set.of(RateLimitAlgorithm.values());
     }
 
     @Override
+    /**
+     * name。
+     */
     public String name() {
         return "lua";
     }

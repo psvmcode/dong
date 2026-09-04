@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 /**
  * 推模式时间线实现。发动态时同步写给所有粉丝，
  * 读的时候直接取结果，代价是粉丝量大的账号写放大严重。
@@ -20,17 +19,27 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+
 public class SocialTimelineServiceImpl implements SocialTimelineService {
 
     private static final String TIMELINE = "lab:social:timeline:";
 
     private static final int FAN_OUT_BATCH = 500;
 
+    /**
+     * socialFeedMapper，MyBatis Mapper 数据访问层。
+     */
     private final SocialFeedMapper socialFeedMapper;
 
+    /**
+     * Redisson 客户端，用于操作有序时间线集合。
+     */
     private final RedissonClient redissonClient;
 
     @Override
+    /**
+     * 把动态分发给所有粉丝的时间线。
+     */
     public void fanOutToFollowers(Long authorId, Long feedId, List<Long> followerIds) {
         if (followerIds == null || followerIds.isEmpty()) {
             return;
@@ -43,6 +52,9 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
     }
 
     @Override
+    /**
+     * 重建某个用户的时间线，新关注时补齐历史动态。
+     */
     public void rebuildTimelineFor(Long userId, List<Long> followeeIds) {
         RScoredSortedSet<Long> timeline = timelineOf(userId);
         timeline.delete();
@@ -55,6 +67,9 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
     }
 
     @Override
+    /**
+     * 读取某用户的时间线。
+     */
     public List<SocialFeed> readTimeline(Long userId, int size) {
         Collection<Long> feedIds = timelineOf(userId).valueRangeReversed(0, size - 1);
         if (feedIds == null || feedIds.isEmpty()) {
@@ -70,6 +85,9 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
         return feeds;
     }
 
+    /**
+     * 获取某用户的时间线有序集合。
+     */
     private RScoredSortedSet<Long> timelineOf(Long userId) {
         return redissonClient.getScoredSortedSet(TIMELINE + userId);
     }
