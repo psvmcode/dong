@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.order.mapper.OrderTransitionLogMapper">
+    <!-- 状态流转日志。每次事件都留痕，被守卫拦下和被并发抢先也记，
+         这样并发实验的结论可以用日志条数来核对，而不是只看最终状态 -->
+
+    <resultMap id="logMap" type="com.dong.lab.order.entity.OrderTransitionLog">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="from_status" property="fromStatus"/>
+        <result column="to_status" property="toStatus"/>
+        <result column="event" property="event"/>
+        <result column="result" property="result"/>
+        <result column="reason" property="reason"/>
+        <result column="operator" property="operator"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="logColumns">
+        id, order_no, from_status, to_status, event, result, reason, operator, create_time
+    </sql>
+
+    <!-- 查询订单的流转记录 -->
+    <select id="selectByOrderNo" resultMap="logMap">
+        select
+        <include refid="logColumns"/>
+        from trade_order_transition_log
+        where order_no = #{orderNo}
+        order by id asc
+    </select>
+
+    <!-- 统计流转记录条数 -->
+    <select id="countByOrderNo" resultType="java.lang.Integer">
+        select count(1)
+        from trade_order_transition_log
+        where order_no = #{orderNo}
+    </select>
+
+    <!-- 写入流转记录 -->
+    <insert id="insert" parameterType="com.dong.lab.order.entity.OrderTransitionLog"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into trade_order_transition_log (order_no, from_status, to_status, event, result, reason, operator)
+        values (#{orderNo}, #{fromStatus}, #{toStatus}, #{event}, #{result}, #{reason}, #{operator})
+    </insert>
+
+    <!-- 清空流转记录 -->
+    <delete id="deleteByOrderNo">
+        delete from trade_order_transition_log
+        where order_no = #{orderNo}
+    </delete>
+
+</mapper>

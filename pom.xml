@@ -30,6 +30,7 @@
         <mybatis-spring.version>3.0.4</mybatis-spring.version>
         <knife4j.version>4.5.0</knife4j.version>
         <springdoc.version>2.9.0</springdoc.version>
+        <cola-statemachine.version>5.0.0</cola-statemachine.version>
     </properties>
 
     <dependencies>
@@ -92,6 +93,11 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cola</groupId>
+            <artifactId>cola-component-statemachine</artifactId>
+            <version>${cola-statemachine.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>

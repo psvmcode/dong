@@ -59,6 +59,7 @@
 | 文档 | `/api/doc` | MongoDB | 无 schema 日志 | 字段可随业务演进 |
 | 多数据源 | `/api/replica` | MariaDB | 第二数据源、独立事务管理器 | 一致性检查通过 |
 | 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、人工审核、账户冻结、异步清算、对账 | 金额精确到分，余额流水一致 |
+| 订单状态机 | `/api/order` | MySQL + COLA StateMachine | 守卫、内部迁移、条件分支回退、乐观锁并发 | 16 线程抢推，仅 1 次成功 |
 
 ---
 
@@ -193,7 +194,8 @@ src/main/java/com/dong/lab/
 ├── mq/                         消息场景：顺序、延迟、幂等、批量
 ├── doc/                        MongoDB：无 schema 日志
 ├── replica/                    MariaDB：第二数据源、独立事务管理器
-└── crossborder/                跨境支付：幂等、锁汇、合规筛查、人工审核、账户冻结、异步清算、对账
+├── crossborder/                跨境支付：幂等、锁汇、合规筛查、人工审核、账户冻结、异步清算、对账
+└── order/                      订单履约状态机：COLA 状态机、守卫、内部迁移、条件分支、乐观锁并发
 
 src/main/resources/
 ├── application.yml             唯一配置文件，全部连接指向云服务器
@@ -664,6 +666,69 @@ curl 'http://127.0.0.1:8090/api/crossborder/remittance/runtime'
 
 **账户冻结的幂等语义**：条件更新 `update ... set status=冻结 where status=激活`，重复冻结第二次匹配不到行，直接报冲突而不是把事件记录写重。状态变更与事件落库在同一事务，不会出现「冻了账户却没留痕」。
 
+### 5.12 订单履约状态机（order）
+
+全项目唯一引入第三方状态机组件的场景，用 COLA StateMachine 把履约规则显式化。状态只能由事件推进，接口层不提供任何直接改状态的入口——绕过状态机的口子一旦开了一个，规则迟早会被绕过。
+
+**七种状态**：待支付 → 待发货 → 待收货 → 已完成，外加已取消、退款中、已退款。
+**九种事件**：支付、取消、超时、发货、确认收货、催单、申请退款、退款成功、退款失败。
+
+```bash
+# 1. 创建订单，初始停在待支付
+curl -X POST http://127.0.0.1:8090/api/order -H 'Content-Type: application/json' \
+  -d '{"userId":1001,"productName":"机械键盘","quantity":1,"payAmount":399.00}'
+
+# 2. 当前状态能触发哪些事件 → ["PAY","CANCEL","TIMEOUT"]
+curl http://127.0.0.1:8090/api/order/TO.../available-events
+
+# 3. 待支付直接发货，被状态机拦下 → order TO... cannot handle SHIP
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"SHIP","trackingNo":"SF001"}'
+
+# 4. 支付不传流水号，被守卫拦下 → guard rejected event PAY from WAIT_PAY
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"PAY"}'
+
+# 5. 正常链路：支付 → 发货 → 确认收货
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"PAY","payNo":"PAY20260905001"}'
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"SHIP","trackingNo":"SF20260905001"}'
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"RECEIVE"}'
+```
+
+**催单是内部迁移**：状态不变，只累加催单次数。实测触发后 `status` 仍是 `WAIT_SHIP`，`urgeCount` 从 0 变 1，而 `version` 纹丝不动——这正是内部迁移与外部迁移的区别。
+
+**退款失败走条件分支**：同一个事件配两条迁移，靠守卫分流，退回发起退款前的状态而不是固定退回某一个。COLA 要求这种情况下每条迁移都必须带 `when`，否则装配期直接报错，这个约束反而挡住了歧义配置。
+
+```bash
+# 待收货 → 退款中 → 退款失败，退回待收货（而不是固定退回待发货）
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"APPLY_REFUND","refundAmount":399.00}'
+curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: application/json' \
+  -d '{"event":"REFUND_FAIL","reason":"bank rejected"}'
+```
+
+**并发实验**：多个线程同时对同一张订单发货，对比带不带乐观锁的差别。
+
+```bash
+curl -X POST 'http://127.0.0.1:8090/api/order/benchmark?threads=16&mode=cas'
+# → successCount=1      blockedCount=15    finalVersion=2   跑 5 轮，结果完全一致
+
+curl -X POST 'http://127.0.0.1:8090/api/order/benchmark?threads=16&mode=none'
+# → successCount=13~16  blockedCount=0~3   finalVersion=1   跑 5 轮，每轮都不一样
+```
+
+16 线程并发推进各跑 5 轮的实测：带乐观锁时 `successCount` 恒为 1、`finalVersion` 恒为 2，结果完全可预期；不带时 `successCount` 在 13 到 16 之间浮动，而 `finalVersion` 始终是 1——这些「成功」只是互相覆盖，连谁先谁后都无从追溯。
+
+有意思的是 none 模式并非每次都是 16。读到旧状态的线程会重复推进，而读到新状态的线程会被状态机拦下（待收货不能再发货），浮动的幅度取决于这两拨线程的时序。**两道防线拦的本就不是同一类问题**：状态机拦非法跃迁，乐观锁拦并发覆盖。
+
+**两个认知要点**：
+
+- **状态机管不了并发**。COLA 状态机是无状态的，只回答「从某状态收到某事件该去哪」，不持有当前状态，因此可以被所有线程共享。真正的并发安全靠落库时的 `where status=期望 and version=当前`。两者职责不同，缺一不可：少了状态机，非法跃迁能绕过；少了乐观锁，两个线程能同时推进同一个订单。
+- **被拒绝不等于没发生**。`fireEvent` 在迁移被拒时返回的是原状态，与内部迁移的返回值完全一样，光看返回值区分不了「被拦下」和「原地打转」。因此每个 action 都往上下文写 `accepted` 标记，只有 action 真被执行过才算通过。
+
 ---
 ## 六、开关化设计
 
@@ -1003,6 +1068,18 @@ return algorithm == RateLimitAlgorithm.TOKEN_BUCKET ? RateType.OVERALL : RateTyp
 **另一个认知修正**：令牌桶与漏桶在持续请求下会略超 `limit`，这不是超额。它们限制的是平均速率而非窗口内瞬时总量，请求期间配额本就按速率恢复。实测 `limit=10`、窗口 6 秒、30 次请求打到远程 Redis 约耗时一到两秒，期间补充了几个额度，因此放行 11 个。
 
 **对比实验的设计要点**：只打一轮突发区分不出算法，四种都会放行 `limit` 个。差异体现在配额如何恢复，所以接口提供了 `gapMillis` 参数打两轮，第二轮的结果才有区分度（见 5.2 节的实测表）。
+
+### 21. 新增上下文的 Mapper 忘了登记
+
+新建 `order` 模块后应用启动失败，报 `No qualifying bean of type 'TradeOrderMapper' available`。项目用了多数据源，主库的 Mapper 必须在 `config/PrimaryMybatisConfig` 的 `@MapperScan(basePackages = ...)` 里逐个登记，只在接口上加 `@Mapper` 不够——自动扫描会把它注册到默认的 SessionFactory，与主数据源指定的那一个不是同一个。
+
+解法是在 `basePackages` 里补上 `com.dong.lab.order.mapper`。以后每加一个走主库的上下文，都要同步这一处。
+
+### 22. COLA 内部迁移没有 to 环节
+
+外部迁移的链式调用是 `from → to → on`，内部迁移却是 `within → on`，中间没有 `to`，因为 `within` 已经把源和目标都置成了同一个状态，`To` 接口上只有 `on(E)`。
+
+第一版照着外部迁移的习惯写成 `.within(X).to(X)`，编译直接报找不到 `to`。教训是链式 DSL 的方法签名要逐个确认，不同分支的链路长度未必相同。
 
 ---
 

@@ -373,3 +373,49 @@ create table if not exists user_account
     unique key uk_user (user_id)
 ) engine = innodb
   default charset = utf8mb4;
+
+use dong_lab;
+
+-- 订单履约状态机主表。status 由状态机驱动，version 负责并发下的乐观锁；
+-- refund_from 记录发起退款前的状态，退款失败时才知道该退回哪一个状态
+create table if not exists trade_order
+(
+    id             bigint unsigned not null auto_increment,
+    order_no       varchar(32)     not null,
+    user_id        bigint unsigned not null default 0,
+    product_name   varchar(128)    not null default '',
+    quantity       int             not null default 1,
+    pay_amount     decimal(12, 2)  not null default 0,
+    refund_amount  decimal(12, 2)  not null default 0,
+    status         tinyint         not null default 1,
+    refund_from    tinyint         not null default 0,
+    tracking_no    varchar(64)     not null default '',
+    pay_no         varchar(64)     not null default '',
+    urge_count     int             not null default 0,
+    version        int             not null default 0,
+    create_time    datetime        not null default current_timestamp,
+    update_time    datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    unique key uk_order_no (order_no),
+    key idx_status (status)
+) engine = innodb
+  default charset = utf8mb4;
+
+-- 状态流转日志。成功与失败都记，用来量化验证并发实验结果：
+-- N 个线程抢同一个订单时，成功条数应当恒为 1
+create table if not exists trade_order_transition_log
+(
+    id           bigint unsigned not null auto_increment,
+    order_no     varchar(32)     not null,
+    from_status  tinyint         not null default 0,
+    to_status    tinyint         not null default 0,
+    event        varchar(32)     not null default '',
+    result       tinyint         not null default 0,
+    reason       varchar(255)    not null default '',
+    operator     varchar(64)     not null default '',
+    create_time  datetime        not null default current_timestamp,
+    primary key (id),
+    key idx_order_no (order_no),
+    key idx_create_time (create_time)
+) engine = innodb
+  default charset = utf8mb4;

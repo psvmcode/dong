@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.lab.order.mapper.TradeOrderMapper">
+    <!-- 订单表。status 由状态机驱动，updateStatus 带期望状态与版本号，
+         并发下只有一个线程能推进成功；updateStatusUnlocked 是对比实验用的反面教材 -->
+
+    <resultMap id="orderMap" type="com.dong.lab.order.entity.TradeOrder">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="product_name" property="productName"/>
+        <result column="quantity" property="quantity"/>
+        <result column="pay_amount" property="payAmount"/>
+        <result column="refund_amount" property="refundAmount"/>
+        <result column="status" property="status" javaType="com.dong.lab.order.enums.OrderStatus"/>
+        <result column="refund_from" property="refundFrom"/>
+        <result column="tracking_no" property="trackingNo"/>
+        <result column="pay_no" property="payNo"/>
+        <result column="urge_count" property="urgeCount"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="orderColumns">
+        id, order_no, user_id, product_name, quantity, pay_amount, refund_amount, status,
+        refund_from, tracking_no, pay_no, urge_count, version, create_time, update_time
+    </sql>
+
+    <!-- 按订单号查订单 -->
+    <select id="selectByOrderNo" resultMap="orderMap">
+        select
+        <include refid="orderColumns"/>
+        from trade_order
+        where order_no = #{orderNo}
+    </select>
+
+    <!-- 最近创建的订单 -->
+    <select id="selectRecent" resultMap="orderMap">
+        select
+        <include refid="orderColumns"/>
+        from trade_order
+        order by id desc
+        limit #{limit}
+    </select>
+
+    <!-- 插入订单，订单号唯一索引兜底防重 -->
+    <insert id="insert" parameterType="com.dong.lab.order.entity.TradeOrder"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into trade_order (order_no, user_id, product_name, quantity, pay_amount, refund_amount,
+                                 status, refund_from, tracking_no, pay_no, urge_count, version)
+        values (#{orderNo}, #{userId}, #{productName}, #{quantity}, #{payAmount}, #{refundAmount},
+                #{status}, #{refundFrom}, #{trackingNo}, #{payNo}, #{urgeCount}, #{version})
+    </insert>
+
+    <!-- 乐观锁推进状态，业务字段只写非空值，防止旧值覆盖新值 -->
+    <update id="updateStatus">
+        update trade_order
+        <set>
+            status = #{order.status},
+            version = version + 1,
+            <if test="order.payNo != null">pay_no = #{order.payNo},</if>
+            <if test="order.trackingNo != null">tracking_no = #{order.trackingNo},</if>
+            <if test="order.refundFrom != null">refund_from = #{order.refundFrom},</if>
+            <if test="order.refundAmount != null">refund_amount = #{order.refundAmount},</if>
+            update_time = now()
+        </set>
+        where order_no = #{order.orderNo}
+          and status = #{expected}
+          and version = #{order.version}
+    </update>
+
+    <!-- 无保护推进状态，不带期望状态与版本号，并发下会互相覆盖 -->
+    <update id="updateStatusUnlocked">
+        update trade_order
+        set status = #{status},
+            update_time = now()
+        where order_no = #{orderNo}
+    </update>
+
+    <!-- 累加催单次数 -->
+    <update id="increaseUrgeCount">
+        update trade_order
+        set urge_count = urge_count + 1,
+            update_time = now()
+        where order_no = #{orderNo}
+    </update>
+
+    <!-- 删除订单 -->
+    <delete id="deleteByOrderNo">
+        delete from trade_order
+        where order_no = #{orderNo}
+    </delete>
+
+</mapper>

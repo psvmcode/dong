@@ -13,7 +13,8 @@ import org.springframework.context.annotation.Configuration;
                 "com.dong.lab.social.mapper",
                 "com.dong.lab.tcc.mapper",
                 "com.dong.lab.mq.mapper",
-                "com.dong.lab.crossborder.mapper"
+                "com.dong.lab.crossborder.mapper",
+                "com.dong.lab.order.mapper"
         },
         sqlSessionFactoryRef = "sqlSessionFactory"
 )
