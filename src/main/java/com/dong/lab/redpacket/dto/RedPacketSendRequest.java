@@ -11,24 +11,24 @@ import jakarta.validation.constraints.NotNull;
  */
 public class RedPacketSendRequest {
 
-    @NotNull
     /**
      * 发红包用户 id。
      */
+    @NotNull
     private Long sponsorId;
 
-    @NotNull
-    @Min(1)
     /**
      * 红包总金额，单位分。
      */
-    private Long totalAmount;
-
     @NotNull
     @Min(1)
+    private Long totalAmount;
+
     /**
      * 红包总份数。
      */
+    @NotNull
+    @Min(1)
     private Integer totalCount;
 
     /**

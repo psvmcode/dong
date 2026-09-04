@@ -66,10 +66,10 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
      */
     private final RedisService redisService;
 
-    @Override
     /**
      * 预分配红包库存，将金额列表整体推入 Redis。
      */
+    @Override
     public void prepare(String packetNo, List<Long> amounts, long totalAmount) {
         redisService.delete(List.of(COUNT + packetNo, AMOUNT + packetNo, LIST + packetNo, USERS + packetNo));
         redisService.set(COUNT + packetNo, String.valueOf(amounts.size()), TTL);
@@ -80,28 +80,28 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
         log.info("red packet stock prepared packetNo={} count={} total={}", packetNo, amounts.size(), totalAmount);
     }
 
-    @Override
     /**
      * 抢一份红包，原子弹出并返回金额，已抢完或重复抢返回 -1。
      */
+    @Override
     public long grab(String packetNo, Long userId) {
         Long result = redisService.executeToLong(GRAB,
                 List.of(COUNT + packetNo, AMOUNT + packetNo, LIST + packetNo, USERS + packetNo), userId);
         return result == null ? -1L : result;
     }
 
-    @Override
     /**
      * 查询红包剩余份数。
      */
+    @Override
     public int remainCount(String packetNo) {
         return Integer.parseInt(redisService.get(COUNT + packetNo).orElse("0"));
     }
 
-    @Override
     /**
      * 查询红包剩余金额。
      */
+    @Override
     public long remainAmount(String packetNo) {
         return Long.parseLong(redisService.get(AMOUNT + packetNo).orElse("0"));
     }

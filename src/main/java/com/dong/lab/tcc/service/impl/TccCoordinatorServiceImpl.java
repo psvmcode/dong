@@ -138,10 +138,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         return TccResultResponse.rolledBack(xid, "confirm failed, retry scheduled: " + failure);
     }
 
-    @Override
     /**
      * 查询事务状态。
      */
+    @Override
     public Map<String, Object> status(String xid) {
         TccTransaction transaction = tccTransactionMapper.selectByXid(xid);
         if (transaction == null) {
@@ -159,10 +159,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         return status;
     }
 
-    @Override
     /**
      * 查询事务的各分支记录。
      */
+    @Override
     public List<TccBranch> branches(String xid) {
         return tccTransactionMapper.selectBranches(xid);
     }
@@ -201,11 +201,11 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         return recovered;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 初始化演示用的库存与账户。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void seed(Long userId, Long productId, int available, long balance) {
         TccInventory inventory = tccParticipantMapper.selectInventory(productId);
         if (inventory == null) {

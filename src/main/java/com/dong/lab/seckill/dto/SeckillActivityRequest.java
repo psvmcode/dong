@@ -15,42 +15,42 @@ import java.time.LocalDateTime;
  */
 public class SeckillActivityRequest {
 
-    @NotNull
     /**
      * 参与秒杀的商品 id。
      */
+    @NotNull
     private Long productId;
 
-    @NotBlank
     /**
      * 活动标题。
      */
+    @NotBlank
     private String title;
 
-    @NotNull
-    @Min(1)
     /**
      * 活动总库存。
      */
+    @NotNull
+    @Min(1)
     private Integer totalStock;
 
-    @NotNull
-    @DecimalMin("0.01")
     /**
      * 秒杀单价。
      */
+    @NotNull
+    @DecimalMin("0.01")
     private BigDecimal unitPrice;
 
-    @NotNull
     /**
      * 活动开始时间。
      */
+    @NotNull
     private LocalDateTime startTime;
 
-    @NotNull
     /**
      * 活动结束时间。
      */
+    @NotNull
     private LocalDateTime endTime;
 
     /**

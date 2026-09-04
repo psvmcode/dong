@@ -63,11 +63,11 @@ public class SocialServiceImpl implements SocialService {
      */
     private final Snowflake snowflake;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 关注指定用户。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void follow(Long followerId, Long followeeId) {
         if (followerId.equals(followeeId)) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "cannot follow yourself");
@@ -86,11 +86,11 @@ public class SocialServiceImpl implements SocialService {
         log.info("user {} followed {}", followerId, followeeId);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 取消关注指定用户。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void unfollow(Long followerId, Long followeeId) {
         socialRelationMapper.delete(followerId, followeeId);
         followingSet(followerId).remove(followeeId);
@@ -99,18 +99,18 @@ public class SocialServiceImpl implements SocialService {
         log.info("user {} unfollowed {}", followerId, followeeId);
     }
 
-    @Override
     /**
      * 判断是否已关注。
      */
+    @Override
     public boolean isFollowing(Long followerId, Long followeeId) {
         return followingSet(followerId).contains(followeeId);
     }
 
-    @Override
     /**
      * 查询关注列表。
      */
+    @Override
     public List<Long> followees(Long followerId) {
         Collection<Long> cached = followingSet(followerId).readAll();
         return cached == null || cached.isEmpty()
@@ -118,10 +118,10 @@ public class SocialServiceImpl implements SocialService {
                 : List.copyOf(cached);
     }
 
-    @Override
     /**
      * 查询粉丝列表。
      */
+    @Override
     public List<Long> followers(Long followeeId) {
         Collection<Long> cached = followerSet(followeeId).readAll();
         return cached == null || cached.isEmpty()
@@ -129,10 +129,10 @@ public class SocialServiceImpl implements SocialService {
                 : List.copyOf(cached);
     }
 
-    @Override
     /**
      * 查询关注数与粉丝数。
      */
+    @Override
     public Map<String, Long> counts(Long userId) {
         Map<String, Long> counts = new LinkedHashMap<>();
         long following = followingSet(userId).size();
@@ -142,10 +142,10 @@ public class SocialServiceImpl implements SocialService {
         return counts;
     }
 
-    @Override
     /**
      * 查询两个用户的共同关注。
      */
+    @Override
     public List<Long> commonFollowees(Long firstUserId, Long secondUserId) {
         Set<Long> first = new HashSet<>(followees(firstUserId));
         Set<Long> second = new HashSet<>(followees(secondUserId));
@@ -153,11 +153,11 @@ public class SocialServiceImpl implements SocialService {
         return List.copyOf(first);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 发布动态，并分发给所有粉丝。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public long publishFeed(Long authorId, String content) {
         long feedId = snowflake.nextId();
         SocialFeed feed = new SocialFeed();
@@ -171,20 +171,20 @@ public class SocialServiceImpl implements SocialService {
         return feedId;
     }
 
-    @Override
     /**
      * 查询推模式时间线。
      */
+    @Override
     public List<FeedResponse> timelinePush(Long userId, int size) {
         return socialTimelineService.readTimeline(userId, size).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    @Override
     /**
      * 查询拉模式时间线。
      */
+    @Override
     public List<FeedResponse> timelinePull(Long userId, int pageNum, int pageSize) {
         List<Long> followees = followees(userId);
         if (followees.isEmpty()) {
@@ -196,21 +196,21 @@ public class SocialServiceImpl implements SocialService {
                 .toList();
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 给动态点赞，返回点赞后总数。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public long like(Long feedId) {
         socialFeedMapper.increaseLikeCount(feedId);
         SocialFeed feed = socialFeedMapper.selectByFeedId(feedId);
         return feed == null ? 0L : feed.getLikeCount();
     }
 
-    @Override
     /**
      * 查询用户关系总览。
      */
+    @Override
     public Map<String, Object> relationSummary(Long userId) {
         Map<String, Object> summary = new LinkedHashMap<>(counts(userId));
         summary.put("followeeList", followees(userId));

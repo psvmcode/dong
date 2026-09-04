@@ -46,11 +46,11 @@ public class RedPacketServiceImpl implements RedPacketService {
      */
     private final Snowflake snowflake;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 发红包，预分配金额后写入 Redis 并返回红包编号。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public String send(RedPacketSendRequest request) {
         String packetNo = PACKET_NO_PREFIX + snowflake.nextId();
         RedPacket redPacket = request.toEntity(packetNo);
@@ -64,11 +64,11 @@ public class RedPacketServiceImpl implements RedPacketService {
         return packetNo;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 抢红包，从预分配列表中原子弹出一份。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public GrabResultResponse grab(String packetNo, Long userId) {
         RedPacket redPacket = findByPacketNo(packetNo);
         if (redPacket.getStatus() == RedPacketStatus.FINISHED) {
@@ -95,10 +95,10 @@ public class RedPacketServiceImpl implements RedPacketService {
         return GrabResultResponse.success(amount);
     }
 
-    @Override
     /**
      * 按红包编号查询红包详情。
      */
+    @Override
     public RedPacket findByPacketNo(String packetNo) {
         RedPacket redPacket = redPacketMapper.selectByPacketNo(packetNo);
         if (redPacket == null) {
@@ -107,26 +107,26 @@ public class RedPacketServiceImpl implements RedPacketService {
         return redPacket;
     }
 
-    @Override
     /**
      * 查询红包领取记录。
      */
+    @Override
     public List<RedPacketRecord> records(String packetNo) {
         return redPacketMapper.selectRecords(packetNo);
     }
 
-    @Override
     /**
      * 查询红包剩余份数。
      */
+    @Override
     public int remainCount(String packetNo) {
         return redPacketStockService.remainCount(packetNo);
     }
 
-    @Override
     /**
      * 查询红包剩余金额。
      */
+    @Override
     public long remainAmount(String packetNo) {
         return redPacketStockService.remainAmount(packetNo);
     }

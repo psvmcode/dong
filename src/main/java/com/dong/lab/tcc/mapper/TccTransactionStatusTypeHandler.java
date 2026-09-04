@@ -16,7 +16,6 @@ import java.sql.SQLException;
 
 public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransactionStatus> {
 
-    @Override
     /**
      * 将枚举按 code 写入 PreparedStatement。
      *
@@ -26,12 +25,12 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @param jdbcType JDBC 类型
      * @throws SQLException SQL 异常
      */
+    @Override
     public void setNonNullParameter(PreparedStatement ps, int i, TccTransactionStatus parameter, JdbcType jdbcType)
             throws SQLException {
         ps.setInt(i, parameter.getCode());
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -40,12 +39,12 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public TccTransactionStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
         int value = rs.getInt(columnName);
         return rs.wasNull() ? null : TccTransactionStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -54,12 +53,12 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public TccTransactionStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         int value = rs.getInt(columnIndex);
         return rs.wasNull() ? null : TccTransactionStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -68,6 +67,7 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public TccTransactionStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         int value = cs.getInt(columnIndex);
         return cs.wasNull() ? null : TccTransactionStatus.of(value);
@@ -75,7 +75,6 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
 
     public static class BranchStatusHandler extends BaseTypeHandler<com.dong.lab.tcc.enums.TccBranchStatus> {
 
-        @Override
     /**
      * 将枚举按 code 写入 PreparedStatement。
      *
@@ -85,13 +84,13 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @param jdbcType JDBC 类型
      * @throws SQLException SQL 异常
      */
+        @Override
         public void setNonNullParameter(PreparedStatement ps, int i,
                                         com.dong.lab.tcc.enums.TccBranchStatus parameter, JdbcType jdbcType)
                 throws SQLException {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -100,13 +99,13 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public com.dong.lab.tcc.enums.TccBranchStatus getNullableResult(ResultSet rs, String columnName)
                 throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : com.dong.lab.tcc.enums.TccBranchStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -115,13 +114,13 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public com.dong.lab.tcc.enums.TccBranchStatus getNullableResult(ResultSet rs, int columnIndex)
                 throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : com.dong.lab.tcc.enums.TccBranchStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -130,6 +129,7 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public com.dong.lab.tcc.enums.TccBranchStatus getNullableResult(CallableStatement cs, int columnIndex)
                 throws SQLException {
             int value = cs.getInt(columnIndex);
@@ -140,7 +140,6 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
 
     public static class OrderStatusHandler extends BaseTypeHandler<com.dong.lab.tcc.enums.TccOrderStatus> {
 
-        @Override
     /**
      * 将枚举按 code 写入 PreparedStatement。
      *
@@ -150,13 +149,13 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @param jdbcType JDBC 类型
      * @throws SQLException SQL 异常
      */
+        @Override
         public void setNonNullParameter(PreparedStatement ps, int i,
                                         com.dong.lab.tcc.enums.TccOrderStatus parameter, JdbcType jdbcType)
                 throws SQLException {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -165,13 +164,13 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public com.dong.lab.tcc.enums.TccOrderStatus getNullableResult(ResultSet rs, String columnName)
                 throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : com.dong.lab.tcc.enums.TccOrderStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -180,13 +179,13 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public com.dong.lab.tcc.enums.TccOrderStatus getNullableResult(ResultSet rs, int columnIndex)
                 throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : com.dong.lab.tcc.enums.TccOrderStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -195,6 +194,7 @@ public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransact
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public com.dong.lab.tcc.enums.TccOrderStatus getNullableResult(CallableStatement cs, int columnIndex)
                 throws SQLException {
             int value = cs.getInt(columnIndex);

@@ -83,11 +83,11 @@ public class SeckillServiceImpl implements SeckillService {
      */
     private final Snowflake snowflake;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 创建秒杀活动。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long createActivity(SeckillActivityRequest request) {
         SeckillActivity activity = request.toEntity();
         seckillActivityMapper.insert(activity);
@@ -95,11 +95,11 @@ public class SeckillServiceImpl implements SeckillService {
         return activity.getId();
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 预热库存到 Redis 并开启活动。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public int prepare(Long activityId) {
         SeckillActivity activity = requireActivity(activityId);
         seckillStockService.prepare(activityId, activity.getTotalStock());
@@ -166,26 +166,26 @@ public class SeckillServiceImpl implements SeckillService {
         return SeckillReceiptResponse.accepted(orderNo, result, amount);
     }
 
-    @Override
     /**
      * 查询 Redis 中的剩余库存。
      */
+    @Override
     public int stockOf(Long activityId) {
         return seckillStockService.available(activityId);
     }
 
-    @Override
     /**
      * 查询全部活动。
      */
+    @Override
     public List<SeckillActivity> activities() {
         return seckillActivityMapper.selectAll();
     }
 
-    @Override
     /**
      * 按订单号查询订单。
      */
+    @Override
     public SeckillOrder order(String orderNo) {
         SeckillOrder order = seckillOrderMapper.selectByOrderNo(orderNo);
         if (order == null) {
@@ -194,11 +194,11 @@ public class SeckillServiceImpl implements SeckillService {
         return order;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 支付秒杀订单。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void pay(String orderNo) {
         SeckillOrder order = order(orderNo);
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
@@ -209,11 +209,11 @@ public class SeckillServiceImpl implements SeckillService {
         log.info("seckill order paid orderNo={}", orderNo);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 取消订单并回滚库存。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void cancel(String orderNo) {
         SeckillOrder order = order(orderNo);
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
@@ -226,10 +226,10 @@ public class SeckillServiceImpl implements SeckillService {
         log.info("seckill order cancelled and stock returned orderNo={}", orderNo);
     }
 
-    @Override
     /**
      * 查看运行时状态，含售罄标记与订单统计。
      */
+    @Override
     public Map<String, Object> runtime() {
         Map<String, Object> runtime = new LinkedHashMap<>();
         runtime.put("soldOutShortCircuited", soldOutFlag.shortCircuitedCount());

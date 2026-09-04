@@ -68,20 +68,20 @@ public class SeckillStockServiceImpl implements SeckillStockService {
      */
     private final SoldOutFlag soldOutFlag;
 
-    @Override
     /**
      * 预热库存到 Redis。
      */
+    @Override
     public void prepare(Long activityId, int totalStock) {
         redisService.set(stockKey(activityId), String.valueOf(totalStock), STOCK_TTL);
         redisService.delete(participantsKey(activityId));
         log.info("seckill stock prepared activity={} stock={}", activityId, totalStock);
     }
 
-    @Override
     /**
      * 扣减库存，返回扣减后的剩余库存或负数表示失败。
      */
+    @Override
     public int deduct(Long activityId, Long userId, int quantity) {
         Long result = redisService.execute(DEDUCT,
                 List.of(stockKey(activityId), participantsKey(activityId)), quantity, userId);
@@ -105,18 +105,18 @@ public class SeckillStockServiceImpl implements SeckillStockService {
         return remaining == null ? 0 : remaining.intValue();
     }
 
-    @Override
     /**
      * 查询剩余库存。
      */
+    @Override
     public int available(Long activityId) {
         return Integer.parseInt(redisService.get(stockKey(activityId)).orElse("-1"));
     }
 
-    @Override
     /**
      * 清空库存记录。
      */
+    @Override
     public void clear(Long activityId) {
         redisService.delete(List.of(stockKey(activityId), participantsKey(activityId)));
     }

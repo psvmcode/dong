@@ -36,18 +36,18 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
 
     private final LongAdder duplicated = new LongAdder();
 
-    @Override
     /**
      * 返回监听的消息主题。
      */
+    @Override
     public String topic() {
         return TOPIC;
     }
 
-    @Override
     /**
      * 处理秒杀订单创建消息，落库并统计重复订单。
      */
+    @Override
     public boolean handle(String key, String payload) {
         Map<String, Object> message = JsonUtils.fromJson(payload,
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {

@@ -36,10 +36,10 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
      */
     private final RedissonClient redissonClient;
 
-    @Override
     /**
      * 把动态分发给所有粉丝的时间线。
      */
+    @Override
     public void fanOutToFollowers(Long authorId, Long feedId, List<Long> followerIds) {
         if (followerIds == null || followerIds.isEmpty()) {
             return;
@@ -51,10 +51,10 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
         log.info("feed {} fanned out to {} followers", feedId, followerIds.size());
     }
 
-    @Override
     /**
      * 重建某个用户的时间线，新关注时补齐历史动态。
      */
+    @Override
     public void rebuildTimelineFor(Long userId, List<Long> followeeIds) {
         RScoredSortedSet<Long> timeline = timelineOf(userId);
         timeline.delete();
@@ -66,10 +66,10 @@ public class SocialTimelineServiceImpl implements SocialTimelineService {
         log.info("timeline rebuilt for user {} with {} followees", userId, followeeIds.size());
     }
 
-    @Override
     /**
      * 读取某用户的时间线。
      */
+    @Override
     public List<SocialFeed> readTimeline(Long userId, int size) {
         Collection<Long> feedIds = timelineOf(userId).valueRangeReversed(0, size - 1);
         if (feedIds == null || feedIds.isEmpty()) {

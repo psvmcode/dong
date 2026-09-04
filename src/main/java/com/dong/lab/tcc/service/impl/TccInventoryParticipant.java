@@ -26,19 +26,19 @@ public class TccInventoryParticipant implements TccParticipant {
      */
     private final TccParticipantMapper tccParticipantMapper;
 
-    @Override
     /**
      * 返回分支标识。
      */
+    @Override
     public String branchId() {
         return "inventory";
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 冻结库存。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void tryPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");
@@ -49,11 +49,11 @@ public class TccInventoryParticipant implements TccParticipant {
         log.info("inventory try xid={} product={} quantity={}", xid, productId, quantity);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 确认扣减库存。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void confirmPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");
@@ -61,11 +61,11 @@ public class TccInventoryParticipant implements TccParticipant {
         log.info("inventory confirm xid={} product={} quantity={}", xid, productId, quantity);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 释放冻结的库存。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void cancelPhase(String xid, Map<String, Object> payload) {
         Long productId = longValue(payload, "productId");
         int quantity = intValue(payload, "quantity");

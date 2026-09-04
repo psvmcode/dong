@@ -16,7 +16,6 @@ import java.sql.SQLException;
 
 public class SeckillOrderStatusTypeHandler extends BaseTypeHandler<SeckillOrderStatus> {
 
-    @Override
     /**
      * 将枚举按 code 写入 PreparedStatement。
      *
@@ -26,12 +25,12 @@ public class SeckillOrderStatusTypeHandler extends BaseTypeHandler<SeckillOrderS
      * @param jdbcType JDBC 类型
      * @throws SQLException SQL 异常
      */
+    @Override
     public void setNonNullParameter(PreparedStatement ps, int i, SeckillOrderStatus parameter, JdbcType jdbcType)
             throws SQLException {
         ps.setInt(i, parameter.getCode());
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -40,12 +39,12 @@ public class SeckillOrderStatusTypeHandler extends BaseTypeHandler<SeckillOrderS
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public SeckillOrderStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
         int value = rs.getInt(columnName);
         return rs.wasNull() ? null : SeckillOrderStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -54,12 +53,12 @@ public class SeckillOrderStatusTypeHandler extends BaseTypeHandler<SeckillOrderS
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public SeckillOrderStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         int value = rs.getInt(columnIndex);
         return rs.wasNull() ? null : SeckillOrderStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -68,6 +67,7 @@ public class SeckillOrderStatusTypeHandler extends BaseTypeHandler<SeckillOrderS
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public SeckillOrderStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         int value = cs.getInt(columnIndex);
         return cs.wasNull() ? null : SeckillOrderStatus.of(value);

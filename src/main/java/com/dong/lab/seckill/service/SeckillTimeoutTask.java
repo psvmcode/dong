@@ -38,10 +38,10 @@ public class SeckillTimeoutTask {
      */
     private final SoldOutFlag soldOutFlag;
 
-    @Value("${lab.seckill.payment-timeout-minutes:15}")
     /**
      * 支付超时时间，单位分钟。
      */
+    @Value("${lab.seckill.payment-timeout-minutes:15}")
     private int paymentTimeoutMinutes;
 
     /**
@@ -59,10 +59,10 @@ public class SeckillTimeoutTask {
         log.info("released {} unpaid seckill orders", candidates.size());
     }
 
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 释放单个超时订单，回滚库存并清除售罄标记。
      */
+    @Transactional(rollbackFor = Exception.class)
     public void release(SeckillOrder order) {
         seckillOrderMapper.updateStatus(order.getOrderNo(), SeckillOrderStatus.CANCELLED.getCode());
         seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());

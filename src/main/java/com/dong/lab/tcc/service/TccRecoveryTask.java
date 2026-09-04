@@ -21,10 +21,10 @@ public class TccRecoveryTask {
      */
     private final TccCoordinatorService tccCoordinatorService;
 
-    @Scheduled(fixedDelay = 30_000, initialDelay = 20_000)
     /**
      * 定时恢复停留在中间状态的事务。
      */
+    @Scheduled(fixedDelay = 30_000, initialDelay = 20_000)
     public void recover() {
         int recovered = tccCoordinatorService.recoverPending();
         if (recovered > 0) {

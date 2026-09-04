@@ -8,23 +8,23 @@ import jakarta.validation.constraints.NotNull;
  */
 public class TccOrderRequest {
 
-    @NotNull
     /**
      * 下单用户 id。
      */
+    @NotNull
     private Long userId;
 
-    @NotNull
     /**
      * 商品 id。
      */
+    @NotNull
     private Long productId;
 
-    @NotNull
-    @Min(1)
     /**
      * 购买数量。
      */
+    @NotNull
+    @Min(1)
     private Integer quantity;
 
     /**

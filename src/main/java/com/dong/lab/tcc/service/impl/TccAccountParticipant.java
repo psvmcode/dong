@@ -26,19 +26,19 @@ public class TccAccountParticipant implements TccParticipant {
      */
     private final TccParticipantMapper tccParticipantMapper;
 
-    @Override
     /**
      * 返回分支标识。
      */
+    @Override
     public String branchId() {
         return "account";
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 冻结账户余额。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void tryPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
@@ -53,11 +53,11 @@ public class TccAccountParticipant implements TccParticipant {
         log.info("account try xid={} user={} amount={}", xid, userId, amount);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 确认扣减账户余额。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void confirmPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
@@ -65,11 +65,11 @@ public class TccAccountParticipant implements TccParticipant {
         log.info("account confirm xid={} user={} amount={}", xid, userId, amount);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 释放冻结的账户余额。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void cancelPhase(String xid, Map<String, Object> payload) {
         Long userId = longValue(payload, "userId");
         long amount = longValue(payload, "amount");
