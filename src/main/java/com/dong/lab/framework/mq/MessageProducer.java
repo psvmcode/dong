@@ -25,7 +25,9 @@ public interface MessageProducer {
     void sendOrdered(String topic, String key, Object payload, String shardingKey);
 
     /**
-     * name。
+     * 返回消息生产者名称。
+     *
+     * @return 名称
      */
     String name();
 

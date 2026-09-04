@@ -27,7 +27,7 @@ import java.util.List;
 public class LeaderboardController {
 
     /**
-     * leaderboardService，业务服务层。
+     * 排行榜服务。
      */
     private final LeaderboardService leaderboardService;
 

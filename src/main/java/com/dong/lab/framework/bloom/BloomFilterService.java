@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 public class BloomFilterService {
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 

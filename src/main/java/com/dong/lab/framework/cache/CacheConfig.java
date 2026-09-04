@@ -24,12 +24,14 @@ import java.nio.charset.StandardCharsets;
 public class CacheConfig {
 
     /**
-     * applicationContext。
+     * Spring 应用上下文。
      */
     private final ApplicationContext applicationContext;
 
     /**
-     * cacheStats。
+     * 注册缓存命中统计组件。
+     *
+     * @return 缓存统计组件
      */
     @Bean
     public CacheStats cacheStats() {
@@ -37,7 +39,11 @@ public class CacheConfig {
     }
 
     /**
-     * redisCacheStore。
+     * 注册 L2 Redis 缓存存储，仅当 L2 启用时生效。
+     *
+     * @param redisService Redis 服务
+     * @param properties   缓存配置
+     * @return RedisCacheStore
      */
     @Bean
     @ConditionalOnProperty(prefix = "lab.cache", name = "l2-enabled", havingValue = "true", matchIfMissing = true)
@@ -46,7 +52,10 @@ public class CacheConfig {
     }
 
     /**
-     * caffeineCacheStore。
+     * 注册 L1 Caffeine 缓存存储，仅当 L1 启用时生效。
+     *
+     * @param properties 缓存配置
+     * @return CaffeineCacheStore
      */
     @Bean
     @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
@@ -55,7 +64,11 @@ public class CacheConfig {
     }
 
     /**
-     * cacheEventBus。
+     * 注册缓存失效事件总线。
+     *
+     * @param redisService Redis 服务
+     * @param properties   缓存配置
+     * @return 缓存事件总线
      */
     @Bean
     public CacheEventBus cacheEventBus(RedisService redisService, CacheProperties properties) {
@@ -63,7 +76,14 @@ public class CacheConfig {
     }
 
     /**
-     * multiLevelCache。
+     * 注册多级缓存。
+     *
+     * @param eventBus            缓存事件总线
+     * @param distributedLockService 分布式锁服务
+     * @param delayedTaskRunner   延迟任务执行器
+     * @param properties          缓存配置
+     * @param stats               缓存统计组件
+     * @return 多级缓存
      */
     @Bean
     public MultiLevelCache multiLevelCache(CacheEventBus eventBus,
@@ -77,7 +97,11 @@ public class CacheConfig {
     }
 
     /**
-     * cacheInvalidationContainer。
+     * 注册 Redis 缓存失效消息监听容器，仅当 L1 启用时生效。
+     *
+     * @param connectionFactory Redis 连接工厂
+     * @param eventBus          缓存事件总线
+     * @return 消息监听容器
      */
     @Bean
     @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)

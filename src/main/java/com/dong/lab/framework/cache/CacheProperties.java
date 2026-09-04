@@ -11,172 +11,230 @@ import java.time.Duration;
 public class CacheProperties {
 
     /**
-     * true。
+     * 是否启用 L1 本地缓存。
      */
     private boolean l1Enabled = true;
 
     /**
-     * true。
+     * 是否启用 L2 Redis 缓存。
      */
     private boolean l2Enabled = true;
 
     /**
-     * 10_000L。
+     * L1 缓存最大条目数。
      */
     private long l1MaxSize = 10_000L;
 
+    /**
+     * 默认 TTL。
+     */
     private Duration defaultTtl = Duration.ofMinutes(10);
 
+    /**
+     * 空值标记 TTL。
+     */
     private Duration nullValueTtl = Duration.ofSeconds(60);
 
     /**
-     * 1。
+     * TTL 抖动比例，避免集中过期。
      */
     private double ttlJitterRatio = 0.1;
 
+    /**
+     * 缓存重建锁持有时间。
+     */
     private Duration rebuildLease = Duration.ofSeconds(5);
 
+    /**
+     * 缓存重建等待时间。
+     */
     private Duration rebuildWait = Duration.ofSeconds(1);
 
+    /**
+     * 双删延迟时间。
+     */
     private Duration doubleDeleteDelay = Duration.ofMillis(500);
 
+    /**
+     * 缓存失效广播频道。
+     */
     private String invalidationChannel = "lab:cache:invalidate";
 
     /**
-     * isL1Enabled。
+     * 是否启用 L1 本地缓存。
+     *
+     * @return 是否启用
      */
     public boolean isL1Enabled() {
         return l1Enabled;
     }
 
     /**
-     * setL1Enabled。
+     * 设置是否启用 L1 本地缓存。
+     *
+     * @param l1Enabled 是否启用
      */
     public void setL1Enabled(boolean l1Enabled) {
         this.l1Enabled = l1Enabled;
     }
 
     /**
-     * isL2Enabled。
+     * 是否启用 L2 Redis 缓存。
+     *
+     * @return 是否启用
      */
     public boolean isL2Enabled() {
         return l2Enabled;
     }
 
     /**
-     * setL2Enabled。
+     * 设置是否启用 L2 Redis 缓存。
+     *
+     * @param l2Enabled 是否启用
      */
     public void setL2Enabled(boolean l2Enabled) {
         this.l2Enabled = l2Enabled;
     }
 
     /**
-     * getL1MaxSize。
+     * 获取 L1 缓存最大条目数。
+     *
+     * @return 最大条目数
      */
     public long getL1MaxSize() {
         return l1MaxSize;
     }
 
     /**
-     * setL1MaxSize。
+     * 设置 L1 缓存最大条目数。
+     *
+     * @param l1MaxSize 最大条目数
      */
     public void setL1MaxSize(long l1MaxSize) {
         this.l1MaxSize = l1MaxSize;
     }
 
     /**
-     * getDefaultTtl。
+     * 获取默认 TTL。
+     *
+     * @return 默认 TTL
      */
     public Duration getDefaultTtl() {
         return defaultTtl;
     }
 
     /**
-     * setDefaultTtl。
+     * 设置默认 TTL。
+     *
+     * @param defaultTtl 默认 TTL
      */
     public void setDefaultTtl(Duration defaultTtl) {
         this.defaultTtl = defaultTtl;
     }
 
     /**
-     * getNullValueTtl。
+     * 获取空值标记 TTL。
+     *
+     * @return 空值标记 TTL
      */
     public Duration getNullValueTtl() {
         return nullValueTtl;
     }
 
     /**
-     * setNullValueTtl。
+     * 设置空值标记 TTL。
+     *
+     * @param nullValueTtl 空值标记 TTL
      */
     public void setNullValueTtl(Duration nullValueTtl) {
         this.nullValueTtl = nullValueTtl;
     }
 
     /**
-     * getTtlJitterRatio。
+     * 获取 TTL 抖动比例。
+     *
+     * @return 抖动比例
      */
     public double getTtlJitterRatio() {
         return ttlJitterRatio;
     }
 
     /**
-     * setTtlJitterRatio。
+     * 设置 TTL 抖动比例。
+     *
+     * @param ttlJitterRatio 抖动比例
      */
     public void setTtlJitterRatio(double ttlJitterRatio) {
         this.ttlJitterRatio = ttlJitterRatio;
     }
 
     /**
-     * getRebuildLease。
+     * 获取缓存重建锁持有时间。
+     *
+     * @return 重建锁持有时间
      */
     public Duration getRebuildLease() {
         return rebuildLease;
     }
 
     /**
-     * setRebuildLease。
+     * 设置缓存重建锁持有时间。
+     *
+     * @param rebuildLease 重建锁持有时间
      */
     public void setRebuildLease(Duration rebuildLease) {
         this.rebuildLease = rebuildLease;
     }
 
     /**
-     * getRebuildWait。
+     * 获取缓存重建等待时间。
+     *
+     * @return 重建等待时间
      */
     public Duration getRebuildWait() {
         return rebuildWait;
     }
 
     /**
-     * setRebuildWait。
+     * 设置缓存重建等待时间。
+     *
+     * @param rebuildWait 重建等待时间
      */
     public void setRebuildWait(Duration rebuildWait) {
         this.rebuildWait = rebuildWait;
     }
 
     /**
-     * getDoubleDeleteDelay。
+     * 获取双删延迟时间。
+     *
+     * @return 双删延迟时间
      */
     public Duration getDoubleDeleteDelay() {
         return doubleDeleteDelay;
     }
 
     /**
-     * setDoubleDeleteDelay。
+     * 设置双删延迟时间。
+     *
+     * @param doubleDeleteDelay 双删延迟时间
      */
     public void setDoubleDeleteDelay(Duration doubleDeleteDelay) {
         this.doubleDeleteDelay = doubleDeleteDelay;
     }
 
     /**
-     * getInvalidationChannel。
+     * 获取缓存失效广播频道。
+     *
+     * @return 频道名称
      */
     public String getInvalidationChannel() {
         return invalidationChannel;
     }
 
     /**
-     * setInvalidationChannel。
+     * 设置缓存失效广播频道。
+     *
+     * @param invalidationChannel 频道名称
      */
     public void setInvalidationChannel(String invalidationChannel) {
         this.invalidationChannel = invalidationChannel;

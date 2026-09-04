@@ -28,7 +28,7 @@ import java.net.URI;
 public class ShortLinkController {
 
     /**
-     * shortLinkService，业务服务层。
+     * 短链接服务。
      */
     private final ShortLinkService shortLinkService;
 

@@ -10,7 +10,9 @@ import java.time.Duration;
 public interface CacheStore {
 
     /**
-     * name。
+     * 返回缓存层名称。
+     *
+     * @return 名称
      */
     String name();
 

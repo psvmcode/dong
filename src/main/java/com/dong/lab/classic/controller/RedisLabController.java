@@ -34,32 +34,32 @@ import java.util.Map;
 public class RedisLabController {
 
     /**
-     * delayQueueService，业务服务层。
+     * 延迟队列服务。
      */
     private final DelayQueueService delayQueueService;
 
     /**
-     * geoService，业务服务层。
+     * 地理位置服务。
      */
     private final GeoService geoService;
 
     /**
-     * idGeneratorService，业务服务层。
+     * 发号器服务。
      */
     private final IdGeneratorService idGeneratorService;
 
     /**
-     * lockLabService，业务服务层。
+     * 分布式锁实验服务。
      */
     private final LockLabService lockLabService;
 
     /**
-     * rateLimitLabService，业务服务层。
+     * 限流算法对比服务。
      */
     private final RateLimitLabService rateLimitLabService;
 
     /**
-     * rateLimitManager。
+     * 限流管理器。
      */
     private final RateLimitManager rateLimitManager;
 

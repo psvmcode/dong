@@ -21,12 +21,12 @@ import java.util.concurrent.ThreadLocalRandom;
 public class CacheLabServiceImpl implements CacheLabService {
 
     /**
-     * productService，业务服务层。
+     * 商品服务。
      */
     private final ProductService productService;
 
     /**
-     * cacheStats。
+     * 缓存命中统计组件。
      */
     private final CacheStats cacheStats;
 

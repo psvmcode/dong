@@ -162,12 +162,17 @@ public class LuaRateLimiter implements RateLimiter {
     private static final RedisScript<Long> LEAKY_BUCKET = new DefaultRedisScript<>(LEAKY_BUCKET_SCRIPT, Long.class);
 
     /**
-     * redisService，业务服务层。
+     * Redis 服务。
      */
     private final RedisService redisService;
 
     /**
-     * tryAcquire。
+     * 尝试获取配额，使用 Redis Lua 脚本实现四种算法。
+     *
+     * @param key     业务键
+     * @param rule    限流规则
+     * @param permits 请求配额
+     * @return 是否放行
      */
     @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
@@ -196,7 +201,9 @@ public class LuaRateLimiter implements RateLimiter {
     }
 
     /**
-     * supportedAlgorithms。
+     * 返回分布式 Lua 实现支持的所有算法。
+     *
+     * @return 支持的算法集合
      */
     @Override
     public Set<RateLimitAlgorithm> supportedAlgorithms() {
@@ -204,7 +211,9 @@ public class LuaRateLimiter implements RateLimiter {
     }
 
     /**
-     * name。
+     * 返回限流器名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {

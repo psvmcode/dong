@@ -40,22 +40,22 @@ public class ProductServiceImpl implements ProductService {
     private static final Duration PRODUCT_TTL = Duration.ofMinutes(10);
 
     /**
-     * productMapper，MyBatis Mapper 数据访问层。
+     * 商品数据访问接口。
      */
     private final ProductMapper productMapper;
 
     /**
-     * multiLevelCache，缓存组件。
+     * 多级缓存组件。
      */
     private final MultiLevelCache multiLevelCache;
 
     /**
-     * bloomFilterService，业务服务层。
+     * 布隆过滤器服务。
      */
     private final BloomFilterService bloomFilterService;
 
     /**
-     * cacheStats。
+     * 缓存命中统计组件。
      */
     private final CacheStats cacheStats;
 

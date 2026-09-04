@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 public class DistributedLockServiceImpl implements DistributedLockService {
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 

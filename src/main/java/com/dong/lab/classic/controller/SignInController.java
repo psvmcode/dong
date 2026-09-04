@@ -27,7 +27,7 @@ import java.util.Map;
 public class SignInController {
 
     /**
-     * signInService，业务服务层。
+     * 签到服务。
      */
     private final SignInService signInService;
 

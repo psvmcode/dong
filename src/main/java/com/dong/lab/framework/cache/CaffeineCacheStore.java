@@ -18,10 +18,15 @@ import java.util.concurrent.TimeUnit;
 public class CaffeineCacheStore implements CacheStore {
 
     /**
-     * cache，缓存组件。
+     * Caffeine 缓存实例。
      */
     private final Cache<String, CacheEntry> cache;
 
+    /**
+     * 构造本地缓存存储。
+     *
+     * @param maxSize 最大条目数
+     */
     public CaffeineCacheStore(long maxSize) {
         this.cache = Caffeine.newBuilder()
                 .maximumSize(maxSize)
@@ -31,7 +36,9 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     /**
-     * name。
+     * 返回缓存层名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {
@@ -42,6 +49,11 @@ public class CaffeineCacheStore implements CacheStore {
      * 三种结果必须区分清楚，不能只用 null 表示异常：
      * Miss 是完全没查到、Empty 是查到空值标记、Hit 是真正命中。
      * 混淆 Miss 和 Empty 会让防穿透统计失真。
+     *
+     * @param key  缓存键
+     * @param type 值类型
+     * @param <T>  值类型
+     * @return 缓存查找结果
      */
     @Override
     public <T> CacheLookup<T> lookup(String key, Class<T> type) {
@@ -61,6 +73,11 @@ public class CaffeineCacheStore implements CacheStore {
 
     /**
      * 查询缓存值。
+     *
+     * @param key  缓存键
+     * @param type 泛型类型引用
+     * @param <T>  值类型
+     * @return 缓存查找结果
      */
     @Override
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
@@ -76,6 +93,10 @@ public class CaffeineCacheStore implements CacheStore {
 
     /**
      * 放入缓存。
+     *
+     * @param key   缓存键
+     * @param value 缓存值
+     * @param ttl   过期时间
      */
     @Override
     public void put(String key, Object value, Duration ttl) {
@@ -84,6 +105,9 @@ public class CaffeineCacheStore implements CacheStore {
 
     /**
      * 放入空值占位，用于防止缓存穿透。
+     *
+     * @param key 缓存键
+     * @param ttl 过期时间
      */
     @Override
     public void putEmpty(String key, Duration ttl) {
@@ -91,7 +115,9 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     /**
-     * 清除缓存，用于缓存失效演练。
+     * 清除缓存。
+     *
+     * @param key 缓存键
      */
     @Override
     public void evict(String key) {
@@ -100,6 +126,8 @@ public class CaffeineCacheStore implements CacheStore {
 
     /**
      * 估算缓存大小。
+     *
+     * @return 估算大小
      */
     @Override
     public long estimatedSize() {
@@ -107,14 +135,16 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     /**
-     * clear。
+     * 清空本地缓存。
      */
     public void clear() {
         cache.invalidateAll();
     }
 
     /**
-     * snapshot。
+     * 获取 Caffeine 统计快照。
+     *
+     * @return 统计快照
      */
     public CacheStatsSnapshot snapshot() {
         var stats = cache.stats();
@@ -122,13 +152,23 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     /**
-     * CacheStatsSnapshot。
+     * 本地缓存统计快照记录。
+     *
+     * @param hitCount    命中数
+     * @param missCount   未命中数
+     * @param evictionCount 驱逐数
+     * @param size        估算大小
      */
     public record CacheStatsSnapshot(long hitCount, long missCount, long evictionCount, long size) {
     }
 
     /**
-     * convert。
+     * 将缓存中的对象转换为指定类型。
+     *
+     * @param value 缓存对象
+     * @param type  目标类型
+     * @param <T>   目标类型
+     * @return 转换后的值
      */
     @SuppressWarnings("unchecked")
     private static <T> T convert(Object value, Class<T> type) {

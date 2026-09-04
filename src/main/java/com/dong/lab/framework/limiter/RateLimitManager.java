@@ -12,18 +12,23 @@ import org.springframework.stereotype.Component;
 public class RateLimitManager {
 
     /**
-     * localRateLimiter。
+     * 本地限流器实现。
      */
     private final LocalRateLimiter localRateLimiter;
 
     /**
-     * luaRateLimiter。
+     * Lua 分布式限流器实现。
      */
     private final LuaRateLimiter luaRateLimiter;
 
     /**
-     * 注意本地实现只支持部分算法，传了不支持的算法会直接抛异常而不是放行，
-     * 这样能让问题尽早暴露。
+     * 尝试获取配额。根据 distributed 选择本地或分布式实现，
+     * 不支持的算法会直接抛异常而不是静默放行。
+     *
+     * @param key         业务键
+     * @param rule        限流规则
+     * @param distributed 是否分布式
+     * @return 是否放行
      */
     public boolean tryAcquire(String key, RateLimitRule rule, boolean distributed) {
         RateLimiter limiter = distributed ? luaRateLimiter : localRateLimiter;

@@ -15,6 +15,13 @@ public interface DistributedLockService {
 
     /**
      * 带返回值的加锁执行，拿不到锁直接抛业务异常。
+     *
+     * @param key       锁键
+     * @param leaseTime 持有时间
+     * @param waitTime  等待时间
+     * @param supplier  业务逻辑
+     * @param <T>       返回值类型
+     * @return 业务返回值
      */
     default <T> T execute(String key, Duration leaseTime, Duration waitTime, Supplier<T> supplier) {
         try (LockHandle handle = tryLock(key, leaseTime, waitTime)) {
@@ -28,7 +35,12 @@ public interface DistributedLockService {
     }
 
     /**
-     * execute。
+     * 无返回值的加锁执行，拿不到锁直接抛业务异常。
+     *
+     * @param key       锁键
+     * @param leaseTime 持有时间
+     * @param waitTime  等待时间
+     * @param task      业务逻辑
      */
     default void execute(String key, Duration leaseTime, Duration waitTime, Runnable task) {
         execute(key, leaseTime, waitTime, () -> {

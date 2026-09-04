@@ -16,25 +16,33 @@ import java.util.UUID;
 public class LockHandle implements AutoCloseable {
 
     /**
-     * lock。
+     * Redisson 锁对象。
      */
     private final RLock lock;
 
     /**
-     * key。
+     * 锁键。
      */
     private final String key;
 
     /**
-     * token。
+     * 锁令牌。
      */
     private final String token;
 
     /**
-     * acquired。
+     * 是否成功获取锁。
      */
     private final boolean acquired;
 
+    /**
+     * 构造锁句柄。
+     *
+     * @param lock     Redisson 锁对象
+     * @param key      锁键
+     * @param token    锁令牌
+     * @param acquired 是否成功获取锁
+     */
     public LockHandle(RLock lock, String key, String token, boolean acquired) {
         this.lock = lock;
         this.key = key;
@@ -43,21 +51,28 @@ public class LockHandle implements AutoCloseable {
     }
 
     /**
-     * failed。
+     * 创建未获取到锁的句柄。
+     *
+     * @param key 锁键
+     * @return 失败锁句柄
      */
     public static LockHandle failed(String key) {
         return new LockHandle(null, key, null, false);
     }
 
     /**
-     * isAcquired。
+     * 判断是否成功获取锁。
+     *
+     * @return 是否成功获取锁
      */
     public boolean isAcquired() {
         return acquired;
     }
 
     /**
-     * getToken。
+     * 获取锁令牌。
+     *
+     * @return 锁令牌
      */
     public String getToken() {
         return token;
@@ -80,7 +95,7 @@ public class LockHandle implements AutoCloseable {
     }
 
     /**
-     * close。
+     * try-with-resources 关闭时释放锁。
      */
     @Override
     public void close() {
@@ -88,7 +103,9 @@ public class LockHandle implements AutoCloseable {
     }
 
     /**
-     * newToken。
+     * 生成新的锁令牌。
+     *
+     * @return UUID 字符串
      */
     public static String newToken() {
         return UUID.randomUUID().toString();

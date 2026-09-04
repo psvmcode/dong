@@ -29,40 +29,51 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     private static final long L1_TTL_CAP_MILLIS = 60_000L;
 
     /**
-     * l1。
+     * L1 本地缓存。
      */
     private final CacheStore l1;
 
     /**
-     * l2。
+     * L2 Redis 缓存。
      */
     private final CacheStore l2;
 
     /**
-     * eventBus。
+     * 缓存失效事件总线。
      */
     private final CacheEventBus eventBus;
 
     /**
-     * distributedLockService，业务服务层。
+     * 分布式锁服务。
      */
     private final DistributedLockService distributedLockService;
 
     /**
-     * delayedTaskRunner。
+     * 延迟任务执行器。
      */
     private final ExecutorConfig.DelayedTaskRunner delayedTaskRunner;
 
     /**
-     * properties。
+     * 缓存配置项。
      */
     private final CacheProperties properties;
 
     /**
-     * stats。
+     * 缓存命中统计组件。
      */
     private final CacheStats stats;
 
+    /**
+     * 构造多级缓存。
+     *
+     * @param l1                    L1 本地缓存
+     * @param l2                    L2 Redis 缓存
+     * @param eventBus              缓存失效事件总线
+     * @param distributedLockService 分布式锁服务
+     * @param delayedTaskRunner     延迟任务执行器
+     * @param properties            缓存配置
+     * @param stats                 缓存统计组件
+     */
     public MultiLevelCache(CacheStore l1,
                            CacheStore l2,
                            CacheEventBus eventBus,
@@ -136,7 +147,13 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     }
 
     /**
-     * get。
+     * 读取缓存，使用默认 TTL。
+     *
+     * @param key    缓存键
+     * @param type   值类型
+     * @param loader 回源加载器
+     * @param <T>    值类型
+     * @return 缓存值或 null
      */
     public <T> T get(String key, Class<T> type, Supplier<T> loader) {
         return get(key, type, properties.getDefaultTtl(), loader);
@@ -182,7 +199,11 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     }
 
     /**
-     * writeThrough。
+     * 写入缓存，先写 L2 再回填 L1。
+     *
+     * @param key   缓存键
+     * @param value 缓存值
+     * @param ttl   过期时间
      */
     private void writeThrough(String key, Object value, Duration ttl) {
         if (l2 != null) {
@@ -194,6 +215,8 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     /**
      * 缓存空值。数据库查不到时也写一份标记，
      * 这样针对同一个不存在 id 的重复攻击不会再打到数据库，是防穿透的手段之一。
+     *
+     * @param key 缓存键
      */
     private void putEmpty(String key) {
         if (l2 != null) {
@@ -203,7 +226,9 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     }
 
     /**
-     * putEmptyL1。
+     * 在 L1 写入空值标记。
+     *
+     * @param key 缓存键
      */
     private void putEmptyL1(String key) {
         if (l1 != null) {
@@ -212,7 +237,11 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     }
 
     /**
-     * backfillL1。
+     * 将 L2 命中的数据回填到 L1。
+     *
+     * @param key   缓存键
+     * @param value 缓存值
+     * @param ttl   过期时间
      */
     private void backfillL1(String key, Object value, Duration ttl) {
         if (l1 != null) {

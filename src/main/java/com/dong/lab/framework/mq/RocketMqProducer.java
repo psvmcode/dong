@@ -37,12 +37,16 @@ public class RocketMqProducer implements MessageProducer {
             Duration.ofHours(1), Duration.ofHours(2));
 
     /**
-     * rocketMqTemplate。
+     * RocketMQ 模板。
      */
     private final RocketMQTemplate rocketMqTemplate;
 
     /**
-     * send。
+     * 发送普通消息。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
      */
     @Override
     public void send(String topic, String key, Object payload) {
@@ -50,8 +54,13 @@ public class RocketMqProducer implements MessageProducer {
     }
 
     /**
-     * 延迟发送。传入时长会被向上取到最近的固定等级，
+     * 发送延迟消息。传入时长会被向上取到最近的固定等级，
      * 因此实际生效时间可能比请求的长。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
+     * @param delay   延迟时长
      */
     @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
@@ -61,6 +70,11 @@ public class RocketMqProducer implements MessageProducer {
     /**
      * 顺序发送。用原生 send 保留业务 keys，
      * 相同 shardingKey 的消息由选择器固定投递到同一队列。
+     *
+     * @param topic      主题
+     * @param key        业务键
+     * @param payload    消息体
+     * @param shardingKey 分片键
      */
     @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
@@ -74,7 +88,9 @@ public class RocketMqProducer implements MessageProducer {
     }
 
     /**
-     * name。
+     * 返回消息生产者名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {
@@ -82,7 +98,12 @@ public class RocketMqProducer implements MessageProducer {
     }
 
     /**
-     * sendSync。
+     * 同步发送消息。
+     *
+     * @param topic      主题
+     * @param key        业务键
+     * @param payload    消息体
+     * @param delayLevel 延迟等级，0 表示不延迟
      */
     private void sendSync(String topic, String key, Object payload, int delayLevel) {
         Message message = build(topic, key, payload);
@@ -125,7 +146,10 @@ public class RocketMqProducer implements MessageProducer {
     }
 
     /**
-     * delayLevel。
+     * 将延迟时长映射到最近的固定延迟等级。
+     *
+     * @param delay 延迟时长
+     * @return 延迟等级
      */
     private int delayLevel(Duration delay) {
         for (int i = 0; i < DELAY_LEVELS.size(); i++) {

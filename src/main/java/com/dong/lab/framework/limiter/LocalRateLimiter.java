@@ -28,7 +28,12 @@ public class LocalRateLimiter implements RateLimiter {
             .build();
 
     /**
-     * tryAcquire。
+     * 尝试获取配额。本地只支持令牌桶与固定窗口。
+     *
+     * @param key     业务键
+     * @param rule    限流规则
+     * @param permits 请求配额
+     * @return 是否放行
      */
     @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
@@ -41,7 +46,9 @@ public class LocalRateLimiter implements RateLimiter {
     }
 
     /**
-     * supportedAlgorithms。
+     * 返回本地实现支持的算法集合。
+     *
+     * @return 支持的算法集合
      */
     @Override
     public Set<RateLimitAlgorithm> supportedAlgorithms() {
@@ -49,7 +56,9 @@ public class LocalRateLimiter implements RateLimiter {
     }
 
     /**
-     * name。
+     * 返回限流器名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {
@@ -97,15 +106,23 @@ public class LocalRateLimiter implements RateLimiter {
     }
 
     private static final class Bucket {
-    /**
-     * tokens。
-     */
+
+        /**
+         * 桶内剩余令牌数。
+         */
         private double tokens;
 
-    /**
-     * lastRefillNanos。
-     */
+        /**
+         * 上次补充令牌的纳秒时间戳。
+         */
         private long lastRefillNanos;
+
+        /**
+         * 构造令牌桶状态。
+         *
+         * @param tokens          初始令牌数
+         * @param lastRefillNanos 上次补充时间戳
+         */
         private Bucket(double tokens, long lastRefillNanos) {
             this.tokens = tokens;
             this.lastRefillNanos = lastRefillNanos;

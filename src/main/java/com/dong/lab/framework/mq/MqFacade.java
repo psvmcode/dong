@@ -24,25 +24,33 @@ import java.util.Map;
 public class MqFacade implements MessageProducer {
 
     /**
-     * localMessageBus。
+     * 本地消息总线。
      */
     private final LocalMessageBus localMessageBus;
 
     /**
-     * rocketMqProducer。
+     * RocketMQ 生产者提供者。
      */
     private final ObjectProvider<RocketMqProducer> rocketMqProducer;
 
     /**
-     * kafkaProducerAdapter。
+     * Kafka 生产者适配器提供者。
      */
     private final ObjectProvider<KafkaProducerAdapter> kafkaProducerAdapter;
 
     /**
-     * active。
+     * 当前激活的消息中间件类型。
      */
     private final String active;
 
+    /**
+     * 构造消息门面。
+     *
+     * @param localMessageBus        本地消息总线
+     * @param rocketMqProducer       RocketMQ 生产者提供者
+     * @param kafkaProducerAdapter   Kafka 生产者适配器提供者
+     * @param active                   激活的消息中间件类型
+     */
     public MqFacade(LocalMessageBus localMessageBus,
                     ObjectProvider<RocketMqProducer> rocketMqProducer,
                     ObjectProvider<KafkaProducerAdapter> kafkaProducerAdapter,
@@ -54,7 +62,11 @@ public class MqFacade implements MessageProducer {
     }
 
     /**
-     * send。
+     * 发送普通消息。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
      */
     @Override
     public void send(String topic, String key, Object payload) {
@@ -62,7 +74,12 @@ public class MqFacade implements MessageProducer {
     }
 
     /**
-     * sendDelayed。
+     * 发送延迟消息。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
+     * @param delay   延迟时长
      */
     @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
@@ -70,7 +87,12 @@ public class MqFacade implements MessageProducer {
     }
 
     /**
-     * sendOrdered。
+     * 发送顺序消息。
+     *
+     * @param topic       主题
+     * @param key         业务键
+     * @param payload     消息体
+     * @param shardingKey 分片键
      */
     @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
@@ -78,7 +100,9 @@ public class MqFacade implements MessageProducer {
     }
 
     /**
-     * name。
+     * 返回当前消息生产者名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {
@@ -86,7 +110,9 @@ public class MqFacade implements MessageProducer {
     }
 
     /**
-     * status。
+     * 查询当前消息中间件状态。
+     *
+     * @return 状态信息
      */
     public Map<String, Object> status() {
         Map<String, Object> status = new LinkedHashMap<>();
@@ -98,7 +124,9 @@ public class MqFacade implements MessageProducer {
     }
 
     /**
-     * resolve。
+     * 根据配置解析出实际使用的消息生产者。
+     *
+     * @return 消息生产者
      */
     private MessageProducer resolve() {
         return switch (active.toLowerCase()) {

@@ -36,22 +36,22 @@ public class ShortLinkServiceImpl implements ShortLinkService {
     private static final Duration NULL_TTL = Duration.ofMinutes(10);
 
     /**
-     * shortLinkMapper，MyBatis Mapper 数据访问层。
+     * 短链接数据访问接口。
      */
     private final ShortLinkMapper shortLinkMapper;
 
     /**
-     * redisService，业务服务层。
+     * Redis 服务。
      */
     private final RedisService redisService;
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 
     /**
-     * snowflake。
+     * 雪花发号器。
      */
     private final Snowflake snowflake;
 

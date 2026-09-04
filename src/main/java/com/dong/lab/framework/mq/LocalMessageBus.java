@@ -36,7 +36,9 @@ public class LocalMessageBus implements MessageProducer {
     private final AtomicLong dispatched = new AtomicLong();
 
     /**
-     * register。
+     * 注册消息处理器。
+     *
+     * @param handler 消息处理器
      */
     public void register(MessageHandler handler) {
         handlers.computeIfAbsent(handler.topic(), topic -> new CopyOnWriteArrayList<>()).add(handler);
@@ -44,7 +46,11 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     /**
-     * send。
+     * 发送普通消息。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
      */
     @Override
     public void send(String topic, String key, Object payload) {
@@ -52,7 +58,12 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     /**
-     * sendDelayed。
+     * 发送延迟消息。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
+     * @param delay   延迟时长
      */
     @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
@@ -60,8 +71,13 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     /**
-     * 顺序消息。按 shardingKey 哈希到固定分片，
+     * 发送顺序消息。按 shardingKey 哈希到固定分片，
      * 每个分片一个单线程执行器，相同 key 因此串行执行。
+     *
+     * @param topic       主题
+     * @param key         业务键
+     * @param payload     消息体
+     * @param shardingKey 分片键
      */
     @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
@@ -71,7 +87,9 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     /**
-     * name。
+     * 返回消息生产者名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {
@@ -79,15 +97,21 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     /**
-     * dispatchedCount。
+     * 获取已投递消息数量。
+     *
+     * @return 已投递消息数量
      */
     public long dispatchedCount() {
         return dispatched.get();
     }
 
     /**
-     * 投递。单个 handler 抛异常不能影响其他 handler，因此逐个捕获；
+     * 投递消息。单个 handler 抛异常不能影响其他 handler，因此逐个捕获；
      * 但捕获后消息即丢失，真实 MQ 需要重试或进死信队列。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
      */
     private void dispatch(String topic, String key, Object payload) {
         List<MessageHandler> listeners = handlers.get(topic);
@@ -107,7 +131,10 @@ public class LocalMessageBus implements MessageProducer {
     }
 
     /**
-     * factory。
+     * 创建命名线程工厂。
+     *
+     * @param prefix 线程名前缀
+     * @return 线程工厂
      */
     private static ThreadFactory factory(String prefix) {
         AtomicLong counter = new AtomicLong();

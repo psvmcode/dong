@@ -19,17 +19,17 @@ import java.util.List;
 public class MessageHandlerRegistrar {
 
     /**
-     * localMessageBus。
+     * 本地消息总线。
      */
     private final LocalMessageBus localMessageBus;
 
     /**
-     * handlers。
+     * 所有消息处理器。
      */
     private final List<MessageHandler> handlers;
 
     /**
-     * register。
+     * 将容器中所有消息处理器注册到本地总线。
      */
     @PostConstruct
     public void register() {

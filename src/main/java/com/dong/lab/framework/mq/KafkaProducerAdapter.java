@@ -29,12 +29,16 @@ public class KafkaProducerAdapter implements MessageProducer {
     public static final String NOT_BEFORE_HEADER = "lab-not-before";
 
     /**
-     * kafkaTemplate。
+     * Kafka 模板。
      */
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     /**
-     * send。
+     * 发送普通消息。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
      */
     @Override
     public void send(String topic, String key, Object payload) {
@@ -44,6 +48,11 @@ public class KafkaProducerAdapter implements MessageProducer {
     /**
      * 延迟发送。只是打个标记，真正延迟由消费端实现，
      * 因此消息会立刻出现在分区里，只是不被处理。
+     *
+     * @param topic   主题
+     * @param key     业务键
+     * @param payload 消息体
+     * @param delay   延迟时长
      */
     @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
@@ -52,6 +61,11 @@ public class KafkaProducerAdapter implements MessageProducer {
 
     /**
      * 顺序发送。按 shardingKey 取模选分区，保证相同 key 进入同一分区。
+     *
+     * @param topic       主题
+     * @param key         业务键
+     * @param payload     消息体
+     * @param shardingKey 分片键
      */
     @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
@@ -59,7 +73,9 @@ public class KafkaProducerAdapter implements MessageProducer {
     }
 
     /**
-     * name。
+     * 返回消息生产者名称。
+     *
+     * @return 名称
      */
     @Override
     public String name() {
@@ -67,7 +83,13 @@ public class KafkaProducerAdapter implements MessageProducer {
     }
 
     /**
-     * send。
+     * 发送消息。根据 shardingKey 计算分区，根据 notBefore 标记延迟。
+     *
+     * @param topic       主题
+     * @param key         业务键
+     * @param payload     消息体
+     * @param shardingKey 分片键
+     * @param notBefore   生效时间戳
      */
     private void send(String topic, String key, Object payload, String shardingKey, long notBefore) {
         String body = payload instanceof String text ? text : JsonUtils.toJson(payload);
@@ -90,7 +112,11 @@ public class KafkaProducerAdapter implements MessageProducer {
     }
 
     /**
-     * partitionOf。
+     * 按 shardingKey 计算目标分区。
+     *
+     * @param shardingKey 分片键
+     * @param partitions  分区数
+     * @return 目标分区号
      */
     private int partitionOf(String shardingKey, int partitions) {
         if (partitions <= 1) {
@@ -100,7 +126,10 @@ public class KafkaProducerAdapter implements MessageProducer {
     }
 
     /**
-     * partitionCount。
+     * 查询主题分区数量。
+     *
+     * @param topic 主题
+     * @return 分区数
      */
     private int partitionCount(String topic) {
         try {

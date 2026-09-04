@@ -26,7 +26,7 @@ import java.time.LocalDate;
 public class UniqueVisitorController {
 
     /**
-     * uniqueVisitorService，业务服务层。
+     * 独立访客统计服务。
      */
     private final UniqueVisitorService uniqueVisitorService;
 

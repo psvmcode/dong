@@ -37,12 +37,17 @@ public class RateLimitAspect {
     private static final ParameterNameDiscoverer NAME_DISCOVERER = new DefaultParameterNameDiscoverer();
 
     /**
-     * rateLimitManager。
+     * 限流管理器。
      */
     private final RateLimitManager rateLimitManager;
 
     /**
-     * around。
+     * 拦截标注了 @RateLimited 的方法，超过配额时抛出业务异常。
+     *
+     * @param joinPoint   连接点
+     * @param rateLimited 限流注解
+     * @return 原方法返回值
+     * @throws Throwable 原方法异常
      */
     @Around("@annotation(rateLimited)")
     public Object around(ProceedingJoinPoint joinPoint, RateLimited rateLimited) throws Throwable {
@@ -64,7 +69,12 @@ public class RateLimitAspect {
     }
 
     /**
-     * resolveKey。
+     * 解析限流键，支持 SpEL 表达式。
+     *
+     * @param expression SpEL 表达式或字面量
+     * @param method     目标方法
+     * @param args       方法参数
+     * @return 解析后的限流键
      */
     private String resolveKey(String expression, Method method, Object[] args) {
         if (!expression.contains("#") && !expression.contains("'")) {

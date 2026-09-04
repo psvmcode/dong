@@ -24,7 +24,7 @@ public class DelayQueueServiceImpl implements DelayQueueService {
     private static final String QUEUE = "lab:delay:queue";
 
     /**
-     * delayedQueue。
+     * Redisson 延迟队列。
      */
     private final RDelayedQueue<String> delayedQueue;
 

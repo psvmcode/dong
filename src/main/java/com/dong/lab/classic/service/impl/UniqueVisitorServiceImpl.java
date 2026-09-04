@@ -25,7 +25,7 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
     private static final Duration RETENTION = Duration.ofDays(90);
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 

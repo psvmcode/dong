@@ -32,7 +32,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private static final String HISTORY = "lab:rank:history:";
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 

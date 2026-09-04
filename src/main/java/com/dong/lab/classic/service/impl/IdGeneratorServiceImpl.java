@@ -29,17 +29,17 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
     private static final String SEGMENT_KEY = "lab:id:segment";
 
     /**
-     * snowflake。
+     * 雪花发号器。
      */
     private final Snowflake snowflake;
 
     /**
-     * redisService，业务服务层。
+     * Redis 服务。
      */
     private final RedisService redisService;
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 

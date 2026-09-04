@@ -21,42 +21,42 @@ public class CacheStats {
     private final LongAdder rebuild = new LongAdder();
 
     /**
-     * recordL1Hit。
+     * 记录 L1 命中。
      */
     public void recordL1Hit() {
         l1Hit.increment();
     }
 
     /**
-     * recordL2Hit。
+     * 记录 L2 命中。
      */
     public void recordL2Hit() {
         l2Hit.increment();
     }
 
     /**
-     * recordMiss。
+     * 记录缓存未命中。
      */
     public void recordMiss() {
         miss.increment();
     }
 
     /**
-     * recordPenetrationBlocked。
+     * 记录被穿透防护拦截的请求。
      */
     public void recordPenetrationBlocked() {
         penetrationBlocked.increment();
     }
 
     /**
-     * recordRebuild。
+     * 记录回源重建。
      */
     public void recordRebuild() {
         rebuild.increment();
     }
 
     /**
-     * reset。
+     * 重置所有统计计数。
      */
     public void reset() {
         l1Hit.reset();
@@ -78,7 +78,14 @@ public class CacheStats {
     }
 
     /**
-     * CacheStatsSnapshot。
+     * 缓存统计快照记录。
+     *
+     * @param l1Hit           L1 命中数
+     * @param l2Hit           L2 命中数
+     * @param miss            未命中数
+     * @param penetrationBlocked 穿透拦截数
+     * @param rebuild         回源重建数
+     * @param hitRatioPercent 命中率百分比
      */
     public record CacheStatsSnapshot(long l1Hit, long l2Hit, long miss,
                                      long penetrationBlocked, long rebuild, double hitRatioPercent) {

@@ -23,38 +23,50 @@ public class CacheEventBus {
     private final String nodeId = UUID.randomUUID().toString().substring(0, 8);
 
     /**
-     * redisService，业务服务层。
+     * Redis 服务。
      */
     private final RedisService redisService;
 
     /**
-     * channel。
+     * 失效广播频道。
      */
     private final String channel;
 
     private final List<Consumer<CacheInvalidationEvent>> listeners = new CopyOnWriteArrayList<>();
 
+    /**
+     * 构造缓存事件总线。
+     *
+     * @param redisService Redis 服务
+     * @param channel      失效广播频道
+     */
     public CacheEventBus(RedisService redisService, String channel) {
         this.redisService = redisService;
         this.channel = channel;
     }
 
     /**
-     * register。
+     * 注册失效事件监听器。
+     *
+     * @param listener 监听器
      */
     public void register(Consumer<CacheInvalidationEvent> listener) {
         listeners.add(listener);
     }
 
     /**
-     * getChannel。
+     * 获取失效广播频道。
+     *
+     * @return 频道名称
      */
     public String getChannel() {
         return channel;
     }
 
     /**
-     * publishInvalidation。
+     * 发布缓存失效事件。
+     *
+     * @param key 缓存键
      */
     public void publishInvalidation(String key) {
         CacheInvalidationEvent event = new CacheInvalidationEvent(key, nodeId, System.currentTimeMillis());
