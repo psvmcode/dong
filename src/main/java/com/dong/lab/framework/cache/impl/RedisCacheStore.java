@@ -1,7 +1,9 @@
-package com.dong.lab.framework.cache;
+package com.dong.lab.framework.cache.impl;
 
 import com.dong.lab.common.util.JsonUtils;
 import com.dong.lab.framework.redis.RedisService;
+import com.dong.lab.framework.cache.CacheLookup;
+import com.dong.lab.framework.cache.CacheStore;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.time.Duration;

@@ -1,4 +1,4 @@
-package com.dong.lab.crossborder.service;
+package com.dong.lab.crossborder.handler;
 
 import com.dong.lab.common.util.JsonUtils;
 import com.dong.lab.crossborder.entity.CrossBorderRemittance;

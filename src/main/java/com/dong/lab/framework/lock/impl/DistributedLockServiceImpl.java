@@ -1,4 +1,7 @@
-package com.dong.lab.framework.lock;
+package com.dong.lab.framework.lock.impl;
+
+import com.dong.lab.framework.lock.DistributedLockService;
+import com.dong.lab.framework.lock.LockHandle;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -178,11 +178,11 @@ src/main/java/com/dong/lab/
 │
 ├── framework/                  技术能力层，与业务无关，可被任意上下文复用
 │   ├── redis/RedisService      Redis 门面，脚本参数统一转字符串
-│   ├── lock/                   Redisson 分布式锁 + LockHandle（支持 try-with-resources）
-│   ├── cache/                  多级缓存（L1 Caffeine + L2 Redis）、失效总线、统计
-│   ├── limiter/                固定窗口 / 滑动窗口 / 令牌桶 / 漏桶 + @RateLimited 切面
+│   ├── lock/                   分布式锁接口 + LockHandle，实现在 impl
+│   ├── cache/                  多级缓存接口、失效总线、统计，实现在 impl
+│   ├── limiter/                RateLimiter 接口与 @RateLimited 切面，实现在 impl
 │   ├── bloom/                  Redisson 布隆过滤器
-│   └── mq/                     消息抽象：LocalMessageBus / RocketMQ / Kafka + MqFacade 路由
+│   └── mq/                     MessageProducer 接口与 MqFacade 路由，实现在 impl
 │
 ├── cache/                      多级缓存：穿透、击穿、雪崩、双写一致性
 ├── classic/                    Redis 经典场景：排行榜、UV、签到、短链、GEO、延迟队列、发号器
@@ -241,10 +241,15 @@ Elasticsearch 与 MongoDB 的健康检查指示器是关闭的。它们是可选
 | `controller` | 参数校验、调 service、封装 Result | 写业务逻辑 |
 | `service` | 接口定义 | — |
 | `service/impl` | 业务逻辑、事务边界 | 直接依赖具体中间件实现 |
+| `task` | 定时任务，只做调度与编排 | 写业务逻辑 |
+| `handler` | 消息处理器，消费后转调 service | 直接改状态或直接写库 |
+| `support` | 无状态工具与进程内组件 | 持有业务状态、依赖 mapper |
 | `mapper` | 数据访问 | 写业务逻辑 |
 | `entity` | 与表一一对应 | 放业务方法 |
 | `dto` | 请求 / 响应对象 | 与 entity 混用 |
 | `enums` | 状态码，落库为 int | 用魔法数字 |
+
+**接口与实现一律分包**：`service` 包只放接口，实现全部进 `service/impl`；`framework` 技术层同理，接口留在本包（`CacheStore`、`RateLimiter`、`MessageProducer`、`DistributedLockService`），实现进各自的 `impl` 子包。定时任务、消息处理器、无状态工具不属于业务服务，不进 `service` 包，分别归入 `task`、`handler`、`support`——否则 `service` 包里会混进一批没有接口的类，接口与实现的对应关系就不再可信。
 
 ---
 
@@ -1057,7 +1062,7 @@ return algorithm == RateLimitAlgorithm.TOKEN_BUCKET ? RateType.OVERALL : RateTyp
 
 根因不是笔误：Redisson 的 `RRateLimiter` 底层只有令牌桶一种实现，只有 `RateType.OVERALL` 与 `RateType.PER_CLIENT` 两种计数维度，无法表达滑动窗口和漏桶。补上分支也无从下手。
 
-**解法**：用 Lua 在 Redis 上自行实现四种算法（见 `framework/limiter/LuaRateLimiter`）。
+**解法**：用 Lua 在 Redis 上自行实现四种算法（见 `framework/limiter/impl/LuaRateLimiter`）。
 
 几个实现要点：
 

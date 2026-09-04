@@ -1,5 +1,8 @@
 package com.dong.lab.framework.limiter;
 
+import com.dong.lab.framework.limiter.impl.LocalRateLimiter;
+import com.dong.lab.framework.limiter.impl.LuaRateLimiter;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 /**

@@ -1,8 +1,10 @@
-package com.dong.lab.seckill.service;
+package com.dong.lab.seckill.task;
 
 import com.dong.lab.seckill.entity.SeckillOrder;
 import com.dong.lab.seckill.enums.SeckillOrderStatus;
 import com.dong.lab.seckill.mapper.SeckillOrderMapper;
+import com.dong.lab.seckill.service.SeckillStockService;
+import com.dong.lab.seckill.support.SoldOutFlag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

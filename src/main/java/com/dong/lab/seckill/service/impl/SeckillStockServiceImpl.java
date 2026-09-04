@@ -4,7 +4,7 @@ import com.dong.lab.common.constant.Constants;
 import com.dong.lab.common.exception.BusinessException;
 import com.dong.lab.framework.redis.RedisService;
 import com.dong.lab.seckill.service.SeckillStockService;
-import com.dong.lab.seckill.service.SoldOutFlag;
+import com.dong.lab.seckill.support.SoldOutFlag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.script.DefaultRedisScript;

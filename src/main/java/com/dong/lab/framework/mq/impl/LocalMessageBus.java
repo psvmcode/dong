@@ -1,6 +1,8 @@
-package com.dong.lab.framework.mq;
+package com.dong.lab.framework.mq.impl;
 
 import com.dong.lab.common.util.JsonUtils;
+import com.dong.lab.framework.mq.MessageHandler;
+import com.dong.lab.framework.mq.MessageProducer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

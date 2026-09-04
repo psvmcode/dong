@@ -1,4 +1,6 @@
-package com.dong.lab.tcc.service;
+package com.dong.lab.tcc.task;
+
+import com.dong.lab.tcc.service.TccCoordinatorService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

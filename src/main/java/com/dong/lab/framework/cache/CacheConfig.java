@@ -2,6 +2,8 @@ package com.dong.lab.framework.cache;
 
 import com.dong.lab.config.ExecutorConfig;
 import com.dong.lab.framework.redis.RedisService;
+import com.dong.lab.framework.cache.impl.CaffeineCacheStore;
+import com.dong.lab.framework.cache.impl.RedisCacheStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

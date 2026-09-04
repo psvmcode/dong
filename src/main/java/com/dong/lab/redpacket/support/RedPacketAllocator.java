@@ -1,4 +1,4 @@
-package com.dong.lab.redpacket.service;
+package com.dong.lab.redpacket.support;
 
 import com.dong.lab.common.constant.Constants;
 import com.dong.lab.common.exception.BusinessException;

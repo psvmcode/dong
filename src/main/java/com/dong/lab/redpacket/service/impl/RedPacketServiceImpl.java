@@ -10,7 +10,7 @@ import com.dong.lab.redpacket.entity.RedPacketRecord;
 import com.dong.lab.redpacket.enums.RedPacketStatus;
 import com.dong.lab.redpacket.enums.RedPacketType;
 import com.dong.lab.redpacket.mapper.RedPacketMapper;
-import com.dong.lab.redpacket.service.RedPacketAllocator;
+import com.dong.lab.redpacket.support.RedPacketAllocator;
 import com.dong.lab.redpacket.service.RedPacketService;
 import com.dong.lab.redpacket.service.RedPacketStockService;
 import lombok.RequiredArgsConstructor;

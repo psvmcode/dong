@@ -1,4 +1,4 @@
-package com.dong.lab.seckill.service;
+package com.dong.lab.seckill.handler;
 
 import com.dong.lab.common.util.JsonUtils;
 import com.dong.lab.framework.mq.MessageHandler;

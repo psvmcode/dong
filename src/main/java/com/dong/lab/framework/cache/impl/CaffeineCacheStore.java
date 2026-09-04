@@ -1,6 +1,10 @@
-package com.dong.lab.framework.cache;
+package com.dong.lab.framework.cache.impl;
 
 import com.dong.lab.common.util.JsonUtils;
+import com.dong.lab.framework.cache.CacheEntry;
+import com.dong.lab.framework.cache.CacheLookup;
+import com.dong.lab.framework.cache.CacheStore;
+import com.dong.lab.framework.cache.CacheEmpty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;

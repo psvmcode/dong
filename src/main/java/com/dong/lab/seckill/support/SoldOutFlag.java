@@ -1,4 +1,4 @@
-package com.dong.lab.seckill.service;
+package com.dong.lab.seckill.support;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;

@@ -1,5 +1,9 @@
 package com.dong.lab.framework.mq;
 
+import com.dong.lab.framework.mq.impl.KafkaProducerAdapter;
+import com.dong.lab.framework.mq.impl.LocalMessageBus;
+import com.dong.lab.framework.mq.impl.RocketMqProducer;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;

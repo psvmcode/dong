@@ -1,10 +1,12 @@
-package com.dong.lab.crossborder.service;
+package com.dong.lab.crossborder.task;
 
 import com.dong.lab.common.util.JsonUtils;
 import com.dong.lab.crossborder.entity.CrossBorderRemittance;
 import com.dong.lab.crossborder.enums.RemittanceStatus;
 import com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper;
 import com.dong.lab.framework.mq.MqFacade;
+import com.dong.lab.crossborder.service.FxQuoteService;
+import com.dong.lab.crossborder.service.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

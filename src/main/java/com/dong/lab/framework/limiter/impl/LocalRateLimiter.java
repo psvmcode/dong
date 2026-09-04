@@ -1,4 +1,8 @@
-package com.dong.lab.framework.limiter;
+package com.dong.lab.framework.limiter.impl;
+
+import com.dong.lab.framework.limiter.RateLimitAlgorithm;
+import com.dong.lab.framework.limiter.RateLimitRule;
+import com.dong.lab.framework.limiter.RateLimiter;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
