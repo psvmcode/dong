@@ -40,7 +40,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -49,12 +48,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public RemittanceStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : RemittanceStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -63,12 +62,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public RemittanceStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : RemittanceStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -77,6 +76,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public RemittanceStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : RemittanceStatus.of(value);
@@ -93,7 +93,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -102,12 +101,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public FxQuoteStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : FxQuoteStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -116,12 +115,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public FxQuoteStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : FxQuoteStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -130,6 +129,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public FxQuoteStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : FxQuoteStatus.of(value);
@@ -146,7 +146,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -155,12 +154,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ComplianceCheckType getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : ComplianceCheckType.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -169,12 +168,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ComplianceCheckType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : ComplianceCheckType.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -183,6 +182,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ComplianceCheckType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ComplianceCheckType.of(value);
@@ -199,7 +199,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -208,12 +207,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ComplianceResult getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : ComplianceResult.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -222,12 +221,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ComplianceResult getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : ComplianceResult.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -236,6 +235,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ComplianceResult getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ComplianceResult.of(value);
@@ -252,7 +252,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -261,12 +260,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public LedgerDirection getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : LedgerDirection.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -275,12 +274,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public LedgerDirection getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : LedgerDirection.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -289,6 +288,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public LedgerDirection getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : LedgerDirection.of(value);
@@ -305,7 +305,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -314,12 +313,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public SettlementChannel getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : SettlementChannel.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -328,12 +327,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public SettlementChannel getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : SettlementChannel.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -342,6 +341,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public SettlementChannel getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : SettlementChannel.of(value);
@@ -358,7 +358,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -367,12 +366,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public SettlementStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : SettlementStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -381,12 +380,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public SettlementStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : SettlementStatus.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -395,6 +394,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public SettlementStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : SettlementStatus.of(value);
@@ -411,7 +411,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -420,12 +419,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ReconDiffType getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : ReconDiffType.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -434,12 +433,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ReconDiffType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : ReconDiffType.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -448,6 +447,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public ReconDiffType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : ReconDiffType.of(value);
@@ -468,7 +468,6 @@ public final class CrossBorderEnumTypeHandler {
             ps.setInt(i, parameter.getCode());
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -477,12 +476,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public AccountEventType getNullableResult(ResultSet rs, String columnName) throws SQLException {
             int value = rs.getInt(columnName);
             return rs.wasNull() ? null : AccountEventType.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -491,12 +490,12 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public AccountEventType getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
             return rs.wasNull() ? null : AccountEventType.of(value);
         }
 
-        @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -505,6 +504,7 @@ public final class CrossBorderEnumTypeHandler {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+        @Override
         public AccountEventType getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
             int value = cs.getInt(columnIndex);
             return cs.wasNull() ? null : AccountEventType.of(value);

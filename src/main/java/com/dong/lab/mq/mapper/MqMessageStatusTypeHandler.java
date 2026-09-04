@@ -16,7 +16,6 @@ import java.sql.SQLException;
 
 public class MqMessageStatusTypeHandler extends BaseTypeHandler<MqMessageStatus> {
 
-    @Override
     /**
      * 将枚举按 code 写入 PreparedStatement。
      *
@@ -26,12 +25,12 @@ public class MqMessageStatusTypeHandler extends BaseTypeHandler<MqMessageStatus>
      * @param jdbcType JDBC 类型
      * @throws SQLException SQL 异常
      */
+    @Override
     public void setNonNullParameter(PreparedStatement ps, int i, MqMessageStatus parameter, JdbcType jdbcType)
             throws SQLException {
         ps.setInt(i, parameter.getCode());
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -40,12 +39,12 @@ public class MqMessageStatusTypeHandler extends BaseTypeHandler<MqMessageStatus>
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public MqMessageStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
         int value = rs.getInt(columnName);
         return rs.wasNull() ? null : MqMessageStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -54,12 +53,12 @@ public class MqMessageStatusTypeHandler extends BaseTypeHandler<MqMessageStatus>
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public MqMessageStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         int value = rs.getInt(columnIndex);
         return rs.wasNull() ? null : MqMessageStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -68,6 +67,7 @@ public class MqMessageStatusTypeHandler extends BaseTypeHandler<MqMessageStatus>
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public MqMessageStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         int value = cs.getInt(columnIndex);
         return cs.wasNull() ? null : MqMessageStatus.of(value);

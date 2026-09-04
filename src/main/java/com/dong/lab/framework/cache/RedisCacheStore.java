@@ -36,60 +36,60 @@ public class RedisCacheStore implements CacheStore {
         this.jitterRatio = jitterRatio;
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "redis";
     }
 
-    @Override
     /**
      * 查询缓存值。
      */
+    @Override
     public <T> CacheLookup<T> lookup(String key, Class<T> type) {
         String raw = redisService.get(prefixed(key)).orElse(null);
         return decode(raw, json -> JsonUtils.fromJson(json, type));
     }
 
-    @Override
     /**
      * 查询缓存值。
      */
+    @Override
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
         String raw = redisService.get(prefixed(key)).orElse(null);
         return decode(raw, json -> JsonUtils.fromJson(json, type));
     }
 
-    @Override
     /**
      * 放入缓存。
      */
+    @Override
     public void put(String key, Object value, Duration ttl) {
         redisService.set(prefixed(key), JsonUtils.toJson(value), jitter(ttl));
     }
 
-    @Override
     /**
      * 放入空值占位，用于防止缓存穿透。
      */
+    @Override
     public void putEmpty(String key, Duration ttl) {
         redisService.set(prefixed(key), EMPTY_MARKER, ttl);
     }
 
-    @Override
     /**
      * 清除缓存，用于缓存失效演练。
      */
+    @Override
     public void evict(String key) {
         redisService.delete(prefixed(key));
     }
 
-    @Override
     /**
      * 估算缓存大小。
      */
+    @Override
     public long estimatedSize() {
         Long size = redisService.template().execute(
                 (org.springframework.data.redis.core.RedisCallback<Long>)

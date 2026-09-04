@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 /**
- * CacheLabServiceImpl，CacheLab 业务服务实现。
+ * 缓存实验室服务实现。
  */
 @Slf4j
 @Service

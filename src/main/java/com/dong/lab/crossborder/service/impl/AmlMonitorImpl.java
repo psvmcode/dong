@@ -76,10 +76,10 @@ public class AmlMonitorImpl implements AmlMonitor {
      */
     private final RedisService redisService;
 
-    @Override
     /**
      * detectStructuring。
      */
+    @Override
     public Optional<String> detectStructuring(Long payerAccountId, BigDecimal amount) {
         String key = keyOf(payerAccountId);
         long cents = amount.multiply(new BigDecimal("100")).longValue();
@@ -99,10 +99,10 @@ public class AmlMonitorImpl implements AmlMonitor {
         return Optional.empty();
     }
 
-    @Override
     /**
      * structuringProfile。
      */
+    @Override
     public Map<String, Object> structuringProfile(Long payerAccountId) {
         String key = keyOf(payerAccountId);
         Map<String, String> entries = redisService.hashGetAll(key);
@@ -140,10 +140,10 @@ public class AmlMonitorImpl implements AmlMonitor {
         return flagged;
     }
 
-    @Override
     /**
      * reset。
      */
+    @Override
     public void reset() {
         Set<String> keys = scanAmlKeys();
         if (keys != null && !keys.isEmpty()) {

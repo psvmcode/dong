@@ -55,10 +55,10 @@ public class SearchServiceImpl implements SearchService {
      */
     private final IndexNameResolver indexNameResolver;
 
-    @Override
     /**
      * index。
      */
+    @Override
     public void index(ProductDocument document) {
         try {
             elasticsearchClient.index(builder -> builder
@@ -71,10 +71,10 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
-    @Override
     /**
      * bulkIndex。
      */
+    @Override
     public void bulkIndex(Iterable<ProductDocument> documents) {
         List<ProductDocument> list = new ArrayList<>();
         documents.forEach(list::add);
@@ -110,10 +110,10 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
-    @Override
     /**
      * 根据 id 删除记录。
      */
+    @Override
     public void deleteById(String id) {
         try {
             elasticsearchClient.delete(builder -> builder.index(indexName()).id(id));
@@ -122,10 +122,10 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
-    @Override
     /**
      * search。
      */
+    @Override
     public ProductSearchResponse search(ProductSearchRequest request) {
         try {
             BoolQuery.Builder bool = new BoolQuery.Builder();
@@ -171,10 +171,10 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
-    @Override
     /**
      * count。
      */
+    @Override
     public long count() {
         try {
             CountRequest request = CountRequest.of(builder -> builder.index(indexName()));

@@ -4,7 +4,7 @@ import com.dong.lab.classic.entity.ShortLink;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 /**
- * ShortLinkMapper，MyBatis 数据访问接口。
+ * 短链接数据访问接口。
  */
 @Mapper
 

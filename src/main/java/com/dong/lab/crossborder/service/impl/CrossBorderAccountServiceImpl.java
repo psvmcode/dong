@@ -52,10 +52,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
      */
     private final Snowflake snowflake;
 
-    @Override
     /**
      * 创建记录。
      */
+    @Override
     public Long create(AccountCreateRequest request) {
         CrossBorderAccount account = new CrossBorderAccount();
         account.setAccountNo("CB" + snowflake.nextId());
@@ -73,10 +73,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
         return account.getId();
     }
 
-    @Override
     /**
      * findByAccountNo。
      */
+    @Override
     public AccountResponse findByAccountNo(String accountNo) {
         CrossBorderAccount account = accountMapper.selectByAccountNo(accountNo);
         if (account == null) {
@@ -85,10 +85,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
         return AccountResponse.from(account);
     }
 
-    @Override
     /**
      * 根据 id 查询。
      */
+    @Override
     public AccountResponse findById(Long id) {
         CrossBorderAccount account = accountMapper.selectById(id);
         if (account == null) {
@@ -97,10 +97,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
         return AccountResponse.from(account);
     }
 
-    @Override
     /**
      * 查询全部。
      */
+    @Override
     public List<AccountResponse> findAll() {
         return accountMapper.selectAll().stream().map(AccountResponse::from).toList();
     }
@@ -144,10 +144,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
         return findByAccountNo(accountNo);
     }
 
-    @Override
     /**
      * events。
      */
+    @Override
     public List<AccountEventResponse> events(String accountNo) {
         requireAccount(accountNo);
         return eventMapper.selectByAccountNo(accountNo).stream()
@@ -195,10 +195,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
         return account.getBalance().subtract(expected);
     }
 
-    @Override
     /**
      * 清空全部数据，仅测试场景使用。
      */
+    @Override
     public int clearAll() {
         int affected = accountMapper.clearAll();
         ledgerMapper.clearAll();

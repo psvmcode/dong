@@ -28,44 +28,44 @@ public class CacheConfig {
      */
     private final ApplicationContext applicationContext;
 
-    @Bean
     /**
      * cacheStats。
      */
+    @Bean
     public CacheStats cacheStats() {
         return new CacheStats();
     }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "lab.cache", name = "l2-enabled", havingValue = "true", matchIfMissing = true)
     /**
      * redisCacheStore。
      */
+    @Bean
+    @ConditionalOnProperty(prefix = "lab.cache", name = "l2-enabled", havingValue = "true", matchIfMissing = true)
     public RedisCacheStore redisCacheStore(RedisService redisService, CacheProperties properties) {
         return new RedisCacheStore(redisService, properties.getTtlJitterRatio());
     }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
     /**
      * caffeineCacheStore。
      */
+    @Bean
+    @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
     public CaffeineCacheStore caffeineCacheStore(CacheProperties properties) {
         return new CaffeineCacheStore(properties.getL1MaxSize());
     }
 
-    @Bean
     /**
      * cacheEventBus。
      */
+    @Bean
     public CacheEventBus cacheEventBus(RedisService redisService, CacheProperties properties) {
         return new CacheEventBus(redisService, properties.getInvalidationChannel());
     }
 
-    @Bean
     /**
      * multiLevelCache。
      */
+    @Bean
     public MultiLevelCache multiLevelCache(CacheEventBus eventBus,
                                            com.dong.lab.framework.lock.DistributedLockService distributedLockService,
                                            ExecutorConfig.DelayedTaskRunner delayedTaskRunner,
@@ -76,11 +76,11 @@ public class CacheConfig {
         return new MultiLevelCache(l1, l2, eventBus, distributedLockService, delayedTaskRunner, properties, stats);
     }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
     /**
      * cacheInvalidationContainer。
      */
+    @Bean
+    @ConditionalOnProperty(prefix = "lab.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
     public RedisMessageListenerContainer cacheInvalidationContainer(RedisConnectionFactory connectionFactory,
                                                                     CacheEventBus eventBus) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();

@@ -56,10 +56,10 @@ public class ChannelRouterImpl implements ChannelRouter {
      */
     private final FxQuoteService fxQuoteService;
 
-    @Override
     /**
      * route。
      */
+    @Override
     public RouteDecision route(BigDecimal sourceAmount, boolean urgent) {
         BigDecimal weight = urgent ? URGENT_ETA_WEIGHT : ETA_WEIGHT;
         List<String> reasons = new ArrayList<>();

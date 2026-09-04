@@ -53,34 +53,34 @@ public class MqFacade implements MessageProducer {
         this.active = active;
     }
 
-    @Override
     /**
      * send。
      */
+    @Override
     public void send(String topic, String key, Object payload) {
         resolve().send(topic, key, payload);
     }
 
-    @Override
     /**
      * sendDelayed。
      */
+    @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
         resolve().sendDelayed(topic, key, payload, delay);
     }
 
-    @Override
     /**
      * sendOrdered。
      */
+    @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
         resolve().sendOrdered(topic, key, payload, shardingKey);
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return resolve().name();
     }

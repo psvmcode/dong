@@ -43,10 +43,14 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
      */
     private final RedissonClient redissonClient;
 
-    @Override
     /**
-     * generate。
+     * 按策略批量生成 id 并统计耗时。
+     *
+     * @param strategy 发号策略
+     * @param count    生成数量
+     * @return 策略、数量、最后 id 与耗时
      */
+    @Override
     public Map<String, Object> generate(String strategy, int count) {
         AtomicLong last = new AtomicLong();
         long start = System.nanoTime();

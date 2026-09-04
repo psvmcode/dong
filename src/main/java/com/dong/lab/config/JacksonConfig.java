@@ -7,16 +7,18 @@ import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilde
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 /**
- * JacksonConfig，配置类。
+ * Jackson 配置类。
  */
 @Configuration
 
 public class JacksonConfig {
 
-    @Bean
     /**
-     * jacksonCustomizer。
+     * 配置 Jackson 自定义行为：支持 JDK8 日期时间、关闭未知属性失败。
+     *
+     * @return Jackson 自定义器
      */
+    @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
         return builder -> builder
                 .modules(new JavaTimeModule())

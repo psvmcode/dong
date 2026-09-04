@@ -21,18 +21,18 @@ public class DemoOrderMessageHandler implements MessageHandler {
      */
     private final MqConsumeService mqConsumeService;
 
-    @Override
     /**
      * topic。
      */
+    @Override
     public String topic() {
         return TOPIC;
     }
 
-    @Override
     /**
      * handle。
      */
+    @Override
     public boolean handle(String key, String payload) {
         return mqConsumeService.consume(TOPIC, key, payload);
     }

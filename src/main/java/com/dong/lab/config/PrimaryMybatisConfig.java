@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
         sqlSessionFactoryRef = "sqlSessionFactory"
 )
 /**
- * PrimaryMybatisConfig，配置类。
+ * 主数据源 MyBatis Mapper 扫描配置类。
  */
 public class PrimaryMybatisConfig {
 

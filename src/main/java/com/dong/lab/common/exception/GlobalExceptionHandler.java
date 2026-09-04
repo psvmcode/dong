@@ -16,26 +16,32 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 /**
- * GlobalExceptionHandler。
+ * 全局异常处理器。
  */
 @Slf4j
 @RestControllerAdvice
 
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(BusinessException.class)
     /**
-     * handleBusinessException。
+     * 处理业务异常。
+     *
+     * @param ex 业务异常
+     * @return 失败响应
      */
+    @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException ex) {
         log.info("business exception code={} message={}", ex.getCode(), ex.getMessage());
         return Result.fail(ex.getCode(), ex.getMessage());
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     /**
-     * handleBindException。
+     * 处理参数绑定异常。
+     *
+     * @param ex 绑定异常
+     * @return 失败响应
      */
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     public Result<Void> handleBindException(BindException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
@@ -44,55 +50,73 @@ public class GlobalExceptionHandler {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, detail);
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
     /**
-     * handleConstraintViolation。
+     * 处理约束校验异常。
+     *
+     * @param ex 约束校验异常
+     * @return 失败响应
      */
+    @ExceptionHandler(ConstraintViolationException.class)
     public Result<Void> handleConstraintViolation(ConstraintViolationException ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
 
+    /**
+     * 处理请求相关异常。
+     *
+     * @param ex 请求异常
+     * @return 失败响应
+     */
     @ExceptionHandler({MissingServletRequestParameterException.class,
             MethodArgumentTypeMismatchException.class,
             HttpMessageNotReadableException.class,
             HttpRequestMethodNotSupportedException.class})
-    /**
-     * handleRequestException。
-     */
     public Result<Void> handleRequestException(Exception ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
     /**
-     * handleIllegalArgument。
+     * 处理非法参数异常。
+     *
+     * @param ex 非法参数异常
+     * @return 失败响应
      */
+    @ExceptionHandler(IllegalArgumentException.class)
     public Result<Void> handleIllegalArgument(IllegalArgumentException ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
 
-    @ExceptionHandler(IllegalStateException.class)
     /**
-     * handleIllegalState。
+     * 处理非法状态异常。
+     *
+     * @param ex 非法状态异常
+     * @return 失败响应
      */
+    @ExceptionHandler(IllegalStateException.class)
     public Result<Void> handleIllegalState(IllegalStateException ex) {
         return Result.fail(Constants.CODE_OPERATION_CONFLICT, Constants.MESSAGE_OPERATION_CONFLICT, ex.getMessage());
     }
 
-    @ExceptionHandler(DuplicateKeyException.class)
     /**
-     * handleDuplicateKey。
+     * 处理主键冲突异常。
+     *
+     * @param ex 主键冲突异常
+     * @return 失败响应
      */
+    @ExceptionHandler(DuplicateKeyException.class)
     public Result<Void> handleDuplicateKey(DuplicateKeyException ex) {
         log.info("duplicate key rejected: {}", ex.getMessage());
         return Result.fail(Constants.CODE_OPERATION_CONFLICT, Constants.MESSAGE_OPERATION_CONFLICT, "record already exists");
     }
 
+    /**
+     * 处理未预期异常。
+     *
+     * @param ex 未预期异常
+     * @return 失败响应
+     */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    /**
-     * handleUnexpected。
-     */
     public Result<Void> handleUnexpected(Exception ex) {
         log.error("unexpected error", ex);
         return Result.fail(Constants.CODE_INTERNAL_ERROR, Constants.MESSAGE_INTERNAL_ERROR, ex.getMessage());

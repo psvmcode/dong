@@ -33,10 +33,10 @@ public class KafkaProducerAdapter implements MessageProducer {
      */
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    @Override
     /**
      * send。
      */
+    @Override
     public void send(String topic, String key, Object payload) {
         send(topic, key, payload, null, 0L);
     }
@@ -58,10 +58,10 @@ public class KafkaProducerAdapter implements MessageProducer {
         send(topic, key, payload, shardingKey, 0L);
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "kafka";
     }

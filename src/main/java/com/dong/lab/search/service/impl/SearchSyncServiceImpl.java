@@ -31,10 +31,10 @@ public class SearchSyncServiceImpl implements SearchSyncService {
      */
     private final SearchService searchService;
 
-    @Override
     /**
      * syncAll。
      */
+    @Override
     public int syncAll() {
         List<Product> products = productMapper.selectAll();
         List<ProductDocument> documents = products.stream().map(this::toDocument).toList();

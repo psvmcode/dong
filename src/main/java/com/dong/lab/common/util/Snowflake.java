@@ -5,7 +5,7 @@ import com.dong.lab.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 /**
- * Snowflake。
+ * 雪花发号器。
  */
 @Component
 
@@ -34,25 +34,31 @@ public class Snowflake {
     private static final long TIMESTAMP_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS + DATA_CENTER_ID_BITS;
 
     /**
-     * workerId。
+     * 工作节点 id。
      */
     private final long workerId;
 
     /**
-     * dataCenterId。
+     * 数据中心 id。
      */
     private final long dataCenterId;
 
     /**
-     * 0L。
+     * 序列号。
      */
     private long sequence = 0L;
 
     /**
-     * 1L。
+     * 上次生成 id 的时间戳。
      */
     private long lastTimestamp = -1L;
 
+    /**
+     * 构造雪花发号器。
+     *
+     * @param workerId     工作节点 id
+     * @param dataCenterId 数据中心 id
+     */
     public Snowflake(@Value("${lab.snowflake.worker-id:1}") long workerId,
                      @Value("${lab.snowflake.data-center-id:1}") long dataCenterId) {
         if (workerId < 0 || workerId > MAX_WORKER_ID || dataCenterId < 0 || dataCenterId > MAX_DATA_CENTER_ID) {
@@ -63,7 +69,9 @@ public class Snowflake {
     }
 
     /**
-     * nextId。
+     * 生成下一个 id。
+     *
+     * @return 全局唯一 id
      */
     public synchronized long nextId() {
         long timestamp = currentMillis();
@@ -93,14 +101,19 @@ public class Snowflake {
     }
 
     /**
-     * nextIdStr。
+     * 生成下一个 id 的字符串形式。
+     *
+     * @return 全局唯一 id 字符串
      */
     public String nextIdStr() {
         return Long.toString(nextId());
     }
 
     /**
-     * waitUntilNextMillis。
+     * 等待下一毫秒。
+     *
+     * @param lastTs 上次时间戳
+     * @return 当前时间戳
      */
     private long waitUntilNextMillis(long lastTs) {
         long timestamp = currentMillis();
@@ -112,7 +125,9 @@ public class Snowflake {
     }
 
     /**
-     * currentMillis。
+     * 获取当前毫秒时间戳。
+     *
+     * @return 当前毫秒时间戳
      */
     private long currentMillis() {
         return System.currentTimeMillis();

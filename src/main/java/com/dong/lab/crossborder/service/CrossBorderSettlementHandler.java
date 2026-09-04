@@ -63,18 +63,18 @@ public class CrossBorderSettlementHandler implements MessageHandler {
 
     private final LongAdder skipped = new LongAdder();
 
-    @Override
     /**
      * topic。
      */
+    @Override
     public String topic() {
         return "cross-border-settlement";
     }
 
-    @Override
     /**
      * handle。
      */
+    @Override
     public boolean handle(String key, String payload) {
         Map<String, Object> message = JsonUtils.fromJson(payload, new TypeReference<>() {
         });

@@ -38,33 +38,46 @@ public class LockLabServiceImpl implements LockLabService {
     private static final Duration WAIT_TIME = Duration.ofSeconds(30);
 
     /**
-     * redisService，业务服务层。
+     * Redis 服务。
      */
     private final RedisService redisService;
 
     /**
-     * distributedLockService，业务服务层。
+     * 分布式锁服务。
      */
     private final DistributedLockService distributedLockService;
 
-    @Override
     /**
-     * withoutLock。
+     * 执行不加锁的并发自增对照实验。
+     *
+     * @param threads 线程数
+     * @param loops   每线程循环数
+     * @return 实验结果
      */
+    @Override
     public Map<String, Object> withoutLock(int threads, int loops) {
         return run(threads, loops, false);
     }
 
-    @Override
     /**
-     * withLock。
+     * 执行加锁的并发自增实验。
+     *
+     * @param threads 线程数
+     * @param loops   每线程循环数
+     * @return 实验结果
      */
+    @Override
     public Map<String, Object> withLock(int threads, int loops) {
         return run(threads, loops, true);
     }
 
     /**
-     * run。
+     * 运行并发自增实验并汇总结果。
+     *
+     * @param threads 线程数
+     * @param loops   每线程循环数
+     * @param guarded 是否加锁
+     * @return 实验结果
      */
     private Map<String, Object> run(int threads, int loops, boolean guarded) {
         String key = COUNTER + System.nanoTime();

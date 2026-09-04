@@ -29,10 +29,15 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
      */
     private final RedissonClient redissonClient;
 
-    @Override
     /**
-     * record。
+     * 记录一次访问并返回估算独立访客数。
+     *
+     * @param page      页面标识
+     * @param visitorId 访客标识
+     * @param date      日期
+     * @return 估算独立访客数
      */
+    @Override
     public long record(String page, String visitorId, LocalDate date) {
         RHyperLogLog<String> counter = counter(page, date);
         counter.add(visitorId);
@@ -40,18 +45,27 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
         return counter.count();
     }
 
-    @Override
     /**
-     * count。
+     * 查询指定日期的估算独立访客数。
+     *
+     * @param page 页面标识
+     * @param date 日期
+     * @return 估算独立访客数
      */
+    @Override
     public long count(String page, LocalDate date) {
         return counter(page, date).count();
     }
 
-    @Override
     /**
-     * countBetween。
+     * 查询日期区间的估算独立访客数，合并多个 HyperLogLog 去重。
+     *
+     * @param page 页面标识
+     * @param from 起始日期
+     * @param to   结束日期
+     * @return 估算独立访客数
      */
+    @Override
     public long countBetween(String page, LocalDate from, LocalDate to) {
         List<String> keys = from.datesUntil(to.plusDays(1))
                 .map(date -> keyOf(page, date))
@@ -69,14 +83,22 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
     }
 
     /**
-     * counter。
+     * 获取指定日期的 HyperLogLog 计数器。
+     *
+     * @param page 页面标识
+     * @param date 日期
+     * @return HyperLogLog 计数器
      */
     private RHyperLogLog<String> counter(String page, LocalDate date) {
         return redissonClient.getHyperLogLog(keyOf(page, date));
     }
 
     /**
-     * keyOf。
+     * 构建 UV 统计键。
+     *
+     * @param page 页面标识
+     * @param date 日期
+     * @return 统计键
      */
     private String keyOf(String page, LocalDate date) {
         return UV + page + ":" + date;

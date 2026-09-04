@@ -77,10 +77,10 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     private final Snowflake snowflake;
 
-    @Override
     /**
      * quote。
      */
+    @Override
     public FxQuoteResponse quote(String sourceCurrency, String targetCurrency, long validSeconds) {
         if (sourceCurrency.equals(targetCurrency)) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "source and target currency must differ");
@@ -103,10 +103,10 @@ public class FxQuoteServiceImpl implements FxQuoteService {
         return FxQuoteResponse.from(quote);
     }
 
-    @Override
     /**
      * findByQuoteNo。
      */
+    @Override
     public FxQuoteResponse findByQuoteNo(String quoteNo) {
         FxQuote quote = fxQuoteMapper.selectByQuoteNo(quoteNo);
         if (quote == null) {
@@ -140,10 +140,10 @@ public class FxQuoteServiceImpl implements FxQuoteService {
         return quote.getAskRate();
     }
 
-    @Override
     /**
      * markUsed。
      */
+    @Override
     public void markUsed(String quoteNo) {
         fxQuoteMapper.updateStatus(quoteNo, FxQuoteStatus.USED);
     }
@@ -197,28 +197,28 @@ public class FxQuoteServiceImpl implements FxQuoteService {
         };
     }
 
-    @Override
     /**
      * 批量标记过期报价。
      */
+    @Override
     public int expireOverdue() {
         return fxQuoteMapper.expireOverdue(LocalDateTime.now());
     }
 
-    @Override
     /**
      * available。
      */
+    @Override
     public List<FxQuoteResponse> available(String currencyPair) {
         return fxQuoteMapper.selectByPairAndStatus(currencyPair, FxQuoteStatus.AVAILABLE, 20).stream()
                 .map(FxQuoteResponse::from)
                 .toList();
     }
 
-    @Override
     /**
      * 清空全部数据，仅测试场景使用。
      */
+    @Override
     public int clearAll() {
         return fxQuoteMapper.clearAll();
     }

@@ -3,22 +3,26 @@ package com.dong.lab.common.result;
 import com.dong.lab.common.constant.Constants;
 
 /**
- * PageRequest。
+ * 分页请求参数。
  */
 public class PageRequest {
 
     /**
-     * DEFAULT_PAGE_NUM。
+     * 当前页码。
      */
     private int pageNum = Constants.DEFAULT_PAGE_NUM;
 
     /**
-     * DEFAULT_PAGE_SIZE。
+     * 每页大小。
      */
     private int pageSize = Constants.DEFAULT_PAGE_SIZE;
 
     /**
-     * of。
+     * 创建分页请求。
+     *
+     * @param pageNum  当前页码
+     * @param pageSize 每页大小
+     * @return 分页请求
      */
     public static PageRequest of(int pageNum, int pageSize) {
         PageRequest request = new PageRequest();
@@ -28,35 +32,45 @@ public class PageRequest {
     }
 
     /**
-     * getPageNum。
+     * 获取当前页码。
+     *
+     * @return 当前页码
      */
     public int getPageNum() {
         return pageNum;
     }
 
     /**
-     * setPageNum。
+     * 设置当前页码。
+     *
+     * @param pageNum 当前页码
      */
     public void setPageNum(int pageNum) {
         this.pageNum = pageNum;
     }
 
     /**
-     * getPageSize。
+     * 获取每页大小。
+     *
+     * @return 每页大小
      */
     public int getPageSize() {
         return pageSize;
     }
 
     /**
-     * setPageSize。
+     * 设置每页大小。
+     *
+     * @param pageSize 每页大小
      */
     public void setPageSize(int pageSize) {
         this.pageSize = pageSize;
     }
 
     /**
-     * getOffset。
+     * 获取数据库偏移量。
+     *
+     * @return 偏移量
      */
     public int getOffset() {
         return (pageNum - 1) * pageSize;

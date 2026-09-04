@@ -8,52 +8,54 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 /**
- * RedissonConfig，配置类。
+ * Redisson 配置类。
  */
 @Configuration
 
 public class RedissonConfig {
 
-    @Value("${lab.redisson.address:redis://127.0.0.1:6379}")
     /**
-     * address。
+     * Redis 地址。
      */
+    @Value("${lab.redisson.address:redis://127.0.0.1:6379}")
     private String address;
 
-    @Value("${lab.redisson.database:0}")
     /**
-     * database。
+     * Redis 数据库索引。
      */
+    @Value("${lab.redisson.database:0}")
     private int database;
 
-    @Value("${lab.redisson.password:}")
     /**
-     * password。
+     * Redis 密码。
      */
+    @Value("${lab.redisson.password:}")
     private String password;
 
-    @Value("${lab.redisson.connection-pool-size:32}")
     /**
-     * connectionPoolSize。
+     * 连接池最大大小。
      */
+    @Value("${lab.redisson.connection-pool-size:32}")
     private int connectionPoolSize;
 
-    @Value("${lab.redisson.connection-minimum-idle-size:8}")
     /**
-     * connectionMinimumIdleSize。
+     * 连接池最小空闲连接数。
      */
+    @Value("${lab.redisson.connection-minimum-idle-size:8}")
     private int connectionMinimumIdleSize;
 
-    @Value("${lab.redisson.timeout:5000}")
     /**
-     * timeout。
+     * 连接超时时间（毫秒）。
      */
+    @Value("${lab.redisson.timeout:5000}")
     private int timeout;
 
-    @Bean(destroyMethod = "shutdown")
     /**
-     * redissonClient。
+     * 创建 Redisson 客户端。
+     *
+     * @return Redisson 客户端
      */
+    @Bean(destroyMethod = "shutdown")
     public RedissonClient redissonClient() {
         Config config = new Config();
         config.setCodec(new org.redisson.codec.JsonJacksonCodec());

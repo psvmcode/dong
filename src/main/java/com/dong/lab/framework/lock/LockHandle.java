@@ -79,10 +79,10 @@ public class LockHandle implements AutoCloseable {
         }
     }
 
-    @Override
     /**
      * close。
      */
+    @Override
     public void close() {
         unlock();
     }

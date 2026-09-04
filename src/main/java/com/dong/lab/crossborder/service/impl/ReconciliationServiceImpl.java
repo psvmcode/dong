@@ -156,10 +156,10 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         return statement;
     }
 
-    @Override
     /**
      * report。
      */
+    @Override
     public ReconReportResponse report(String batchNo) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
@@ -189,21 +189,21 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         return Map.of("diffId", diffId, "diffType", diffType, "decision", decision, "status", "HANDLED");
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * handleAllUnhandled。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public int handleAllUnhandled(String batchNo, String decision) {
         int count = reconDiffMapper.markHandled(batchNo);
         log.info("batch diffs handled batchNo={} count={} decision={}", batchNo, count, decision);
         return count;
     }
 
-    @Override
     /**
      * overview。
      */
+    @Override
     public Map<String, Object> overview() {
         long unhandled = reconDiffMapper.countUnhandled();
         List<ReconDiff> recent = reconDiffMapper.selectAll(200);

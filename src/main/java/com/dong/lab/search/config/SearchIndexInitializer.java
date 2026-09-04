@@ -37,10 +37,10 @@ public class SearchIndexInitializer {
      */
     private final IndexNameResolver indexNameResolver;
 
-    @PostConstruct
     /**
      * createMapping。
      */
+    @PostConstruct
     public void createMapping() {
         String index = indexNameResolver.resolve("product");
         try {

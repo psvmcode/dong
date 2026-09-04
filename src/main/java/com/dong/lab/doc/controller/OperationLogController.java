@@ -31,7 +31,7 @@ public class OperationLogController {
 
     // ObjectProvider 是因为 MongoDB 默认关闭，关闭时容器里没有对应 bean
     /**
-     * operationLogServiceProvider，缓存提供者。
+     * 操作日志服务提供者。
      */
     private final ObjectProvider<OperationLogService> operationLogServiceProvider;
 
@@ -65,7 +65,9 @@ public class OperationLogController {
     }
 
     /**
-     * requireService。
+     * 获取操作日志服务，未启用 MongoDB 时抛出业务异常。
+     *
+     * @return 操作日志服务
      */
     private OperationLogService requireService() {
         OperationLogService service = operationLogServiceProvider.getIfAvailable();

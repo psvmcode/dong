@@ -14,7 +14,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 import java.util.concurrent.TimeUnit;
 /**
- * MongoConfig，配置类。
+ * MongoDB 配置类。
  */
 @Configuration
 @ConditionalOnProperty(prefix = "lab.mongodb", name = "enabled", havingValue = "true")
@@ -22,16 +22,18 @@ import java.util.concurrent.TimeUnit;
 
 public class MongoConfig {
 
-    @Value("${spring.data.mongodb.uri:mongodb://127.0.0.1:27017/dong_lab}")
     /**
-     * uri。
+     * MongoDB 连接地址。
      */
+    @Value("${spring.data.mongodb.uri:mongodb://127.0.0.1:27017/dong_lab}")
     private String uri;
 
-    @Bean(destroyMethod = "close")
     /**
-     * mongoClient。
+     * 创建 MongoDB 客户端。
+     *
+     * @return MongoDB 客户端
      */
+    @Bean(destroyMethod = "close")
     public MongoClient mongoClient() {
         MongoClientSettings settings = MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(uri))
@@ -43,10 +45,13 @@ public class MongoConfig {
         return MongoClients.create(settings);
     }
 
-    @Bean
     /**
-     * mongoTemplate。
+     * 创建 MongoTemplate，并配置点号替换规则以支持带点的字段键。
+     *
+     * @param mongoClient MongoDB 客户端
+     * @return MongoTemplate
      */
+    @Bean
     public MongoTemplate mongoTemplate(MongoClient mongoClient) {
         String database = new ConnectionString(uri).getDatabase();
         MongoTemplate template = new MongoTemplate(mongoClient, database == null ? "dong_lab" : database);

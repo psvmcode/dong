@@ -9,36 +9,38 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 /**
- * ProductSaveRequest。
+ * 商品保存请求。
  */
 public class ProductSaveRequest {
 
-    @NotBlank
     /**
      * 名称。
      */
+    @NotBlank
     private String name;
 
     /**
-     * category。
+     * 商品分类。
      */
     private String category;
 
+    /**
+     * 商品价格。
+     */
     @NotNull
     @DecimalMin("0.01")
-    /**
-     * price。
-     */
     private BigDecimal price;
 
-    @NotNull
     /**
-     * stock。
+     * 库存数量。
      */
+    @NotNull
     private Integer stock;
 
     /**
-     * toEntity。
+     * 转换为商品实体。
+     *
+     * @return 商品实体
      */
     public Product toEntity() {
         Product product = new Product();
@@ -51,56 +53,72 @@ public class ProductSaveRequest {
     }
 
     /**
-     * getName。
+     * 获取名称。
+     *
+     * @return 名称
      */
     public String getName() {
         return name;
     }
 
     /**
-     * setName。
+     * 设置名称。
+     *
+     * @param name 名称
      */
     public void setName(String name) {
         this.name = name;
     }
 
     /**
-     * getCategory。
+     * 获取商品分类。
+     *
+     * @return 商品分类
      */
     public String getCategory() {
         return category;
     }
 
     /**
-     * setCategory。
+     * 设置商品分类。
+     *
+     * @param category 商品分类
      */
     public void setCategory(String category) {
         this.category = category;
     }
 
     /**
-     * getPrice。
+     * 获取商品价格。
+     *
+     * @return 商品价格
      */
     public BigDecimal getPrice() {
         return price;
     }
 
     /**
-     * setPrice。
+     * 设置商品价格。
+     *
+     * @param price 商品价格
      */
     public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
     /**
-     * getStock。
+     * 获取库存数量。
+     *
+     * @return 库存数量
      */
     public Integer getStock() {
         return stock;
     }
 
     /**
-     * setStock。
+     * 设置库存数量。
+     *
+     * @param stock 库存数量
      */
     public void setStock(Integer stock) {
         this.stock = stock;

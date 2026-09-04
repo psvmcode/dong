@@ -30,11 +30,11 @@ public class UserAccountServiceImpl implements UserAccountService {
      */
     private final UserAccountMapper userAccountMapper;
 
-    @Override
-    @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
     /**
      * 创建记录。
      */
+    @Override
+    @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
     public Long create(Long userId, String username, long balance) {
         UserAccount existing = userAccountMapper.selectByUserId(userId);
         if (existing != null) {
@@ -51,27 +51,27 @@ public class UserAccountServiceImpl implements UserAccountService {
         return account.getId();
     }
 
-    @Override
     /**
      * findByUserId。
      */
+    @Override
     public UserAccount findByUserId(Long userId) {
         return userAccountMapper.selectByUserId(userId);
     }
 
-    @Override
     /**
      * 查询全部。
      */
+    @Override
     public List<UserAccount> findAll() {
         return userAccountMapper.selectAll();
     }
 
-    @Override
-    @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
     /**
      * transfer。
      */
+    @Override
+    @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
     public long transfer(Long fromUserId, Long toUserId, long amount) {
         UserAccount from = requireAccount(fromUserId);
         UserAccount to = requireAccount(toUserId);
@@ -85,10 +85,10 @@ public class UserAccountServiceImpl implements UserAccountService {
         return amount;
     }
 
-    @Override
     /**
      * consistencyCheck。
      */
+    @Override
     public Map<String, Object> consistencyCheck(Long userId) {
         UserAccount first = userAccountMapper.selectByUserId(userId);
         UserAccount second = userAccountMapper.selectByUserId(userId);

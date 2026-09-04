@@ -166,10 +166,10 @@ public class LuaRateLimiter implements RateLimiter {
      */
     private final RedisService redisService;
 
-    @Override
     /**
      * tryAcquire。
      */
+    @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
         long windowMs = Math.max(1L, rule.window().toMillis());
         String base = KEY_PREFIX + rule.algorithm().name().toLowerCase() + ":" + key
@@ -195,18 +195,18 @@ public class LuaRateLimiter implements RateLimiter {
         }
     }
 
-    @Override
     /**
      * supportedAlgorithms。
      */
+    @Override
     public Set<RateLimitAlgorithm> supportedAlgorithms() {
         return Set.of(RateLimitAlgorithm.values());
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "lua";
     }

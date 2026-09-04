@@ -30,19 +30,19 @@ import java.util.List;
 public class OperationLogServiceImpl implements OperationLogService {
 
     /**
-     * operationLogRepository，数据仓库层。
+     * 操作日志数据仓库。
      */
     private final OperationLogRepository operationLogRepository;
 
     /**
-     * mongoTemplate。
+     * MongoDB 操作模板。
      */
     private final MongoTemplate mongoTemplate;
 
-    @Override
     /**
      * 保存记录。
      */
+    @Override
     public String save(OperationLogRequest request) {
         OperationLogDocument document = new OperationLogDocument();
         document.setBizType(request.getBizType());
@@ -56,10 +56,10 @@ public class OperationLogServiceImpl implements OperationLogService {
         return saved.getId();
     }
 
-    @Override
     /**
      * 分页查询。
      */
+    @Override
     public PageResult<OperationLogDocument> findByPage(String bizType, int pageNum, int pageSize) {
         PageRequest request = PageRequest.of(pageNum, pageSize);
         Query query = new Query();
@@ -73,10 +73,12 @@ public class OperationLogServiceImpl implements OperationLogService {
         return PageResult.of(list, total, request);
     }
 
-    @Override
     /**
-     * count。
+     * 查询日志总条数。
+     *
+     * @return 日志总条数
      */
+    @Override
     public long count() {
         return operationLogRepository.count();
     }

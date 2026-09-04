@@ -43,18 +43,18 @@ public class LocalMessageBus implements MessageProducer {
         log.info("handler {} registered on topic {}", handler.getClass().getSimpleName(), handler.topic());
     }
 
-    @Override
     /**
      * send。
      */
+    @Override
     public void send(String topic, String key, Object payload) {
         dispatch(topic, key, payload);
     }
 
-    @Override
     /**
      * sendDelayed。
      */
+    @Override
     public void sendDelayed(String topic, String key, Object payload, Duration delay) {
         delayScheduler.schedule(() -> dispatch(topic, key, payload), delay.toMillis(), TimeUnit.MILLISECONDS);
     }
@@ -70,10 +70,10 @@ public class LocalMessageBus implements MessageProducer {
                 .submit(() -> dispatch(topic, key, payload));
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "local";
     }

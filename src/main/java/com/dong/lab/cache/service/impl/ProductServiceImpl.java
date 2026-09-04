@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.util.List;
 /**
- * ProductServiceImpl，Product 业务服务实现。
+ * 商品服务实现。
  */
 @Slf4j
 @Service
@@ -87,19 +87,19 @@ public class ProductServiceImpl implements ProductService {
         return findById(id);
     }
 
-    @Override
     /**
      * 分页查询。
      */
+    @Override
     public PageResult<Product> findByPage(PageRequest request) {
         List<Product> list = productMapper.selectByPage(request.getOffset(), request.getPageSize());
         return PageResult.of(list, productMapper.countAll(), request);
     }
 
-    @Override
     /**
      * 查询全部。
      */
+    @Override
     public List<Product> findAll() {
         return productMapper.selectAll();
     }
@@ -139,11 +139,11 @@ public class ProductServiceImpl implements ProductService {
         log.info("product updated id={}", id);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * 删除关注关系。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         productMapper.deleteById(id);
         multiLevelCache.invalidateEventually(cacheKey(id));
@@ -166,7 +166,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * cacheKey。
+     * 构建商品缓存键。
+     *
+     * @param id 商品 id
+     * @return 缓存键
      */
     private String cacheKey(Long id) {
         return CACHE_KEY_PREFIX + id;

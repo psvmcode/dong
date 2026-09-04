@@ -5,22 +5,22 @@ import com.dong.lab.classic.entity.ShortLink;
 import java.time.LocalDateTime;
 
 /**
- * ShortLinkResponse。
+ * 短链接响应 DTO。
  */
 public class ShortLinkResponse {
 
     /**
-     * 编码。
+     * 短码。
      */
     private String code;
 
     /**
-     * originUrl。
+     * 原始链接。
      */
     private String originUrl;
 
     /**
-     * hitCount。
+     * 点击次数。
      */
     private Long hitCount;
 
@@ -31,6 +31,9 @@ public class ShortLinkResponse {
 
     /**
      * 从实体转换为 DTO。
+     *
+     * @param shortLink 短链接实体
+     * @return 短链接响应 DTO
      */
     public static ShortLinkResponse from(ShortLink shortLink) {
         ShortLinkResponse response = new ShortLinkResponse();
@@ -42,56 +45,72 @@ public class ShortLinkResponse {
     }
 
     /**
-     * getCode。
+     * 获取短码。
+     *
+     * @return 短码
      */
     public String getCode() {
         return code;
     }
 
     /**
-     * setCode。
+     * 设置短码。
+     *
+     * @param code 短码
      */
     public void setCode(String code) {
         this.code = code;
     }
 
     /**
-     * getOriginUrl。
+     * 获取原始链接。
+     *
+     * @return 原始链接
      */
     public String getOriginUrl() {
         return originUrl;
     }
 
     /**
-     * setOriginUrl。
+     * 设置原始链接。
+     *
+     * @param originUrl 原始链接
      */
     public void setOriginUrl(String originUrl) {
         this.originUrl = originUrl;
     }
 
     /**
-     * getHitCount。
+     * 获取点击次数。
+     *
+     * @return 点击次数
      */
     public Long getHitCount() {
         return hitCount;
     }
 
     /**
-     * setHitCount。
+     * 设置点击次数。
+     *
+     * @param hitCount 点击次数
      */
     public void setHitCount(Long hitCount) {
         this.hitCount = hitCount;
     }
 
     /**
-     * getCreateTime。
+     * 获取创建时间。
+     *
+     * @return 创建时间
      */
     public LocalDateTime getCreateTime() {
         return createTime;
     }
 
     /**
-     * setCreateTime。
+     * 设置创建时间。
+     *
+     * @param createTime 创建时间
      */
     public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;

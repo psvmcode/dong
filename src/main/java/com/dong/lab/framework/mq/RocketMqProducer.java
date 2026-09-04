@@ -41,10 +41,10 @@ public class RocketMqProducer implements MessageProducer {
      */
     private final RocketMQTemplate rocketMqTemplate;
 
-    @Override
     /**
      * send。
      */
+    @Override
     public void send(String topic, String key, Object payload) {
         sendSync(topic, key, payload, 0);
     }
@@ -73,10 +73,10 @@ public class RocketMqProducer implements MessageProducer {
         }
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "rocketmq";
     }

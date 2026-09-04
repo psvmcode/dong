@@ -52,10 +52,10 @@ public class SettlementServiceImpl implements SettlementService {
      */
     private final Snowflake snowflake;
 
-    @Override
     /**
      * createBatch。
      */
+    @Override
     public String createBatch(SettlementChannel channel, String currency, long cutoffMinutes) {
         SettlementBatch batch = new SettlementBatch();
         batch.setBatchNo("SB" + snowflake.nextId());
@@ -69,10 +69,10 @@ public class SettlementServiceImpl implements SettlementService {
         return batch.getBatchNo();
     }
 
-    @Override
     /**
      * findByBatchNo。
      */
+    @Override
     public SettlementBatchResponse findByBatchNo(String batchNo) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
@@ -81,10 +81,10 @@ public class SettlementServiceImpl implements SettlementService {
         return SettlementBatchResponse.from(batch);
     }
 
-    @Override
     /**
      * 查询全部。
      */
+    @Override
     public List<SettlementBatchResponse> findAll() {
         return batchMapper.selectAll().stream().map(SettlementBatchResponse::from).toList();
     }
@@ -118,10 +118,10 @@ public class SettlementServiceImpl implements SettlementService {
         return count;
     }
 
-    @Override
     /**
      * 关闭到期的批次。
      */
+    @Override
     public int closeOverdue() {
         return batchMapper.closeOverdue(LocalDateTime.now());
     }
@@ -149,10 +149,10 @@ public class SettlementServiceImpl implements SettlementService {
         return settled;
     }
 
-    @Override
     /**
      * 清空全部数据，仅测试场景使用。
      */
+    @Override
     public int clearAll() {
         return batchMapper.clearAll();
     }

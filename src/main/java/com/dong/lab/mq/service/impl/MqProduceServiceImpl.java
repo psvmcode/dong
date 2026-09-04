@@ -23,37 +23,37 @@ public class MqProduceServiceImpl implements MqProduceService {
      */
     private final MessageProducer messageProducer;
 
-    @Override
     /**
      * send。
      */
+    @Override
     public void send(String topic, String key, String payload) {
         messageProducer.send(topic, key, payload);
         log.info("message sent topic={} key={}", topic, key);
     }
 
-    @Override
     /**
      * sendDelayed。
      */
+    @Override
     public void sendDelayed(String topic, String key, String payload, Duration delay) {
         messageProducer.sendDelayed(topic, key, payload, delay);
         log.info("delayed message sent topic={} key={} delay={}ms", topic, key, delay.toMillis());
     }
 
-    @Override
     /**
      * sendOrdered。
      */
+    @Override
     public void sendOrdered(String topic, String key, String payload, String shardingKey) {
         messageProducer.sendOrdered(topic, key, payload, shardingKey);
         log.info("ordered message sent topic={} key={} shardingKey={}", topic, key, shardingKey);
     }
 
-    @Override
     /**
      * sendBatch。
      */
+    @Override
     public void sendBatch(String topic, String keyPrefix, int count) {
         for (int i = 1; i <= count; i++) {
             messageProducer.send(topic, keyPrefix + "-" + i, "{\"seq\":" + i + "}");
@@ -61,10 +61,10 @@ public class MqProduceServiceImpl implements MqProduceService {
         log.info("batch of {} messages sent topic={}", count, topic);
     }
 
-    @Override
     /**
      * status。
      */
+    @Override
     public Map<String, Object> status() {
         if (messageProducer instanceof com.dong.lab.framework.mq.MqFacade facade) {
             return facade.status();

@@ -45,10 +45,10 @@ public class FxExposureServiceImpl implements FxExposureService {
      */
     private final FxQuoteService fxQuoteService;
 
-    @Override
     /**
      * exposureByPair。
      */
+    @Override
     public List<Map<String, Object>> exposureByPair() {
         List<CrossBorderRemittance> open = new ArrayList<>();
         open.addAll(remittanceMapper.selectByStatus(RemittanceStatus.QUOTE_LOCKED, 200));
@@ -91,10 +91,10 @@ public class FxExposureServiceImpl implements FxExposureService {
         return rows;
     }
 
-    @Override
     /**
      * summary。
      */
+    @Override
     public Map<String, Object> summary() {
         List<Map<String, Object>> rows = exposureByPair();
         BigDecimal totalNotional = BigDecimal.ZERO;

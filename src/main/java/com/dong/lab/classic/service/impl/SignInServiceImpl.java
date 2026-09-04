@@ -29,14 +29,18 @@ public class SignInServiceImpl implements SignInService {
     private static final Duration RETENTION = Duration.ofDays(400);
 
     /**
-     * redissonClient。
+     * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
 
-    @Override
     /**
-     * signIn。
+     * 签到，返回 false 表示当天已签过。
+     *
+     * @param userId 用户标识
+     * @param date   日期
+     * @return 是否首次签到
      */
+    @Override
     public boolean signIn(String userId, LocalDate date) {
         RBitSet bitSet = bitSetOf(userId, date);
         long offset = dayOffset(date);
@@ -49,26 +53,38 @@ public class SignInServiceImpl implements SignInService {
         return !already;
     }
 
-    @Override
     /**
-     * hasSigned。
+     * 查询指定日期是否已签到。
+     *
+     * @param userId 用户标识
+     * @param date   日期
+     * @return 是否已签到
      */
+    @Override
     public boolean hasSigned(String userId, LocalDate date) {
         return bitSetOf(userId, date).get(dayOffset(date));
     }
 
-    @Override
     /**
-     * countInMonth。
+     * 统计当月累计签到天数。
+     *
+     * @param userId 用户标识
+     * @param month  月份
+     * @return 累计签到天数
      */
+    @Override
     public long countInMonth(String userId, YearMonth month) {
         return bitSetOf(userId, month).cardinality();
     }
 
-    @Override
     /**
-     * continuousDays。
+     * 查询连续签到天数，从指定日期往前推算，中断即止。
+     *
+     * @param userId 用户标识
+     * @param today  基准日期
+     * @return 连续签到天数
      */
+    @Override
     public long continuousDays(String userId, LocalDate today) {
         RBitSet bitSet = bitSetOf(userId, today);
         long streak = 0L;
@@ -81,10 +97,14 @@ public class SignInServiceImpl implements SignInService {
         return streak;
     }
 
-    @Override
     /**
-     * monthCalendar。
+     * 查询当月签到日历。
+     *
+     * @param userId 用户标识
+     * @param month  月份
+     * @return 日期到是否签到的映射
      */
+    @Override
     public Map<String, Boolean> monthCalendar(String userId, YearMonth month) {
         RBitSet bitSet = bitSetOf(userId, month);
         Map<String, Boolean> calendar = new LinkedHashMap<>();
@@ -95,14 +115,22 @@ public class SignInServiceImpl implements SignInService {
     }
 
     /**
-     * bitSetOf。
+     * 获取用户指定日期的 Bitmap。
+     *
+     * @param userId 用户标识
+     * @param date   日期
+     * @return 位图
      */
     private RBitSet bitSetOf(String userId, LocalDate date) {
         return bitSetOf(userId, YearMonth.from(date));
     }
 
     /**
-     * bitSetOf。
+     * 获取用户指定月份的 Bitmap。
+     *
+     * @param userId 用户标识
+     * @param month  月份
+     * @return 位图
      */
     private RBitSet bitSetOf(String userId, YearMonth month) {
         return redissonClient.getBitSet(SIGN + userId + ":" + month.getYear()
@@ -110,7 +138,10 @@ public class SignInServiceImpl implements SignInService {
     }
 
     /**
-     * dayOffset。
+     * 计算日期在 Bitmap 中的偏移量。
+     *
+     * @param date 日期
+     * @return 位图偏移量
      */
     private long dayOffset(LocalDate date) {
         return date.getDayOfMonth() - 1L;

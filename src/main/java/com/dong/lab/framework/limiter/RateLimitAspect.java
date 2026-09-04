@@ -41,10 +41,10 @@ public class RateLimitAspect {
      */
     private final RateLimitManager rateLimitManager;
 
-    @Around("@annotation(rateLimited)")
     /**
      * around。
      */
+    @Around("@annotation(rateLimited)")
     public Object around(ProceedingJoinPoint joinPoint, RateLimited rateLimited) throws Throwable {
         Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
         String key = resolveKey(rateLimited.key(), method, joinPoint.getArgs());

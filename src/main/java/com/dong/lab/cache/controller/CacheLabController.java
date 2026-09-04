@@ -48,7 +48,7 @@ public class CacheLabController {
     private final MultiLevelCache multiLevelCache;
 
     /**
-     * cacheStats。
+     * 缓存命中统计组件。
      */
     private final CacheStats cacheStats;
 
@@ -62,20 +62,24 @@ public class CacheLabController {
      */
     private final ObjectProvider<RedisCacheStore> l2Provider;
 
+    /**
+     * 查看各层级缓存命中率。
+     *
+     * @return 缓存统计快照
+     */
     @GetMapping("/stats")
     @Operation(summary = "查看各层级缓存命中率")
-    /**
-     * stats。
-     */
     public Result<CacheStats.CacheStatsSnapshot> stats() {
         return Result.success(cacheStats.snapshot());
     }
 
+    /**
+     * 重置缓存统计数据。
+     *
+     * @return 成功响应
+     */
     @PostMapping("/stats/reset")
     @Operation(summary = "重置缓存统计数据")
-    /**
-     * reset。
-     */
     public Result<Void> reset() {
         cacheStats.reset();
         return Result.success();
@@ -101,21 +105,21 @@ public class CacheLabController {
         return Result.success(cacheLabService.penetration(count, guarded));
     }
 
-    @GetMapping("/probe")
-    @Operation(summary = "读取缓存，完整走一遍 L1 到 L2 再到回源的链路")
     /**
      * 探测缓存 key，用于缓存穿透防护演练。
      */
+    @GetMapping("/probe")
+    @Operation(summary = "读取缓存，完整走一遍 L1 到 L2 再到回源的链路")
     public Result<String> probe(@RequestParam String key,
                                 @RequestParam(defaultValue = "probe-value") String value) {
         return Result.success(multiLevelCache.get(key, String.class, Duration.ofMinutes(5), () -> value));
     }
 
-    @DeleteMapping("/probe")
-    @Operation(summary = "删除缓存并广播失效事件到其他节点")
     /**
      * 清除缓存，用于缓存失效演练。
      */
+    @DeleteMapping("/probe")
+    @Operation(summary = "删除缓存并广播失效事件到其他节点")
     public Result<Void> evict(@RequestParam String key) {
         multiLevelCache.invalidate(key);
         return Result.success();

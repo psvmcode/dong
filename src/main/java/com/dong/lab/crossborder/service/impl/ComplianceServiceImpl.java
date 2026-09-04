@@ -90,10 +90,10 @@ public class ComplianceServiceImpl implements ComplianceService {
      */
     private final RedisService redisService;
 
-    @Override
     /**
      * screen。
      */
+    @Override
     public ComplianceResult screen(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal sourceAmount) {
         List<ComplianceResult> results = new ArrayList<>();
         ComplianceResult sanction = checkSanction(remittance, payer);
@@ -192,35 +192,35 @@ public class ComplianceServiceImpl implements ComplianceService {
         }
     }
 
-    @Override
     /**
      * addSanction。
      */
+    @Override
     public void addSanction(String ownerName) {
         redisService.template().opsForSet().add(SANCTION_KEY, ownerName);
     }
 
-    @Override
     /**
      * removeSanction。
      */
+    @Override
     public void removeSanction(String ownerName) {
         redisService.template().opsForSet().remove(SANCTION_KEY, ownerName);
     }
 
-    @Override
     /**
      * sanctionCount。
      */
+    @Override
     public long sanctionCount() {
         Long size = redisService.template().opsForSet().size(SANCTION_KEY);
         return size == null ? 0L : size;
     }
 
-    @Override
     /**
      * checkAndAccumulateDailyLimit。
      */
+    @Override
     public boolean checkAndAccumulateDailyLimit(Long accountId, BigDecimal amount, BigDecimal dailyLimit) {
         String key = DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId;
         long cents = amount.multiply(new BigDecimal("100")).longValue();
@@ -233,20 +233,20 @@ public class ComplianceServiceImpl implements ComplianceService {
         return result > 0L;
     }
 
-    @Override
     /**
      * releaseDailyLimit。
      */
+    @Override
     public void releaseDailyLimit(Long accountId, BigDecimal amount) {
         String key = DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId;
         long cents = amount.multiply(new BigDecimal("100")).longValue();
         redisService.execute(RELEASE, List.of(key), cents);
     }
 
-    @Override
     /**
      * recordsOf。
      */
+    @Override
     public List<ComplianceRecordResponse> recordsOf(String remittanceNo) {
         return complianceRecordMapper.selectByRemittanceNo(remittanceNo).stream()
                 .map(ComplianceRecordResponse::from)
@@ -263,10 +263,10 @@ public class ComplianceServiceImpl implements ComplianceService {
                 detail == null || detail.isBlank() ? "no detail" : detail);
     }
 
-    @Override
     /**
      * resetDailyUsage。
      */
+    @Override
     public void resetDailyUsage(Long accountId) {
         redisService.delete(DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId);
     }

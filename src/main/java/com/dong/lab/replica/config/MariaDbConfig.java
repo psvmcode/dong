@@ -24,34 +24,34 @@ import javax.sql.DataSource;
  */
 public class MariaDbConfig {
 
-    @Value("${lab.mariadb.url}")
     /**
      * url。
      */
+    @Value("${lab.mariadb.url}")
     private String url;
 
-    @Value("${lab.mariadb.username}")
     /**
      * username。
      */
+    @Value("${lab.mariadb.username}")
     private String username;
 
-    @Value("${lab.mariadb.password}")
     /**
      * password。
      */
+    @Value("${lab.mariadb.password}")
     private String password;
 
-    @Value("${lab.mariadb.driver-class-name:org.mariadb.jdbc.Driver}")
     /**
      * driverClassName。
      */
+    @Value("${lab.mariadb.driver-class-name:org.mariadb.jdbc.Driver}")
     private String driverClassName;
 
-    @Bean(name = "replicaDataSource")
     /**
      * replicaDataSource。
      */
+    @Bean(name = "replicaDataSource")
     public DataSource replicaDataSource() {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
@@ -65,10 +65,10 @@ public class MariaDbConfig {
         return new HikariDataSource(config);
     }
 
-    @Bean(name = "replicaSqlSessionFactory")
     /**
      * replicaSqlSessionFactory。
      */
+    @Bean(name = "replicaSqlSessionFactory")
     public SqlSessionFactory replicaSqlSessionFactory(@Qualifier("replicaDataSource") DataSource dataSource)
             throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
@@ -81,10 +81,10 @@ public class MariaDbConfig {
         return factoryBean.getObject();
     }
 
-    @Bean(name = "replicaTransactionManager")
     /**
      * replicaTransactionManager。
      */
+    @Bean(name = "replicaTransactionManager")
     public DataSourceTransactionManager replicaTransactionManager(
             @Qualifier("replicaDataSource") DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);

@@ -1,32 +1,38 @@
 package com.dong.lab.classic.dto;
 
 /**
- * NearbyPlaceResponse。
+ * 附近地点响应。
  */
 public class NearbyPlaceResponse {
 
     /**
-     * member。
+     * 地点名称。
      */
     private String member;
 
     /**
-     * longitude。
+     * 经度。
      */
     private double longitude;
 
     /**
-     * latitude。
+     * 纬度。
      */
     private double latitude;
 
     /**
-     * distanceKm。
+     * 距离（公里）。
      */
     private double distanceKm;
 
     /**
-     * of。
+     * 创建附近地点响应。
+     *
+     * @param member    地点名称
+     * @param longitude 经度
+     * @param latitude  纬度
+     * @param distanceKm 距离（公里）
+     * @return 附近地点响应
      */
     public static NearbyPlaceResponse of(String member, double longitude, double latitude, double distanceKm) {
         NearbyPlaceResponse response = new NearbyPlaceResponse();
@@ -38,56 +44,72 @@ public class NearbyPlaceResponse {
     }
 
     /**
-     * getMember。
+     * 获取地点名称。
+     *
+     * @return 地点名称
      */
     public String getMember() {
         return member;
     }
 
     /**
-     * setMember。
+     * 设置地点名称。
+     *
+     * @param member 地点名称
      */
     public void setMember(String member) {
         this.member = member;
     }
 
     /**
-     * getLongitude。
+     * 获取经度。
+     *
+     * @return 经度
      */
     public double getLongitude() {
         return longitude;
     }
 
     /**
-     * setLongitude。
+     * 设置经度。
+     *
+     * @param longitude 经度
      */
     public void setLongitude(double longitude) {
         this.longitude = longitude;
     }
 
     /**
-     * getLatitude。
+     * 获取纬度。
+     *
+     * @return 纬度
      */
     public double getLatitude() {
         return latitude;
     }
 
     /**
-     * setLatitude。
+     * 设置纬度。
+     *
+     * @param latitude 纬度
      */
     public void setLatitude(double latitude) {
         this.latitude = latitude;
     }
 
     /**
-     * getDistanceKm。
+     * 获取距离（公里）。
+     *
+     * @return 距离（公里）
      */
     public double getDistanceKm() {
         return distanceKm;
     }
 
     /**
-     * setDistanceKm。
+     * 设置距离（公里）。
+     *
+     * @param distanceKm 距离（公里）
      */
     public void setDistanceKm(double distanceKm) {
         this.distanceKm = distanceKm;

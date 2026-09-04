@@ -55,10 +55,13 @@ public class ShortLinkServiceImpl implements ShortLinkService {
      */
     private final Snowflake snowflake;
 
-    @Override
     /**
-     * 创建记录。
+     * 创建短链并返回短码。
+     *
+     * @param originUrl 原始链接
+     * @return 短码
      */
+    @Override
     public String create(String originUrl) {
         String code = Base62Utils.encode(snowflake.nextId());
         ShortLink shortLink = new ShortLink();
@@ -95,10 +98,13 @@ public class ShortLinkServiceImpl implements ShortLinkService {
         return shortLink.getOriginUrl();
     }
 
-    @Override
     /**
-     * findByCode。
+     * 根据短码查询短链详情。
+     *
+     * @param code 短码
+     * @return 短链实体
      */
+    @Override
     public ShortLink findByCode(String code) {
         ShortLink shortLink = shortLinkMapper.selectByCode(code);
         if (shortLink == null) {
@@ -107,16 +113,21 @@ public class ShortLinkServiceImpl implements ShortLinkService {
         return shortLink;
     }
 
-    @Override
     /**
-     * hitCount。
+     * 查询短码点击次数。
+     *
+     * @param code 短码
+     * @return 点击次数
      */
+    @Override
     public long hitCount(String code) {
         return redissonClient.getAtomicLong(HIT_COUNTER + code).get();
     }
 
     /**
-     * countHit。
+     * 累加短码点击次数。
+     *
+     * @param code 短码
      */
     private void countHit(String code) {
         RAtomicLong counter = redissonClient.getAtomicLong(HIT_COUNTER + code);

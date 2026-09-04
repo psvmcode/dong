@@ -11,7 +11,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
- * SwaggerUiConfig，配置类。
+ * Swagger UI 与 Knife4j 地址打印配置类。
  */
 @Slf4j
 @Configuration
@@ -26,14 +26,16 @@ public class SwaggerUiConfig implements WebMvcConfigurer {
     private static final String SWAGGER_WEB_MVC_CONFIGURER = "swaggerWebMvcConfigurer";
 
     /**
-     * environment。
+     * 运行环境，用于读取服务端口。
      */
     private final Environment environment;
 
-    @Bean
     /**
-     * springdocResourceConfigurerRemover。
+     * 移除 springdoc 默认注册的 swagger WebMvcConfigurer，避免与自定义配置冲突。
+     *
+     * @return BeanDefinitionRegistryPostProcessor
      */
+    @Bean
     public static BeanDefinitionRegistryPostProcessor springdocResourceConfigurerRemover() {
         return registry -> {
             if (registry.containsBeanDefinition(SWAGGER_WEB_MVC_CONFIGURER)) {
@@ -42,18 +44,20 @@ public class SwaggerUiConfig implements WebMvcConfigurer {
         };
     }
 
-    @Override
     /**
-     * addViewControllers。
+     * 添加 Swagger UI 重定向视图。
+     *
+     * @param registry 视图控制器注册表
      */
+    @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addRedirectViewController("/swagger-ui.html", "/swagger-ui/index.html");
     }
 
-    @EventListener(ApplicationReadyEvent.class)
     /**
-     * logEndpoints。
+     * 应用启动后打印 Swagger UI、Knife4j 与 Actuator 访问地址。
      */
+    @EventListener(ApplicationReadyEvent.class)
     public void logEndpoints() {
         String port = environment.getProperty("local.server.port", "8090");
         String host = "http://127.0.0.1:" + port;

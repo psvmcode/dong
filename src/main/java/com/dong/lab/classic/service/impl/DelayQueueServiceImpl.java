@@ -33,19 +33,25 @@ public class DelayQueueServiceImpl implements DelayQueueService {
         this.delayedQueue = redissonClient.getDelayedQueue(blockingQueue);
     }
 
-    @Override
     /**
-     * offer。
+     * 投递延迟任务。
+     *
+     * @param payload 任务内容
+     * @param delay   延迟时间
      */
+    @Override
     public void offer(String payload, Duration delay) {
         delayedQueue.offer(payload, delay.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
         log.info("delay queue offered payload={} delay={}ms", payload, delay.toMillis());
     }
 
-    @Override
     /**
-     * take。
+     * 取出已到期的任务。
+     *
+     * @param limit 最大取出数量
+     * @return 任务内容列表
      */
+    @Override
     public List<String> take(int limit) {
         List<String> items = new ArrayList<>();
         for (int i = 0; i < limit; i++) {
@@ -58,10 +64,12 @@ public class DelayQueueServiceImpl implements DelayQueueService {
         return items;
     }
 
-    @Override
     /**
-     * size。
+     * 查询待消费任务数量。
+     *
+     * @return 待消费任务数量
      */
+    @Override
     public long size() {
         return delayedQueue.size();
     }

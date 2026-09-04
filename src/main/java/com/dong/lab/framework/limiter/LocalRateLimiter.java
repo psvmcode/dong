@@ -27,10 +27,10 @@ public class LocalRateLimiter implements RateLimiter {
             .maximumSize(MAX_TRACKED_KEYS)
             .build();
 
-    @Override
     /**
      * tryAcquire。
      */
+    @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
         return switch (rule.algorithm()) {
             case TOKEN_BUCKET -> acquireTokenBucket(key, rule, permits);
@@ -40,18 +40,18 @@ public class LocalRateLimiter implements RateLimiter {
         };
     }
 
-    @Override
     /**
      * supportedAlgorithms。
      */
+    @Override
     public Set<RateLimitAlgorithm> supportedAlgorithms() {
         return Set.of(RateLimitAlgorithm.TOKEN_BUCKET, RateLimitAlgorithm.FIXED_WINDOW);
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "local";
     }

@@ -30,10 +30,10 @@ public class CaffeineCacheStore implements CacheStore {
                 .build();
     }
 
-    @Override
     /**
      * name。
      */
+    @Override
     public String name() {
         return "caffeine";
     }
@@ -59,10 +59,10 @@ public class CaffeineCacheStore implements CacheStore {
         return new CacheLookup.Hit<>(convert(entry.value(), type));
     }
 
-    @Override
     /**
      * 查询缓存值。
      */
+    @Override
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
         CacheEntry entry = cache.getIfPresent(key);
         if (entry == null || entry.expired()) {
@@ -74,34 +74,34 @@ public class CaffeineCacheStore implements CacheStore {
         return new CacheLookup.Hit<>(JsonUtils.fromJson(JsonUtils.toJson(entry.value()), type));
     }
 
-    @Override
     /**
      * 放入缓存。
      */
+    @Override
     public void put(String key, Object value, Duration ttl) {
         cache.put(key, CacheEntry.of(value, ttl));
     }
 
-    @Override
     /**
      * 放入空值占位，用于防止缓存穿透。
      */
+    @Override
     public void putEmpty(String key, Duration ttl) {
         cache.put(key, CacheEntry.of(CacheEmpty.INSTANCE, ttl));
     }
 
-    @Override
     /**
      * 清除缓存，用于缓存失效演练。
      */
+    @Override
     public void evict(String key) {
         cache.invalidate(key);
     }
 
-    @Override
     /**
      * 估算缓存大小。
      */
+    @Override
     public long estimatedSize() {
         return cache.estimatedSize();
     }
@@ -127,10 +127,10 @@ public class CaffeineCacheStore implements CacheStore {
     public record CacheStatsSnapshot(long hitCount, long missCount, long evictionCount, long size) {
     }
 
-    @SuppressWarnings("unchecked")
     /**
      * convert。
      */
+    @SuppressWarnings("unchecked")
     private static <T> T convert(Object value, Class<T> type) {
         return type.isInstance(value) ? (T) value : JsonUtils.fromJson(JsonUtils.toJson(value), type);
     }

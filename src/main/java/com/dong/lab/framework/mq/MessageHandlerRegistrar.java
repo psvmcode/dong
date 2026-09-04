@@ -28,10 +28,10 @@ public class MessageHandlerRegistrar {
      */
     private final List<MessageHandler> handlers;
 
-    @PostConstruct
     /**
      * register。
      */
+    @PostConstruct
     public void register() {
         handlers.forEach(localMessageBus::register);
         log.info("{} message handler(s) registered on the local bus", handlers.size());

@@ -24,22 +24,22 @@ import java.util.UUID;
 public class RateLimitLabServiceImpl implements RateLimitLabService {
 
     /**
-     * rateLimitManager。
+     * 限流管理器。
      */
     private final RateLimitManager rateLimitManager;
 
-    @Override
     /**
      * 对比限流效果。
      */
+    @Override
     public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts, boolean distributed) {
         return compare(bizKey, limit, windowSeconds, attempts, distributed, 0L);
     }
 
-    @Override
     /**
      * 对比限流效果。
      */
+    @Override
     public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts,
                                        boolean distributed, long delayMillis) {
         Map<String, Object> result = new LinkedHashMap<>();

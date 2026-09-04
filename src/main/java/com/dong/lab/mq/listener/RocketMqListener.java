@@ -34,10 +34,10 @@ public class RocketMqListener implements RocketMQListener<MessageExt> {
         this.handlers = handlers;
     }
 
-    @Override
     /**
      * onMessage。
      */
+    @Override
     public void onMessage(MessageExt message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         String topic = message.getTopic();

@@ -10,6 +10,9 @@ import org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestCli
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * 实验室应用启动类。扫描所有 Mapper 接口并启用 Spring Boot 自动配置。
+ */
 @EnableScheduling
 @SpringBootApplication(exclude = {
         MongoAutoConfiguration.class,
@@ -19,13 +22,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         ElasticsearchClientAutoConfiguration.class,
         ElasticsearchDataAutoConfiguration.class
 })
-/**
- * DongLabApplication。
- */
 public class DongLabApplication {
 
     /**
-     * 程序入口。
+     * 应用入口。
+     *
+     * @param args 命令行参数
      */
     public static void main(String[] args) {
         SpringApplication.run(DongLabApplication.class, args);

@@ -47,11 +47,11 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
      */
     private final Snowflake snowflake;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * debitAndPersist。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void debitAndPersist(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit) {
         int deducted = accountMapper.deduct(payer.getId(), totalDebit, 0);
         if (deducted <= 0) {
@@ -85,11 +85,11 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
         recordLedger(remittance, payer.getId(), LedgerDirection.DEBIT, totalDebit, payer.getCurrency());
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * creditAndAdvance。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void creditAndAdvance(CrossBorderRemittance remittance) {
         accountMapper.credit(remittance.getPayeeAccountId(), remittance.getTargetAmount());
         recordLedger(remittance, remittance.getPayeeAccountId(), LedgerDirection.CREDIT,

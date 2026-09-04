@@ -145,10 +145,10 @@ public class RemittanceServiceImpl implements RemittanceService {
 
     private final LongAdder reviewRejected = new LongAdder();
 
-    @Override
     /**
      * 创建记录。
      */
+    @Override
     public RemittanceResponse create(RemittanceCreateRequest request) {
         CrossBorderRemittance existing = remittanceMapper.selectByIdempotentKey(request.getIdempotentKey());
         if (existing != null) {
@@ -291,10 +291,10 @@ public class RemittanceServiceImpl implements RemittanceService {
         }
     }
 
-    @Override
     /**
      * findByRemittanceNo。
      */
+    @Override
     public RemittanceResponse findByRemittanceNo(String remittanceNo) {
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null) {
@@ -304,10 +304,10 @@ public class RemittanceServiceImpl implements RemittanceService {
         return toResponse(remittance);
     }
 
-    @Override
     /**
      * findByIdempotentKey。
      */
+    @Override
     public RemittanceResponse findByIdempotentKey(String idempotentKey) {
         CrossBorderRemittance remittance = remittanceMapper.selectByIdempotentKey(idempotentKey);
         if (remittance == null) {
@@ -317,10 +317,10 @@ public class RemittanceServiceImpl implements RemittanceService {
         return toResponse(remittance);
     }
 
-    @Override
     /**
      * 分页查询。
      */
+    @Override
     public PageResult<RemittanceResponse> findByPage(RemittanceStatus status, int pageNum, int pageSize) {
         PageRequest pageRequest = PageRequest.of(pageNum, pageSize);
         List<CrossBorderRemittance> list = remittanceMapper.selectPage(status,
@@ -329,10 +329,10 @@ public class RemittanceServiceImpl implements RemittanceService {
         return PageResult.of(toResponses(list), total, pageRequest);
     }
 
-    @Override
     /**
      * findByBatchNo。
      */
+    @Override
     public List<RemittanceResponse> findByBatchNo(String batchNo) {
         return toResponses(remittanceMapper.selectByBatchNo(batchNo));
     }
@@ -559,10 +559,10 @@ public class RemittanceServiceImpl implements RemittanceService {
         remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.REFUNDED, trimmed);
     }
 
-    @Override
     /**
      * runtime。
      */
+    @Override
     public Map<String, Object> runtime() {
         Map<String, Object> runtime = new LinkedHashMap<>();
         Map<Integer, Long> grouped = new HashMap<>();
@@ -585,10 +585,10 @@ public class RemittanceServiceImpl implements RemittanceService {
         return runtime;
     }
 
-    @Override
     /**
      * 清空全部数据，仅测试场景使用。
      */
+    @Override
     public int clearAll() {
         int affected = remittanceMapper.clearAll();
         ledgerMapper.clearAll();

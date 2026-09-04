@@ -37,11 +37,11 @@ public class MqConsumeServiceImpl implements MqConsumeService {
 
     private final LongAdder deadLettered = new LongAdder();
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     /**
      * consume。
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean consume(String topic, String msgId, String payload) {
         if (mqMessageLogMapper.countByMsgId(msgId) > 0) {
             duplicated.increment();
@@ -88,18 +88,18 @@ public class MqConsumeServiceImpl implements MqConsumeService {
         return false;
     }
 
-    @Override
     /**
      * recent。
      */
+    @Override
     public List<MqMessageLog> recent(int limit) {
         return mqMessageLogMapper.selectRecent(limit);
     }
 
-    @Override
     /**
      * stats。
      */
+    @Override
     public Map<String, Object> stats() {
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("consumed", consumed.sum());

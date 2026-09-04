@@ -10,13 +10,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 /**
- * ProductStatusTypeHandler。
+ * 商品状态枚举与数据库 int 之间的类型转换器。
  */
 @MappedTypes(ProductStatus.class)
 
 public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
 
-    @Override
     /**
      * 将枚举按 code 写入 PreparedStatement。
      *
@@ -26,12 +25,12 @@ public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
      * @param jdbcType JDBC 类型
      * @throws SQLException SQL 异常
      */
+    @Override
     public void setNonNullParameter(PreparedStatement ps, int i, ProductStatus parameter, JdbcType jdbcType)
             throws SQLException {
         ps.setInt(i, parameter.getCode());
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -40,12 +39,12 @@ public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public ProductStatus getNullableResult(ResultSet rs, String columnName) throws SQLException {
         int value = rs.getInt(columnName);
         return rs.wasNull() ? null : ProductStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -54,12 +53,12 @@ public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public ProductStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         int value = rs.getInt(columnIndex);
         return rs.wasNull() ? null : ProductStatus.of(value);
     }
 
-    @Override
     /**
      * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
      *
@@ -68,6 +67,7 @@ public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
      * @return 枚举值或 null
      * @throws SQLException SQL 异常
      */
+    @Override
     public ProductStatus getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         int value = cs.getInt(columnIndex);
         return cs.wasNull() ? null : ProductStatus.of(value);

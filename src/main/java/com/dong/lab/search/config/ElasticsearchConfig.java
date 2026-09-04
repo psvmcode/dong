@@ -24,28 +24,28 @@ import java.net.URI;
 
 public class ElasticsearchConfig {
 
-    @Value("${spring.elasticsearch.uris:127.0.0.1:9200}")
     /**
      * uris。
      */
+    @Value("${spring.elasticsearch.uris:127.0.0.1:9200}")
     private String uris;
 
-    @Value("${spring.elasticsearch.username:}")
     /**
      * username。
      */
+    @Value("${spring.elasticsearch.username:}")
     private String username;
 
-    @Value("${spring.elasticsearch.password:}")
     /**
      * password。
      */
+    @Value("${spring.elasticsearch.password:}")
     private String password;
 
-    @Bean(destroyMethod = "close")
     /**
      * restClient。
      */
+    @Bean(destroyMethod = "close")
     public RestClient restClient() {
         HttpHost[] hosts = java.util.Arrays.stream(uris.split(","))
                 .map(String::trim)
@@ -61,10 +61,10 @@ public class ElasticsearchConfig {
         return builder.build();
     }
 
-    @Bean(destroyMethod = "")
     /**
      * elasticsearchClient。
      */
+    @Bean(destroyMethod = "")
     public ElasticsearchClient elasticsearchClient(RestClient restClient) {
         RestClientTransport transport =
                 new RestClientTransport(restClient, new JacksonJsonpMapper(JsonUtils.mapper()));
