@@ -106,11 +106,21 @@ cp deploy/.env.example deploy/.env && chmod 600 deploy/.env && vi deploy/.env
 
 ### 2. 准备远程数据库
 
-首次部署时，云服务器的 MySQL 由 `deploy/initdb` 自动建表。如需手工执行：
+首次部署时，云服务器的 MySQL 与 MariaDB 由 `deploy/initdb`、`deploy/initdb-replica` 自动建表。如需手工执行：
 
 ```bash
 mysql -h <host> -uroot -p < db/schema.sql
 ```
+
+**这两个目录的内容由 `db/schema.sql` 生成，不要手工编辑**。建表语句只改 `db/schema.sql`，然后执行：
+
+```bash
+./deploy/gen-initdb.sh
+```
+
+原因是容器侧的 `/docker-entrypoint-initdb.d` 只在数据目录为空时执行一次，且执行前已进入 `MYSQL_DATABASE` / `MARIADB_DATABASE` 指定的库，所以生成物必须剥掉 `create database` 与 `use`，只留库内的 `create table`。两个容器各挂各的目录，无法共用一个文件。
+
+手工维护两份必然漂移，而且这个缺口**平时测不出来**——现有容器早就初始化过，脚本不会再跑，只有删掉 volume 全新部署时才会暴露为"表不存在"。
 
 ### 3. 启动
 
@@ -202,7 +212,7 @@ src/main/resources/
 ├── application.yml             唯一配置文件，全部连接指向云服务器
 └── mapper/**/*.xml             手写 SQL
 
-db/schema.sql                   建表语句
+db/schema.sql                   建表语句，唯一权威源（含两个库）
 deploy/                         Docker Compose 编排与启停脚本
 ```
 
@@ -792,8 +802,9 @@ lab:
 ├── .env.example          变量模板，进版本库
 ├── setup-env.sh          服务器上交互式生成 .env
 ├── print-env.sh          本地执行，打印可粘贴到服务器的命令
-├── initdb/               主库建表 SQL，首次启动自动执行
-├── initdb-replica/       从库建表 SQL
+├── gen-initdb.sh         从 db/schema.sql 生成下面两个目录，加表后必须跑
+├── initdb/               主库建表 SQL，首次启动自动执行（生成物，勿手改）
+├── initdb-replica/       从库建表 SQL（生成物，勿手改）
 ├── elasticsearch/        含 IK 插件的 Dockerfile
 ├── rocketmq/             broker.conf 模板，含 ${LAB_PUBLIC_HOST} 占位符
 └── lab.sh                启停脚本
