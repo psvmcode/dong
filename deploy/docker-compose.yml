@@ -125,9 +125,11 @@ services:
     ports:
       - "10911:10911"
       - "10909:10909"
+    # 渲染结果写 /tmp 而不是 conf 目录：镜像里没有 conf 目录，
+    # 且容器以 uid 3000 运行，往安装目录写会 Permission denied
     command: >
-      sh -c "envsubst < /home/rocketmq/conf/broker.conf.template > /home/rocketmq/conf/broker.conf
-      && sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf"
+      sh -c "envsubst < /home/rocketmq/conf/broker.conf.template > /tmp/broker.conf
+      && sh mqbroker -n rocketmq-namesrv:9876 -c /tmp/broker.conf"
     environment:
       JAVA_OPT_EXT: -Xms256m -Xmx256m -Xmn128m -XX:MaxDirectMemorySize=96m
       LAB_PUBLIC_HOST: ${LAB_PUBLIC_HOST:?set LAB_PUBLIC_HOST in .env}
