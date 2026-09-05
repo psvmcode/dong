@@ -13,9 +13,15 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_general_ci
       - --default-time-zone=+08:00
-      - --max_connections=200
-      - --innodb_buffer_pool_size=128M
+      - --max_connections=60
+      - --innodb_buffer_pool_size=64M
+      - --innodb_log_buffer_size=4M
+      - --key_buffer_size=8M
+      - --tmp_table_size=8M
+      - --max_heap_table_size=8M
+      - --table_open_cache=200
       - --performance_schema=OFF
+      - --skip-innodb-adaptive-hash-index
     volumes:
       - mysql-data:/var/lib/mysql
       - ./initdb:/docker-entrypoint-initdb.d:ro
@@ -24,7 +30,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    mem_limit: 512m
+    mem_limit: 320m
     profiles: ["core", "full"]
 
   redis:
@@ -36,10 +42,11 @@ services:
     command: >
       redis-server
       --requirepass ${LAB_REDIS_PASSWORD:?set LAB_REDIS_PASSWORD in .env}
-      --maxmemory 256mb
+      --maxmemory 64mb
       --maxmemory-policy allkeys-lru
       --appendonly no
       --save ""
+      --maxclients 200
     volumes:
       - redis-data:/data
     healthcheck:
@@ -47,7 +54,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    mem_limit: 320m
+    mem_limit: 128m
     profiles: ["core", "full"]
 
   mariadb:
@@ -60,10 +67,18 @@ services:
       MARIADB_ROOT_PASSWORD: ${LAB_MARIADB_PASSWORD:?set LAB_MARIADB_PASSWORD in .env}
       MARIADB_DATABASE: dong_lab_replica
       TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --max_connections=60
+      - --innodb_buffer_pool_size=48M
+      - --key_buffer_size=8M
+      - --aria_pagecache_buffer_size=8M
+      - --performance_schema=OFF
     volumes:
       - mariadb-data:/var/lib/mysql
       - ./initdb-replica:/docker-entrypoint-initdb.d:ro
-    mem_limit: 384m
+    mem_limit: 256m
     profiles: ["replica", "full"]
 
   kafka:
@@ -82,10 +97,11 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CFG_NUM_PARTITIONS: 3
-      KAFKA_HEAP_OPTS: -Xmx512M -Xms256M
+      KAFKA_HEAP_OPTS: -Xmx384M -Xms192M
       ALLOW_PLAINTEXT_LISTENER: "yes"
     volumes:
       - kafka-data:/bitnami/kafka
+    mem_limit: 512m
     profiles: ["kafka", "full"]
 
   rocketmq-namesrv:
@@ -96,7 +112,8 @@ services:
       - "9876:9876"
     command: sh mqnamesrv
     environment:
-      JAVA_OPT_EXT: -Xms256m -Xmx256m -Xmn128m
+      JAVA_OPT_EXT: -Xms128m -Xmx128m -Xmn64m -XX:MaxDirectMemorySize=64m
+    mem_limit: 220m
     profiles: ["mq", "full"]
 
   rocketmq-broker:
@@ -112,11 +129,12 @@ services:
       sh -c "envsubst < /home/rocketmq/conf/broker.conf.template > /home/rocketmq/conf/broker.conf
       && sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf"
     environment:
-      JAVA_OPT_EXT: -Xms384m -Xmx384m -Xmn192m
+      JAVA_OPT_EXT: -Xms256m -Xmx256m -Xmn128m -XX:MaxDirectMemorySize=96m
       LAB_PUBLIC_HOST: ${LAB_PUBLIC_HOST:?set LAB_PUBLIC_HOST in .env}
     volumes:
       - ./data/rocketmq:/home/rocketmq/store
       - ./rocketmq/broker.conf:/home/rocketmq/conf/broker.conf.template:ro
+    mem_limit: 420m
     profiles: ["mq", "full"]
 
   elasticsearch:
@@ -130,7 +148,7 @@ services:
       - "9200:9200"
     environment:
       discovery.type: single-node
-      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      ES_JAVA_OPTS: -Xms512m -Xmx512m -XX:MaxDirectMemorySize=192m
       ELASTIC_PASSWORD: ${LAB_ES_PASSWORD:?set LAB_ES_PASSWORD in .env}
       xpack.security.enabled: "true"
       xpack.security.http.ssl.enabled: "false"
@@ -141,7 +159,7 @@ services:
         hard: -1
     volumes:
       - es-data:/usr/share/elasticsearch/data
-    mem_limit: 900m
+    mem_limit: 800m
     profiles: ["search", "full"]
 
   mongodb:
@@ -153,9 +171,10 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${LAB_MONGO_USERNAME:?set LAB_MONGO_USERNAME in .env}
       MONGO_INITDB_ROOT_PASSWORD: ${LAB_MONGO_PASSWORD:?set LAB_MONGO_PASSWORD in .env}
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     volumes:
       - mongo-data:/data/db
-    mem_limit: 512m
+    mem_limit: 400m
     profiles: ["doc", "full"]
 
 volumes:

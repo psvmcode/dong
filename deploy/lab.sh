@@ -7,13 +7,13 @@ usage() {
 usage: lab.sh <profile> [command]
 
 profiles:
-  core      mysql + redis                            about 850m
-  mq        rocketmq (namesrv + broker)               about 700m
-  kafka     kafka (kraft, image pulled on demand)     about 800m
-  search    elasticsearch                             about 900m
-  doc       mongodb                                   about 520m
-  replica   mariadb                                   about 390m
-  full      everything                                not recommended on 2g
+  core      mysql + redis                            about 450m
+  mq        rocketmq (namesrv + broker)               about 640m
+  kafka     kafka (kraft, image pulled on demand)     about 510m
+  search    elasticsearch                             about 800m
+  doc       mongodb                                   about 400m
+  replica   mariadb                                   about 260m
+  full      everything                                about 3g, not recommended on 2g
 
 commands:
   up        start the profile
