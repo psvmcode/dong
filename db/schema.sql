@@ -237,6 +237,23 @@ create table if not exists cross_border_account
 ) engine = innodb
   default charset = utf8mb4;
 
+-- 账户事件表。冻结、解冻这类改变账户可用性的操作逐条留痕，只增不改：
+-- 事件一旦允许修改就失去审计价值，所以不提供更新接口
+create table if not exists cross_border_account_event
+(
+    id          bigint unsigned not null auto_increment,
+    account_no  varchar(32)     not null default '',
+    event_type  tinyint         not null default 0,
+    reason      varchar(255)    not null default '',
+    operator    varchar(64)     not null default '',
+    create_time datetime        not null default current_timestamp,
+    update_time datetime        not null default current_timestamp on update current_timestamp,
+    primary key (id),
+    key idx_account_no (account_no),
+    key idx_create_time (create_time)
+) engine = innodb
+  default charset = utf8mb4;
+
 create table if not exists cross_border_fx_quote
 (
     id            bigint unsigned not null auto_increment,

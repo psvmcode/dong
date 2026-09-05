@@ -20,6 +20,7 @@
 | [八、验证记录](#八验证记录) | 实测数据 |
 | [九、踩过的坑](#九踩过的坑) | 真实问题与解法 |
 | [十、编码规范](#十编码规范) | dong-standards |
+| [专项文档](doc/crossborder-payment.md) | 跨境支付业务专项学习 |
 
 ---
 
@@ -554,6 +555,8 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 
 ### 5.11 跨境支付（crossborder）
 
+> **专项学习文档**：[`doc/crossborder-payment.md`](doc/crossborder-payment.md)。从业务背景、领域概念讲到状态机与风控判定，含完整实操命令与实测数据。本节只做概要。
+
 这是最贴近真实业务的一个场景。一笔跨境汇款从发起到到账要经过九个环节，每个环节都有对应的工程问题：
 
 ```
@@ -637,7 +640,9 @@ curl -X POST 'http://127.0.0.1:8090/api/crossborder/accounts' -H 'Content-Type: 
 # 2. 询价并锁汇（也可让汇款接口自动询价）
 curl -X POST 'http://127.0.0.1:8090/api/crossborder/fx/quote?sourceCurrency=CNY&targetCurrency=USD&validSeconds=300'
 
-# 3. 发起汇款（金额超过 5 万会挂起人工审核）
+# 3. 发起汇款。注意开户默认单笔限额是 5 万，与人工审核阈值相同，
+#    因此默认账户汇 5 万以上会被限额直接拒绝；要走到人工审核分支，
+#    开户时需把 singleLimit 提到阈值之上，详见专项文档第 6.1 节
 curl -X POST http://127.0.0.1:8090/api/crossborder/remittance -H 'Content-Type: application/json' \
   -d '{"idempotentKey":"unique-key-1","payerAccountNo":"CB...","payeeAccountNo":"CB...","sourceAmount":60000}'
 
