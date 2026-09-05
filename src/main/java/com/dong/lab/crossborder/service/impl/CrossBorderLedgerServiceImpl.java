@@ -86,16 +86,58 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
     }
 
     /**
-     * creditAndAdvance。
+     * 推进到清算中。这里刻意不接任何资金动作：清算中只表示「钱交出去了、还没确认到账」，
+     * 此时收款方余额尚未变动，因此这一步失败不需要回滚任何账务。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void creditAndAdvance(CrossBorderRemittance remittance) {
-        accountMapper.credit(remittance.getPayeeAccountId(), remittance.getTargetAmount());
-        recordLedger(remittance, remittance.getPayeeAccountId(), LedgerDirection.CREDIT,
-                remittance.getTargetAmount(), remittance.getTargetCurrency());
-        remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.SETTLED,
-                RemittanceStatus.FUNDS_DEBITED, remittance.getVersion());
+    public boolean markSettling(CrossBorderRemittance remittance) {
+        CrossBorderRemittance current = remittanceMapper.selectByRemittanceNo(remittance.getRemittanceNo());
+        if (current == null) {
+            return false;
+        }
+        if (current.getStatus() == RemittanceStatus.SETTLING || current.getStatus() == RemittanceStatus.SETTLED) {
+            return false;
+        }
+        if (current.getStatus() != RemittanceStatus.FUNDS_DEBITED) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittance.getRemittanceNo() + " is not debited, status " + current.getStatus());
+        }
+        return remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.SETTLING,
+                RemittanceStatus.FUNDS_DEBITED, current.getVersion()) > 0;
+    }
+
+    /**
+     * 入账并结算。重新读取最新状态而不是沿用入参，
+     * 因为调用方持有的实体在推进到清算中之后版本号已经过期。
+     *
+     * <p>状态推进失败必须抛异常让事务回滚：加钱成功却推进失败，
+     * 会让单子停在清算中而钱已经进了收款方账户，重试时又加一次。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean creditAndAdvance(CrossBorderRemittance remittance) {
+        CrossBorderRemittance current = remittanceMapper.selectByRemittanceNo(remittance.getRemittanceNo());
+        if (current == null) {
+            return false;
+        }
+        if (current.getStatus() == RemittanceStatus.SETTLED) {
+            return false;
+        }
+        if (current.getStatus() != RemittanceStatus.SETTLING) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittance.getRemittanceNo() + " is not settling, status " + current.getStatus());
+        }
+        accountMapper.credit(current.getPayeeAccountId(), current.getTargetAmount());
+        recordLedger(current, current.getPayeeAccountId(), LedgerDirection.CREDIT,
+                current.getTargetAmount(), current.getTargetCurrency());
+        int advanced = remittanceMapper.updateStatus(current.getRemittanceNo(), RemittanceStatus.SETTLED,
+                RemittanceStatus.SETTLING, current.getVersion());
+        if (advanced <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittance.getRemittanceNo() + " settled by another request");
+        }
+        return true;
     }
 
     /**

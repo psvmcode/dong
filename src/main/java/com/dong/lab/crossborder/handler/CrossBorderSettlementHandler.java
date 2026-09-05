@@ -30,6 +30,13 @@ import java.util.concurrent.atomic.LongAdder;
  * 同类 this 调用绕过 Spring 代理，事务静默失效，
  * 曾经因此出现并发消息重复入账六次的事故。
  *
+ * <p>清算分两步：先推进到「清算中」（钱交给渠道、等确认），
+ * 收到确认后再入账推进到「已结算」。真实渠道的这两步之间隔着几分钟到两天，
+ * 本项目用两次调用串起来，让「清算中」这个在途状态真实存在而不是摆设。
+ *
+ * <p>归批只在「已扣款」这一步做，不能跟着入账一起重复执行：
+ * 批次金额是累加的，消息重发时若再归一次批，批次总额会被重复计数。
+ *
  * <p>入账时会把汇款单归入当前打开的清算批次，没有就自动创建一个。
  * 不归批的代价是对账按批次拉取时查不到这些单子，
  * 整条实时清算链路的资金就成了对账盲区。
@@ -58,6 +65,8 @@ public class CrossBorderSettlementHandler implements MessageHandler {
     private final CrossBorderLedgerService ledgerService;
 
     private final LongAdder processed = new LongAdder();
+
+    private final LongAdder settling = new LongAdder();
 
     private final LongAdder duplicated = new LongAdder();
 
@@ -90,12 +99,18 @@ public class CrossBorderSettlementHandler implements MessageHandler {
             log.info("duplicate settlement message ignored remittanceNo={}", remittanceNo);
             return true;
         }
-        if (remittance.getStatus() != RemittanceStatus.FUNDS_DEBITED) {
+        if (remittance.getStatus() != RemittanceStatus.FUNDS_DEBITED
+                && remittance.getStatus() != RemittanceStatus.SETTLING) {
             skipped.increment();
             log.warn("skip settlement remittanceNo={} currentStatus={}", remittanceNo, remittance.getStatus());
             return true;
         }
-        assignBatch(remittance);
+        if (remittance.getStatus() == RemittanceStatus.FUNDS_DEBITED) {
+            assignBatch(remittance);
+            if (ledgerService.markSettling(remittance)) {
+                settling.increment();
+            }
+        }
         creditAndAdvance(remittance);
         processed.increment();
         return true;
@@ -145,6 +160,13 @@ public class CrossBorderSettlementHandler implements MessageHandler {
      */
     public long processedCount() {
         return processed.sum();
+    }
+
+    /**
+     * settlingCount。
+     */
+    public long settlingCount() {
+        return settling.sum();
     }
 
     /**

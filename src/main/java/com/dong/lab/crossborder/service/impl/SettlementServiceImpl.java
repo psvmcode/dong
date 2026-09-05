@@ -127,8 +127,8 @@ public class SettlementServiceImpl implements SettlementService {
     }
 
     /**
-     * 清算并给收款方入账。入账与记流水在同一事务内，
-     * 保证收款方余额与流水必定一致。
+     * 清算并给收款方入账。先推进到清算中再确认入账，与实时消息链路走同一套两步动作，
+     * 避免手动清算绕过「清算中」状态造成两条路径行为不一致。
      */
     @Override
     public int settle(String batchNo) {
@@ -142,8 +142,10 @@ public class SettlementServiceImpl implements SettlementService {
             if (item.getStatus() != RemittanceStatus.FUNDS_DEBITED) {
                 continue;
             }
-            ledgerService.creditAndAdvance(item);
-            settled++;
+            ledgerService.markSettling(item);
+            if (ledgerService.creditAndAdvance(item)) {
+                settled++;
+            }
         }
         batchMapper.updateStatus(batchNo, SettlementStatus.SETTLED);
         return settled;

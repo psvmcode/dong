@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,10 +93,15 @@ public class CrossBorderMaintenanceTask {
      * <p>静默期是必须的：刚创建的汇款单消息还在投递途中，
      * 若不加区分地立即重发，每轮都会把在途消息再发一遍，形成消息风暴。
      * 这里只补偿创建超过一定时间仍未推进的单子。
+     *
+     * <p>清算中也必须纳入扫描：消息已投递但入账没跑完的单子停在这个状态，
+     * 只扫已扣款会把它漏掉，于是钱已出账却永远等不到确认。
      */
     @Scheduled(fixedDelay = 30_000, initialDelay = 45_000)
     public void compensateSettlementMessages() {
-        List<CrossBorderRemittance> pending = remittanceMapper.selectByStatus(RemittanceStatus.FUNDS_DEBITED, 50);
+        List<CrossBorderRemittance> pending = new ArrayList<>();
+        pending.addAll(remittanceMapper.selectByStatus(RemittanceStatus.FUNDS_DEBITED, 50));
+        pending.addAll(remittanceMapper.selectByStatus(RemittanceStatus.SETTLING, 50));
         if (pending.isEmpty()) {
             return;
         }

@@ -16,6 +16,7 @@ import com.dong.lab.crossborder.enums.ComplianceResult;
 import com.dong.lab.crossborder.enums.LedgerDirection;
 import com.dong.lab.crossborder.enums.RemittanceStatus;
 import com.dong.lab.crossborder.enums.SettlementChannel;
+import com.dong.lab.crossborder.handler.CrossBorderSettlementHandler;
 import com.dong.lab.crossborder.mapper.AccountLedgerMapper;
 import com.dong.lab.crossborder.mapper.CrossBorderAccountMapper;
 import com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper;
@@ -123,6 +124,12 @@ public class RemittanceServiceImpl implements RemittanceService {
      * mqFacade。
      */
     private final MqFacade mqFacade;
+
+    /**
+     * settlementHandler。只为读取清算计数器：
+     * 「清算中」停留时间是毫秒级，按状态统计永远看不到，累计计数才观察得到。
+     */
+    private final CrossBorderSettlementHandler settlementHandler;
 
     /**
      * snowflake。
@@ -580,6 +587,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         runtime.put("reviewRejected", reviewRejected.sum());
         runtime.put("messageSent", messageSent.sum());
         runtime.put("messageFailed", messageFailed.sum());
+        runtime.put("settlingEntered", settlementHandler.settlingCount());
         runtime.put("sanctionSize", complianceService.sanctionCount());
         runtime.put("mq", mqFacade.status());
         return runtime;
