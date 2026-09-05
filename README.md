@@ -854,13 +854,13 @@ cp .env.example .env && chmod 600 .env && vi .env
 ### 使用
 
 ```bash
-lab.sh core up      # MySQL + Redis，约 850m
-lab.sh mq up        # RocketMQ（namesrv + broker），约 700m
-lab.sh kafka up     # Kafka（KRaft，按需拉镜像），约 800m
-lab.sh search up    # Elasticsearch（含 IK），约 900m
-lab.sh doc up       # MongoDB，约 520m
-lab.sh replica up   # MariaDB，约 390m
-lab.sh full up      # 全部，2G 内存下不建议
+lab.sh core up      # MySQL + Redis，约 450m
+lab.sh mq up        # RocketMQ（namesrv + broker），约 640m
+lab.sh kafka up     # Kafka（KRaft，按需拉镜像），约 510m
+lab.sh search up    # Elasticsearch（含 IK），约 800m
+lab.sh doc up       # MongoDB，约 400m
+lab.sh replica up   # MariaDB，约 260m
+lab.sh full up      # 全部，约 3G，2G 内存下不建议
 
 lab.sh core down    # 停止
 lab.sh core ps      # 状态
@@ -891,13 +891,53 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--lab.mongodb.enabled=false --l
 
 ### 内存是硬约束
 
-启动时请遵守按需原则，用完即停：
+2 核 2G 是这台机器的天花板，全部中间件加起来约 3G，同时开必然 OOM。启动时请遵守按需原则，用完即停：
 
 ```bash
 lab.sh search down     # 先停 ES
 lab.sh doc down        # 再停 MongoDB
 lab.sh mq up           # 然后启动消息中间件
 ```
+
+**各组件的内存上限**（`deploy/docker-compose.yml` 的 `mem_limit`）：
+
+| 组件 | 上限 | 关键参数 | 说明 |
+|---|---|---|---|
+| Elasticsearch | 800m | `-Xmx512m -XX:MaxDirectMemorySize=192m` | 堆外不设限会与堆等大，实际占用能翻倍 |
+| RocketMQ broker | 420m | `-Xmx256m -Xmn128m -XX:MaxDirectMemorySize=96m` | 与 namesrv 是两个独立 JVM，别只算一个 |
+| RocketMQ namesrv | 220m | `-Xmx128m -Xmn64m` | |
+| Kafka | 512m | `-Xmx384M -Xms192M` | |
+| MongoDB | 400m | `--wiredTigerCacheSizeGB 0.25` | 不显式设会按宿主内存的一半申请，然后被 cgroup 卡死 |
+| MySQL | 320m | `innodb_buffer_pool_size=64M`、`max_connections=60`、`performance_schema=OFF` | |
+| MariaDB | 256m | `innodb_buffer_pool_size=48M`、`performance_schema=OFF` | |
+| Redis | 128m | `maxmemory 64mb` | 空负载仅数 MB，占用几乎全看数据量 |
+
+按占用从大到小的保留优先级：**Elasticsearch > RocketMQ > Kafka > MongoDB > MySQL > MariaDB > Redis**。
+
+两个容易踩的点：RocketMQ 的 namesrv 与 broker 是**两个 JVM**，早期版本都没设 `mem_limit`，实际能吃近 1G；MongoDB 的 WiredTiger 缓存按宿主内存算而不是容器上限，只设 `mem_limit` 等于没设。
+
+**资源预算**：
+
+| 组合 | 合计 | 可行性 |
+|---|---|---|
+| core（MySQL + Redis） | ≈450m | 建议常驻，几乎所有模块都依赖 |
+| core + replica | ≈710m | 宽松 |
+| core + doc | ≈850m | 宽松 |
+| core + mq | ≈1090m | 可以，但不宽裕 |
+| core + search | ≈1250m | 吃紧，别再叠别的 |
+| core + mq + search | ≈1850m | 必 OOM |
+
+ES 单组件就占 800m 且只有 search 模块用得到，性价比最低，需要时临时开即可。
+
+**改完配置必须重建容器才生效**：
+
+```bash
+cd /opt/dong-lab
+docker compose --profile core up -d --force-recreate
+docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}'
+```
+
+`mem_limit` 是上限不是实际占用，要看真实消耗得看 `docker stats` 的 MEM USAGE。若某组件重建后起不来，多半是 JVM 堆给小了，把对应值调回一档即可。
 
 ---
 
