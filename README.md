@@ -916,18 +916,32 @@ lab.sh mq up           # 然后启动消息中间件
 
 两个容易踩的点：RocketMQ 的 namesrv 与 broker 是**两个 JVM**，早期版本都没设 `mem_limit`，实际能吃近 1G；MongoDB 的 WiredTiger 缓存按宿主内存算而不是容器上限，只设 `mem_limit` 等于没设。
 
-**资源预算**：
+**实测占用**（2 核 2G，清理重复实例并应用上述配置后）：
 
-| 组合 | 合计 | 可行性 |
+| 实例 | 上限 | 实测 |
 |---|---|---|
-| core（MySQL + Redis） | ≈450m | 建议常驻，几乎所有模块都依赖 |
-| core + replica | ≈710m | 宽松 |
-| core + doc | ≈850m | 宽松 |
-| core + mq | ≈1090m | 可以，但不宽裕 |
-| core + search | ≈1250m | 吃紧，别再叠别的 |
-| core + mq + search | ≈1850m | 必 OOM |
+| Elasticsearch | 800m | 616MB |
+| RocketMQ broker | 420m | 266MB |
+| MySQL | 320m | 114MB |
+| MongoDB | 400m | 98MB |
+| MariaDB | 256m | 44MB |
+| RocketMQ namesrv | 220m | 39MB |
+| Redis | 128m | 7MB |
 
-ES 单组件就占 800m 且只有 search 模块用得到，性价比最低，需要时临时开即可。
+注意实测远小于上限：`mem_limit` 只是天花板，真实占用取决于有没有数据。非 JVM 的四个组件加起来仅 263MB，占大头的始终是 ES 与 RocketMQ 这两个 JVM——它们不论数据量多少都要预分配堆。
+
+**资源预算**（实测累加）：
+
+| 组合 | 实测占用 | 可行性 |
+|---|---|---|
+| core（MySQL + Redis） | 121MB | 建议常驻，几乎所有模块都依赖 |
+| core + replica | 165MB | 无压力 |
+| core + doc | 219MB | 无压力 |
+| core + mq | 426MB | 无压力 |
+| core + search | 737MB | 宽松，可用内存仍有 800MB |
+| 全部（不含 Kafka） | 1184MB | 可行，available 约 400MB |
+
+结论：清理掉重复实例后，**全部中间件可以同时长期运行**。唯一需要斟酌的仍是 ES——它占 616MB 且只有 search 模块用得到，内存紧张时优先关它。
 
 **改完配置必须重建容器才生效**：
 
@@ -1130,6 +1144,24 @@ return algorithm == RateLimitAlgorithm.TOKEN_BUCKET ? RateType.OVERALL : RateTyp
 外部迁移的链式调用是 `from → to → on`，内部迁移却是 `within → on`，中间没有 `to`，因为 `within` 已经把源和目标都置成了同一个状态，`To` 接口上只有 `on(E)`。
 
 第一版照着外部迁移的习惯写成 `.within(X).to(X)`，编译直接报找不到 `to`。教训是链式 DSL 的方法签名要逐个确认，不同分支的链路长度未必相同。
+
+### 23. RocketMQ 配置渲染写不进安装目录
+
+broker 启动时用 `envsubst` 把 `broker.conf.template` 里的 `${LAB_PUBLIC_HOST}` 渲染成真实地址（否则注册到 namesrv 的是容器内网 IP）。渲染结果原本写到安装目录：
+
+```yaml
+sh -c "envsubst < /home/rocketmq/conf/broker.conf.template > /home/rocketmq/conf/broker.conf
+       && sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf"
+```
+
+重建容器后 broker 陷入重启循环，日志反复刷 `sh: /home/rocketmq/conf/broker.conf: Permission denied`。根因是**镜像里根本没有 `/home/rocketmq/conf` 这个目录**，且容器以 uid 3000 运行，无权创建。渲染到 `/tmp` 即可：
+
+```yaml
+sh -c "envsubst < /home/rocketmq/conf/broker.conf.template > /tmp/broker.conf
+       && sh mqbroker -n rocketmq-namesrv:9876 -c /tmp/broker.conf"
+```
+
+**这个坑藏了近一个月**：服务器上原先跑的是直接挂载 `broker.conf:ro` 的旧配置，与本仓库的版本早已不同步，所以本地这套 envsubst 方案从未真正在服务器上运行过，直到本次重建才暴露。教训是部署配置改完必须实跑一次——`docker compose config` 能解析，不代表容器起得来。
 
 ---
 
