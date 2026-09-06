@@ -17,9 +17,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 /**
  * 全局异常处理器。
+ *
+ * <p>限定 basePackages 只覆盖业务 Controller 是有意为之：
+ * 不加限制时兜底的 Exception 分支会连 Spring 内部的资源 404 一起捕获，
+ * 把 NoResourceFoundException 当成未预期错误返回 500，
+ * 浏览器请求 favicon.ico 时天天刷堆栈。限定范围后这类异常交还 Spring 自己处理成 404。
  */
 @Slf4j
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.dong")
 
 public class GlobalExceptionHandler {
 

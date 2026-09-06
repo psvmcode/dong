@@ -52,3 +52,6 @@ deploy/.env
 
 ### 私人文档：面试准备，不进 public 仓库 ###
 doc/crossborder-interview-prep.md
+
+### 运行日志 ###
+logs/

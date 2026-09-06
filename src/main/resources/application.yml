@@ -103,9 +103,9 @@ springdoc:
     path: /v3/api-docs
 
 logging:
-  level:
-    root: info
-    com.dong: info
+  # 日志级别与输出统一由 logback-spring.xml 管理，这里只保留目录配置
+  file:
+    path: logs
 
 dong:
   snowflake:
