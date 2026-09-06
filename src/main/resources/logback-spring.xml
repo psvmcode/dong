@@ -101,9 +101,9 @@
         </filter>
     </appender>
 
-    <!-- 业务代码开到 TRACE，保证各级别都有样本落盘。
-         MyBatis 的 SQL 在 DEBUG，com.dong 开 TRACE 后会自动带出来 -->
-    <logger name="com.dong" level="TRACE"/>
+    <!-- 业务代码开到 DEBUG：MyBatis 的 SQL 在 DEBUG 级别，到这里就能看到完整语句与参数。
+         需要更细的内部流程时再临时调成 TRACE -->
+    <logger name="com.dong" level="DEBUG"/>
 
     <!-- 以下是中间件与框架的降噪。
          它们不放开到 TRACE 是有意的：第三方库的 TRACE 量级是业务代码的几十倍，
