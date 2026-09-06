@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- 复用 Spring Boot 的默认 pattern 与控制台 appender，保留彩色输出 -->
+    <!-- 复用 Spring Boot 的默认 pattern（含彩色），控制台 appender 自己定义以便加级别过滤 -->
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
     <!-- 应用名取自 application.yml 的 spring.application.name -->
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="dong"/>
@@ -13,7 +12,19 @@
     <property name="MAX_HISTORY" value="14"/>
     <property name="TOTAL_SIZE_CAP" value="1GB"/>
 
-    <!-- 全量日志：按天滚动，单文件超过阈值再按序号切分，超过总容量自动清理最旧的 -->
+    <!-- 控制台只输出 INFO 及以上。
+         文件是全级别的，若控制台不过滤，海量 TRACE 会把终端刷爆、也拖慢启动 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- 全量日志：不做级别过滤，TRACE/DEBUG/INFO/WARN/ERROR 全部落盘 -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/${APP_NAME}.log</file>
         <append>true</append>
@@ -29,7 +40,49 @@
         </encoder>
     </appender>
 
-    <!-- 错误日志单独成文件，排查问题时不用在海量 INFO 里翻 -->
+    <!-- DEBUG 单独成文件：排查时不用在全量日志里翻，也不会被 INFO 淹没 -->
+    <appender name="DEBUG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${APP_NAME}-debug.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/${APP_NAME}-debug.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- WARN 单独成文件：降级、重试、配置缺失这类"没失败但要留意"的信号 -->
+    <appender name="WARN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${APP_NAME}-warn.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/${APP_NAME}-warn.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- ERROR 单独成文件，排查线上问题时第一时间看它 -->
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/${APP_NAME}-error.log</file>
         <append>true</append>
@@ -48,33 +101,31 @@
         </filter>
     </appender>
 
-    <!-- 业务代码保持 INFO。需要看 SQL 时把 com.dong 临时改成 DEBUG，
-         MyBatis 已配置 log-impl 为 Slf4jImpl，会连带打印语句与参数 -->
-    <logger name="com.dong" level="INFO"/>
+    <!-- 业务代码开到 TRACE，保证各级别都有样本落盘。
+         MyBatis 的 SQL 在 DEBUG，com.dong 开 TRACE 后会自动带出来 -->
+    <logger name="com.dong" level="TRACE"/>
 
-    <!-- 以下是中间件与框架的降噪，只压掉高频且无信息量的心跳、重平衡、连接日志 -->
-
-    <!-- 浏览器会自动请求 /favicon.ico，缺该文件时抛 NoResourceFoundException 并打印完整堆栈 -->
+    <!-- 以下是中间件与框架的降噪。
+         它们不放开到 TRACE 是有意的：第三方库的 TRACE 量级是业务代码的几十倍，
+         放开后一天就能写满几个 GB，且几乎全是内部细节，排查时用不上 -->
+    <logger name="org.springframework" level="INFO"/>
     <logger name="org.springframework.web.servlet.resource" level="WARN"/>
-    <!-- RocketMQ 重平衡与心跳 -->
     <logger name="org.apache.rocketmq" level="WARN"/>
-    <!-- Kafka 未启用时的协调器轮询 -->
     <logger name="org.apache.kafka" level="WARN"/>
-    <!-- Netty 的 channel 建立与关闭 -->
     <logger name="io.netty" level="WARN"/>
-    <!-- Redisson 的连接与看门狗续期 -->
     <logger name="org.redisson" level="WARN"/>
-    <!-- MongoDB 驱动的心跳与集群监控 -->
     <logger name="org.mongodb.driver" level="WARN"/>
-    <!-- Elasticsearch 客户端的请求日志 -->
     <logger name="org.elasticsearch" level="WARN"/>
     <logger name="co.elastic.clients" level="WARN"/>
-    <!-- MyBatis 自身的初始化日志，SQL 由 com.dong 的级别控制 -->
     <logger name="org.mybatis" level="WARN"/>
 
+    <!-- root 定为 INFO：未单独配置的第三方库默认 INFO，不会因为继承 TRACE 而日志爆炸。
+         但文件 appender 本身不过滤，所以 com.dong 的 TRACE/DEBUG 照样全部落盘 -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
+        <appender-ref ref="DEBUG_FILE"/>
+        <appender-ref ref="WARN_FILE"/>
         <appender-ref ref="ERROR_FILE"/>
     </root>
 
