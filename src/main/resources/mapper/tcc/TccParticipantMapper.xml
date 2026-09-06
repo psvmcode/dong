@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.tcc.mapper.TccParticipantMapper">
+<mapper namespace="com.dong.tcc.mapper.TccParticipantMapper">
 
-    <resultMap id="inventoryMap" type="com.dong.lab.tcc.entity.TccInventory">
+    <resultMap id="inventoryMap" type="com.dong.tcc.entity.TccInventory">
         <id column="id" property="id"/>
         <result column="product_id" property="productId"/>
         <result column="available" property="available"/>
@@ -12,7 +12,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
-    <resultMap id="accountMap" type="com.dong.lab.tcc.entity.TccAccount">
+    <resultMap id="accountMap" type="com.dong.tcc.entity.TccAccount">
         <id column="id" property="id"/>
         <result column="user_id" property="userId"/>
         <result column="balance" property="balance"/>
@@ -21,7 +21,7 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
-    <resultMap id="orderMap" type="com.dong.lab.tcc.entity.TccOrder">
+    <resultMap id="orderMap" type="com.dong.tcc.entity.TccOrder">
         <id column="id" property="id"/>
         <result column="order_no" property="orderNo"/>
         <result column="xid" property="xid"/>
@@ -29,7 +29,7 @@
         <result column="product_id" property="productId"/>
         <result column="quantity" property="quantity"/>
         <result column="amount" property="amount"/>
-        <result column="status" property="status" javaType="com.dong.lab.tcc.enums.TccOrderStatus"/>
+        <result column="status" property="status" javaType="com.dong.tcc.enums.TccOrderStatus"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -42,7 +42,7 @@
     </select>
 
     <!-- 初始化库存 -->
-    <insert id="insertInventory" parameterType="com.dong.lab.tcc.entity.TccInventory"
+    <insert id="insertInventory" parameterType="com.dong.tcc.entity.TccInventory"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_inventory (product_id, available, frozen)
         values (#{productId}, #{available}, #{frozen})
@@ -82,7 +82,7 @@
     </select>
 
     <!-- 初始化账户 -->
-    <insert id="insertAccount" parameterType="com.dong.lab.tcc.entity.TccAccount"
+    <insert id="insertAccount" parameterType="com.dong.tcc.entity.TccAccount"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_account (user_id, balance, frozen)
         values (#{userId}, #{balance}, #{frozen})
@@ -122,7 +122,7 @@
     </select>
 
     <!-- 创建订单 -->
-    <insert id="insertOrder" parameterType="com.dong.lab.tcc.entity.TccOrder"
+    <insert id="insertOrder" parameterType="com.dong.tcc.entity.TccOrder"
             useGeneratedKeys="true" keyProperty="id">
         insert into tcc_order (order_no, xid, user_id, product_id, quantity, amount, status)
         values (#{orderNo}, #{xid}, #{userId}, #{productId}, #{quantity}, #{amount}, #{status})

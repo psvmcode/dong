@@ -1,4 +1,4 @@
-# dong-lab
+# dong
 
 中间件与分布式场景实验室。一个 Spring Boot 3 工程，把日常开发中容易只在理论上理解的中间件用法，全部变成可以运行、可以对比、可以用数据验证的代码。
 
@@ -796,7 +796,7 @@ lab:
 ### 目录
 
 ```
-/opt/dong-lab/
+/opt/dong/
 ├── docker-compose.yml    编排文件，含内存限制与健康检查
 ├── .env                  密码与公网地址（不进版本库，由 setup-env.sh 生成）
 ├── .env.example          变量模板，进版本库
@@ -815,7 +815,7 @@ lab:
 仓库不保存密码。部署前用脚本生成 `.env`，密码交互式输入、不回显，生成的文件权限为 600 且已被 git 忽略：
 
 ```bash
-cd /opt/dong-lab
+cd /opt/dong
 ./setup-env.sh
 ```
 
@@ -957,7 +957,7 @@ lab.sh mq up           # 然后启动消息中间件
 **改完配置必须重建容器才生效**：
 
 ```bash
-cd /opt/dong-lab
+cd /opt/dong
 docker compose --profile core up -d --force-recreate
 docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}'
 ```
@@ -1148,7 +1148,7 @@ return algorithm == RateLimitAlgorithm.TOKEN_BUCKET ? RateType.OVERALL : RateTyp
 
 新建 `order` 模块后应用启动失败，报 `No qualifying bean of type 'TradeOrderMapper' available`。项目用了多数据源，主库的 Mapper 必须在 `config/PrimaryMybatisConfig` 的 `@MapperScan(basePackages = ...)` 里逐个登记，只在接口上加 `@Mapper` 不够——自动扫描会把它注册到默认的 SessionFactory，与主数据源指定的那一个不是同一个。
 
-解法是在 `basePackages` 里补上 `com.dong.lab.order.mapper`。以后每加一个走主库的上下文，都要同步这一处。
+解法是在 `basePackages` 里补上 `com.dong.order.mapper`。以后每加一个走主库的上下文，都要同步这一处。
 
 ### 22. COLA 内部迁移没有 to 环节
 

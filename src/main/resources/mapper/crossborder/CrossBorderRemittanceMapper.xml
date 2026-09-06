@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderRemittanceMapper">
+<mapper namespace="com.dong.crossborder.mapper.CrossBorderRemittanceMapper">
     <!-- 汇款单表。idempotent_key 唯一索引防重复汇款；
          updateStatus 带 version 乐观锁，状态只能单向推进；
          updateSettlementTerms 供人工审核放行后回填锁汇结果 -->
 
 
-    <resultMap id="remittanceMap" type="com.dong.lab.crossborder.entity.CrossBorderRemittance">
+    <resultMap id="remittanceMap" type="com.dong.crossborder.entity.CrossBorderRemittance">
         <id column="id" property="id"/>
         <result column="remittance_no" property="remittanceNo"/>
         <result column="idempotent_key" property="idempotentKey"/>
@@ -19,8 +19,8 @@
         <result column="exchange_rate" property="exchangeRate"/>
         <result column="target_amount" property="targetAmount"/>
         <result column="fee_amount" property="feeAmount"/>
-        <result column="channel" property="channel" javaType="com.dong.lab.crossborder.enums.SettlementChannel"/>
-        <result column="status" property="status" javaType="com.dong.lab.crossborder.enums.RemittanceStatus"/>
+        <result column="channel" property="channel" javaType="com.dong.crossborder.enums.SettlementChannel"/>
+        <result column="status" property="status" javaType="com.dong.crossborder.enums.RemittanceStatus"/>
         <result column="compliance_status" property="complianceStatus"/>
         <result column="quote_no" property="quoteNo"/>
         <result column="batch_no" property="batchNo"/>
@@ -104,7 +104,7 @@
     </select>
 
     <!-- 插入汇款单，幂等键唯一索引兜底 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderRemittance"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.CrossBorderRemittance"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_remittance (remittance_no, idempotent_key, payer_account_id, payee_account_id,
                                              source_currency, target_currency, source_amount, exchange_rate,

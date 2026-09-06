@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.social.mapper.SocialRelationMapper">
+<mapper namespace="com.dong.social.mapper.SocialRelationMapper">
 
     <!-- 写关注关系 -->
-    <insert id="insert" parameterType="com.dong.lab.social.entity.SocialRelation"
+    <insert id="insert" parameterType="com.dong.social.entity.SocialRelation"
             useGeneratedKeys="true" keyProperty="id">
         insert into social_relation (follower_id, followee_id)
         values (#{followerId}, #{followeeId})

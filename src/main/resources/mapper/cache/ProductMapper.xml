@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.cache.mapper.ProductMapper">
+<mapper namespace="com.dong.cache.mapper.ProductMapper">
 
-    <resultMap id="productMap" type="com.dong.lab.cache.entity.Product">
+    <resultMap id="productMap" type="com.dong.cache.entity.Product">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
         <result column="category" property="category"/>
         <result column="price" property="price"/>
         <result column="stock" property="stock"/>
-        <result column="status" property="status" javaType="com.dong.lab.cache.enums.ProductStatus"/>
+        <result column="status" property="status" javaType="com.dong.cache.enums.ProductStatus"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -54,14 +54,14 @@
     </select>
 
     <!-- 新增商品，主键回填 -->
-    <insert id="insert" parameterType="com.dong.lab.cache.entity.Product"
+    <insert id="insert" parameterType="com.dong.cache.entity.Product"
             useGeneratedKeys="true" keyProperty="id">
         insert into product (name, category, price, stock, status)
         values (#{name}, #{category}, #{price}, #{stock}, #{status})
     </insert>
 
     <!-- 更新商品 -->
-    <update id="update" parameterType="com.dong.lab.cache.entity.Product">
+    <update id="update" parameterType="com.dong.cache.entity.Product">
         update product
         set name     = #{name},
             category = #{category},

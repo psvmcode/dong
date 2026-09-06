@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.AccountEventMapper">
+<mapper namespace="com.dong.crossborder.mapper.AccountEventMapper">
 
-    <resultMap id="eventMap" type="com.dong.lab.crossborder.entity.AccountEvent">
+    <resultMap id="eventMap" type="com.dong.crossborder.entity.AccountEvent">
         <id column="id" property="id"/>
         <result column="account_no" property="accountNo"/>
-        <result column="event_type" property="eventType" javaType="com.dong.lab.crossborder.enums.AccountEventType"/>
+        <result column="event_type" property="eventType" javaType="com.dong.crossborder.enums.AccountEventType"/>
         <result column="reason" property="reason"/>
         <result column="operator" property="operator"/>
         <result column="create_time" property="createTime"/>
@@ -22,7 +22,7 @@
     </select>
 
     <!-- 写入账户事件留痕 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.AccountEvent"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.AccountEvent"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account_event (account_no, event_type, reason, operator)
         values (#{accountNo}, #{eventType}, #{reason}, #{operator})

@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.AccountLedgerMapper">
+<mapper namespace="com.dong.crossborder.mapper.AccountLedgerMapper">
     <!-- 账户流水表。每笔资金变动一条记录，balanceAfter 保存记账后快照；
          (remittance_no, account_id, direction) 唯一索引是幂等入账的最终防线，
          重复消费的消息会让插入冲突回滚，从机制上杜绝重复加钱 -->
 
 
-    <resultMap id="ledgerMap" type="com.dong.lab.crossborder.entity.AccountLedger">
+    <resultMap id="ledgerMap" type="com.dong.crossborder.entity.AccountLedger">
         <id column="id" property="id"/>
         <result column="ledger_no" property="ledgerNo"/>
         <result column="remittance_no" property="remittanceNo"/>
         <result column="account_id" property="accountId"/>
         <result column="direction" property="direction"
-                javaType="com.dong.lab.crossborder.enums.LedgerDirection"/>
+                javaType="com.dong.crossborder.enums.LedgerDirection"/>
         <result column="currency" property="currency"/>
         <result column="amount" property="amount"/>
         <result column="balance_after" property="balanceAfter"/>
@@ -49,7 +49,7 @@
     </select>
 
     <!-- 写入流水，余额快照一并落库 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.AccountLedger"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.AccountLedger"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account_ledger (ledger_no, remittance_no, account_id, direction, currency,
                                                  amount, balance_after)

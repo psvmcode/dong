@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.ReconDiffMapper">
+<mapper namespace="com.dong.crossborder.mapper.ReconDiffMapper">
     <!-- 对账差异表。长款短款逐条记录，运营按类型处理后标记，
          handle 状态推进是差异闭环的唯一出口 -->
 
 
-    <resultMap id="diffMap" type="com.dong.lab.crossborder.entity.ReconDiff">
+    <resultMap id="diffMap" type="com.dong.crossborder.entity.ReconDiff">
         <id column="id" property="id"/>
         <result column="batch_no" property="batchNo"/>
         <result column="remittance_no" property="remittanceNo"/>
-        <result column="diff_type" property="diffType" javaType="com.dong.lab.crossborder.enums.ReconDiffType"/>
+        <result column="diff_type" property="diffType" javaType="com.dong.crossborder.enums.ReconDiffType"/>
         <result column="local_amount" property="localAmount"/>
         <result column="channel_amount" property="channelAmount"/>
         <result column="handle_status" property="handleStatus"/>
@@ -47,7 +47,7 @@
     </select>
 
     <!-- 写入单条差异 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ReconDiff"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.ReconDiff"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
                                              channel_amount, handle_status)

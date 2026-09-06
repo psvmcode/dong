@@ -1,0 +1,99 @@
+package com.dong.seckill.handler;
+
+import com.dong.common.util.JsonUtils;
+import com.dong.framework.mq.MessageHandler;
+import com.dong.seckill.entity.SeckillOrder;
+import com.dong.seckill.enums.SeckillOrderStatus;
+import com.dong.seckill.mapper.SeckillOrderMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.Map;
+import java.util.concurrent.atomic.LongAdder;
+/**
+ * 秒杀订单异步建单。库存扣减已在 Redis 完成，这里只负责落库。
+ *
+ * <p>两道防重：先按活动与用户查一次，再由数据库唯一索引兜底。
+ * 只依赖查询判断是不够的，并发下两笔请求可能同时通过检查。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+
+public class SeckillOrderCreatedHandler implements MessageHandler {
+
+    private static final String TOPIC = "seckill-order-created";
+
+    /**
+     * seckillOrderMapper，MyBatis Mapper 数据访问层。
+     */
+    private final SeckillOrderMapper seckillOrderMapper;
+
+    private final LongAdder created = new LongAdder();
+
+    private final LongAdder duplicated = new LongAdder();
+
+    /**
+     * 返回监听的消息主题。
+     */
+    @Override
+    public String topic() {
+        return TOPIC;
+    }
+
+    /**
+     * 处理秒杀订单创建消息，落库并统计重复订单。
+     */
+    @Override
+    public boolean handle(String key, String payload) {
+        Map<String, Object> message = JsonUtils.fromJson(payload,
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                });
+        String orderNo = String.valueOf(message.get("orderNo"));
+        Long activityId = Long.valueOf(String.valueOf(message.get("activityId")));
+        Long userId = Long.valueOf(String.valueOf(message.get("userId")));
+        int quantity = Integer.parseInt(String.valueOf(message.get("quantity")));
+        BigDecimal unitPrice = new BigDecimal(String.valueOf(message.get("unitPrice")));
+        if (seckillOrderMapper.countByActivityAndUser(activityId, userId) > 0) {
+            duplicated.increment();
+            log.warn("duplicate seckill order rejected orderNo={} activity={} user={}", orderNo, activityId, userId);
+            return true;
+        }
+
+        SeckillOrder order = new SeckillOrder();
+        order.setOrderNo(orderNo);
+        order.setActivityId(activityId);
+        order.setProductId(Long.valueOf(String.valueOf(message.get("productId"))));
+        order.setUserId(userId);
+        order.setQuantity(quantity);
+        order.setAmount(unitPrice.multiply(BigDecimal.valueOf(quantity)));
+        order.setStatus(SeckillOrderStatus.PENDING_PAYMENT);
+        try {
+            seckillOrderMapper.insert(order);
+            created.increment();
+            return true;
+        } catch (DuplicateKeyException ex) {
+            duplicated.increment();
+            log.warn("unique index rejected a duplicate seckill order orderNo={}", orderNo);
+            return true;
+        }
+    }
+
+    /**
+     * 获取成功创建订单数。
+     */
+    public long createdCount() {
+        return created.sum();
+    }
+
+    /**
+     * 获取重复订单数。
+     */
+    public long duplicatedCount() {
+        return duplicated.sum();
+    }
+
+}

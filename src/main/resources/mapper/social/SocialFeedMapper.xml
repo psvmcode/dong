@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.social.mapper.SocialFeedMapper">
+<mapper namespace="com.dong.social.mapper.SocialFeedMapper">
 
-    <resultMap id="feedMap" type="com.dong.lab.social.entity.SocialFeed">
+    <resultMap id="feedMap" type="com.dong.social.entity.SocialFeed">
         <id column="id" property="id"/>
         <result column="feed_id" property="feedId"/>
         <result column="author_id" property="authorId"/>
@@ -13,7 +13,7 @@
     </resultMap>
 
     <!-- 发布动态落库 -->
-    <insert id="insert" parameterType="com.dong.lab.social.entity.SocialFeed"
+    <insert id="insert" parameterType="com.dong.social.entity.SocialFeed"
             useGeneratedKeys="true" keyProperty="id">
         insert into social_feed (feed_id, author_id, content, like_count)
         values (#{feedId}, #{authorId}, #{content}, #{likeCount})

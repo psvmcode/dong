@@ -3,7 +3,7 @@ spring:
     import: optional:file:./deploy/.env[.properties]
 
   application:
-    name: dong-lab
+    name: dong
 
   lifecycle:
     timeout-per-shutdown-phase: 20s
@@ -14,7 +14,7 @@ spring:
     password: ${LAB_MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      pool-name: dong-lab-hikari
+      pool-name: dong-hikari
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 10000
@@ -51,7 +51,7 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
-      group-id: dong-lab-group
+      group-id: dong-group
       auto-offset-reset: earliest
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -67,7 +67,7 @@ spring:
 rocketmq:
   name-server: ${LAB_PUBLIC_HOST}:9876
   producer:
-    group: dong-lab-producer
+    group: dong-producer
     send-message-timeout: 5000
 
 server:
@@ -76,8 +76,8 @@ server:
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.dong.lab
-  type-handlers-package: com.dong.lab
+  type-aliases-package: com.dong
+  type-handlers-package: com.dong
   configuration:
     map-underscore-to-camel-case: true
     default-fetch-size: 100
@@ -105,9 +105,9 @@ springdoc:
 logging:
   level:
     root: info
-    com.dong.lab: info
+    com.dong: info
 
-lab:
+dong:
   snowflake:
     worker-id: 1
     data-center-id: 1
@@ -130,7 +130,7 @@ lab:
     rebuild-lease: 5s
     rebuild-wait: 1s
     double-delete-delay: 500ms
-    invalidation-channel: lab:cache:invalidate
+    invalidation-channel: dong:cache:invalidate
 
   mq:
     active: rocketmq

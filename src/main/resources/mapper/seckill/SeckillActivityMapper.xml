@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.seckill.mapper.SeckillActivityMapper">
+<mapper namespace="com.dong.seckill.mapper.SeckillActivityMapper">
 
-    <resultMap id="activityMap" type="com.dong.lab.seckill.entity.SeckillActivity">
+    <resultMap id="activityMap" type="com.dong.seckill.entity.SeckillActivity">
         <id column="id" property="id"/>
         <result column="product_id" property="productId"/>
         <result column="title" property="title"/>
@@ -12,7 +12,7 @@
         <result column="unit_price" property="unitPrice"/>
         <result column="start_time" property="startTime"/>
         <result column="end_time" property="endTime"/>
-        <result column="status" property="status" javaType="com.dong.lab.seckill.enums.SeckillActivityStatus"/>
+        <result column="status" property="status" javaType="com.dong.seckill.enums.SeckillActivityStatus"/>
         <result column="version" property="version"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
@@ -40,7 +40,7 @@
     </select>
 
     <!-- 新增秒杀活动 -->
-    <insert id="insert" parameterType="com.dong.lab.seckill.entity.SeckillActivity"
+    <insert id="insert" parameterType="com.dong.seckill.entity.SeckillActivity"
             useGeneratedKeys="true" keyProperty="id">
         insert into seckill_activity (product_id, title, total_stock, available_stock, unit_price, start_time, end_time,
                                       status)

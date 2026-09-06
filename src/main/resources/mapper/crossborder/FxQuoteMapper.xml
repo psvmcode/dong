@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.FxQuoteMapper">
+<mapper namespace="com.dong.crossborder.mapper.FxQuoteMapper">
     <!-- 汇率报价表。报价带有效期，锁定走乐观锁（status 条件更新），
          同一报价并发锁定只有一个成功，过期报价由定时任务批量作废 -->
 
 
-    <resultMap id="quoteMap" type="com.dong.lab.crossborder.entity.FxQuote">
+    <resultMap id="quoteMap" type="com.dong.crossborder.entity.FxQuote">
         <id column="id" property="id"/>
         <result column="quote_no" property="quoteNo"/>
         <result column="currency_pair" property="currencyPair"/>
         <result column="bid_rate" property="bidRate"/>
         <result column="ask_rate" property="askRate"/>
         <result column="locked_rate" property="lockedRate"/>
-        <result column="status" property="status" javaType="com.dong.lab.crossborder.enums.FxQuoteStatus"/>
+        <result column="status" property="status" javaType="com.dong.crossborder.enums.FxQuoteStatus"/>
         <result column="expire_time" property="expireTime"/>
         <result column="remittance_no" property="remittanceNo"/>
         <result column="create_time" property="createTime"/>
@@ -41,7 +41,7 @@
     </select>
 
     <!-- 写入报价 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.FxQuote"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.FxQuote"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_fx_quote (quote_no, currency_pair, bid_rate, ask_rate, locked_rate,
                                            status, expire_time, remittance_no)

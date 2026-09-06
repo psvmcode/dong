@@ -1,0 +1,79 @@
+package com.dong.crossborder.service;
+
+import com.dong.crossborder.dto.ComplianceRecordResponse;
+import com.dong.crossborder.entity.CrossBorderAccount;
+import com.dong.crossborder.entity.CrossBorderRemittance;
+import com.dong.crossborder.enums.ComplianceResult;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * 合规筛查。跨境汇款在资金划转前必须依次过制裁名单、KYC、反洗钱和限额四道检查，
+ * 任何一道不通过都不能放款，这是各国监管的硬性要求。
+ *
+ * <p>四道检查的中间件用法各有不同：
+ * 制裁名单量大但判断简单，放 Redis Set 做 O(1) 匹配；
+ * 日累计限额需要跨请求累加且必须原子，用 Lua 脚本保证累加与判断不可分；
+ * KYC 与 AML 是纯规则判断，直接查账户属性即可。
+ */
+public interface ComplianceService {
+
+    /**
+     * 对一笔汇款做全量合规检查，逐条落库留痕。
+     *
+     * @return 最终结论，任一道 REJECT 则整体为 REJECT
+     */
+    ComplianceResult screen(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal sourceAmount);
+
+    /**
+     * 单独做制裁名单匹配。名单按国家维度分组，命中即拒绝。
+     */
+    boolean hitSanction(String country, String ownerName);
+
+    /**
+     * 加入制裁名单，用于演示与测试。
+     */
+    void addSanction(String ownerName);
+
+    /**
+     * 从制裁名单移除。
+     */
+    void removeSanction(String ownerName);
+
+    /**
+     * sanctionCount。
+     */
+    long sanctionCount();
+
+    /**
+     * 检查并累加日累计限额。累加与判断必须原子完成，
+     * 否则并发请求会各自读到旧值，导致日限额被突破。
+     *
+     * @return true 表示未超限额
+     */
+    boolean checkAndAccumulateDailyLimit(Long accountId, BigDecimal amount, BigDecimal dailyLimit);
+
+    /**
+     * 释放日限额占用。扣款失败或被拒绝时必须调用，
+     * 否则失败的交易会永久占用额度，导致客户当天无法再汇款。
+     */
+    void releaseDailyLimit(Long accountId, BigDecimal amount);
+
+    /**
+     * 查询某笔汇款的合规记录。
+     */
+    List<ComplianceRecordResponse> recordsOf(String remittanceNo);
+
+    /**
+     * 记录人工复核结论。审核放行或驳回都要落一条 MANUAL_REVIEW 类型的检查记录，
+     * 监管检查时需要证明「谁审的、审的结果是什么」，只有系统结论没有人工决策是过不了检查的。
+     */
+    void recordManualDecision(String remittanceNo, ComplianceResult result, String detail);
+
+    /**
+     * 重置某账户的日累计计数，仅用于实验环境清理。
+     */
+    void resetDailyUsage(Long accountId);
+
+}

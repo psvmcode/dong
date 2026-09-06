@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.ComplianceRecordMapper">
+<mapper namespace="com.dong.crossborder.mapper.ComplianceRecordMapper">
     <!-- 合规检查记录表。每道检查逐条留痕，只增不改，
          监管检查与事后审计按汇款单号取全量记录 -->
 
 
-    <resultMap id="recordMap" type="com.dong.lab.crossborder.entity.ComplianceRecord">
+    <resultMap id="recordMap" type="com.dong.crossborder.entity.ComplianceRecord">
         <id column="id" property="id"/>
         <result column="remittance_no" property="remittanceNo"/>
         <result column="check_type" property="checkType"
-                javaType="com.dong.lab.crossborder.enums.ComplianceCheckType"/>
-        <result column="result" property="result" javaType="com.dong.lab.crossborder.enums.ComplianceResult"/>
+                javaType="com.dong.crossborder.enums.ComplianceCheckType"/>
+        <result column="result" property="result" javaType="com.dong.crossborder.enums.ComplianceResult"/>
         <result column="hit_detail" property="hitDetail"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
@@ -26,7 +26,7 @@
     </select>
 
     <!-- 写入一条检查记录留痕 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.ComplianceRecord"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.ComplianceRecord"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_compliance_record (remittance_no, check_type, result, hit_detail)
         values (#{remittanceNo}, #{checkType}, #{result}, #{hitDetail})

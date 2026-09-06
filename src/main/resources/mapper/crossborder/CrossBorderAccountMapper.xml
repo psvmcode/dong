@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.crossborder.mapper.CrossBorderAccountMapper">
+<mapper namespace="com.dong.crossborder.mapper.CrossBorderAccountMapper">
     <!-- 跨境账户表。deduct 的 where 条件带余额充足性检查，
          数据库层面保证余额不会被扣成负数；updateStatus 带期望状态，
          并发冻结/解冻只有一个生效 -->
 
 
-    <resultMap id="accountMap" type="com.dong.lab.crossborder.entity.CrossBorderAccount">
+    <resultMap id="accountMap" type="com.dong.crossborder.entity.CrossBorderAccount">
         <id column="id" property="id"/>
         <result column="account_no" property="accountNo"/>
         <result column="owner_name" property="ownerName"/>
@@ -59,7 +59,7 @@
     </select>
 
     <!-- 开户 -->
-    <insert id="insert" parameterType="com.dong.lab.crossborder.entity.CrossBorderAccount"
+    <insert id="insert" parameterType="com.dong.crossborder.entity.CrossBorderAccount"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account (account_no, owner_name, country, currency, balance, frozen_balance,
                                          kyc_level, daily_limit, single_limit, status)

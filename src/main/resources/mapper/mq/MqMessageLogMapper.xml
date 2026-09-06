@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.mq.mapper.MqMessageLogMapper">
+<mapper namespace="com.dong.mq.mapper.MqMessageLogMapper">
 
-    <resultMap id="logMap" type="com.dong.lab.mq.entity.MqMessageLog">
+    <resultMap id="logMap" type="com.dong.mq.entity.MqMessageLog">
         <id column="id" property="id"/>
         <result column="msg_id" property="msgId"/>
         <result column="topic" property="topic"/>
         <result column="payload" property="payload"/>
-        <result column="status" property="status" javaType="com.dong.lab.mq.enums.MqMessageStatus"/>
+        <result column="status" property="status" javaType="com.dong.mq.enums.MqMessageStatus"/>
         <result column="retry_count" property="retryCount"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <!-- 写消息日志，唯一索引实现消费幂等 -->
-    <insert id="insert" parameterType="com.dong.lab.mq.entity.MqMessageLog"
+    <insert id="insert" parameterType="com.dong.mq.entity.MqMessageLog"
             useGeneratedKeys="true" keyProperty="id">
         insert into mq_message_log (msg_id, topic, payload, status, retry_count)
         values (#{msgId}, #{topic}, #{payload}, #{status}, #{retryCount})

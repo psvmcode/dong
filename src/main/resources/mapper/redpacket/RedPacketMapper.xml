@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.redpacket.mapper.RedPacketMapper">
+<mapper namespace="com.dong.redpacket.mapper.RedPacketMapper">
 
-    <resultMap id="redPacketMap" type="com.dong.lab.redpacket.entity.RedPacket">
+    <resultMap id="redPacketMap" type="com.dong.redpacket.entity.RedPacket">
         <id column="id" property="id"/>
         <result column="packet_no" property="packetNo"/>
         <result column="sponsor_id" property="sponsorId"/>
@@ -11,13 +11,13 @@
         <result column="total_count" property="totalCount"/>
         <result column="remain_amount" property="remainAmount"/>
         <result column="remain_count" property="remainCount"/>
-        <result column="packet_type" property="packetType" javaType="com.dong.lab.redpacket.enums.RedPacketType"/>
-        <result column="status" property="status" javaType="com.dong.lab.redpacket.enums.RedPacketStatus"/>
+        <result column="packet_type" property="packetType" javaType="com.dong.redpacket.enums.RedPacketType"/>
+        <result column="status" property="status" javaType="com.dong.redpacket.enums.RedPacketStatus"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
-    <resultMap id="recordMap" type="com.dong.lab.redpacket.entity.RedPacketRecord">
+    <resultMap id="recordMap" type="com.dong.redpacket.entity.RedPacketRecord">
         <id column="id" property="id"/>
         <result column="packet_no" property="packetNo"/>
         <result column="user_id" property="userId"/>
@@ -34,7 +34,7 @@
     </select>
 
     <!-- 发红包落库 -->
-    <insert id="insert" parameterType="com.dong.lab.redpacket.entity.RedPacket"
+    <insert id="insert" parameterType="com.dong.redpacket.entity.RedPacket"
             useGeneratedKeys="true" keyProperty="id">
         insert into red_packet (packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count,
                                 packet_type, status)
@@ -66,7 +66,7 @@
     </select>
 
     <!-- 写领取记录 -->
-    <insert id="insertRecord" parameterType="com.dong.lab.redpacket.entity.RedPacketRecord"
+    <insert id="insertRecord" parameterType="com.dong.redpacket.entity.RedPacketRecord"
             useGeneratedKeys="true" keyProperty="id">
         insert into red_packet_record (packet_no, user_id, amount)
         values (#{packetNo}, #{userId}, #{amount})

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.dong.lab.seckill.mapper.SeckillOrderMapper">
+<mapper namespace="com.dong.seckill.mapper.SeckillOrderMapper">
 
-    <resultMap id="orderMap" type="com.dong.lab.seckill.entity.SeckillOrder">
+    <resultMap id="orderMap" type="com.dong.seckill.entity.SeckillOrder">
         <id column="id" property="id"/>
         <result column="order_no" property="orderNo"/>
         <result column="activity_id" property="activityId"/>
@@ -11,7 +11,7 @@
         <result column="user_id" property="userId"/>
         <result column="quantity" property="quantity"/>
         <result column="amount" property="amount"/>
-        <result column="status" property="status" javaType="com.dong.lab.seckill.enums.SeckillOrderStatus"/>
+        <result column="status" property="status" javaType="com.dong.seckill.enums.SeckillOrderStatus"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -47,7 +47,7 @@
     </select>
 
     <!-- 插入订单，唯一索引兜底防重 -->
-    <insert id="insert" parameterType="com.dong.lab.seckill.entity.SeckillOrder"
+    <insert id="insert" parameterType="com.dong.seckill.entity.SeckillOrder"
             useGeneratedKeys="true" keyProperty="id">
         insert into seckill_order (order_no, activity_id, product_id, user_id, quantity, amount, status)
         values (#{orderNo}, #{activityId}, #{productId}, #{userId}, #{quantity}, #{amount}, #{status})

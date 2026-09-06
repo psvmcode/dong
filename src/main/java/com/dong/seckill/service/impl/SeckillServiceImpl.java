@@ -1,0 +1,262 @@
+package com.dong.seckill.service.impl;
+
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;
+import com.dong.common.util.JsonUtils;
+import com.dong.common.util.Snowflake;
+import com.dong.framework.limiter.RateLimitAlgorithm;
+import com.dong.framework.limiter.RateLimited;
+import com.dong.framework.mq.MessageProducer;
+import com.dong.seckill.dto.SeckillActivityRequest;
+import com.dong.seckill.dto.SeckillReceiptResponse;
+import com.dong.seckill.entity.SeckillActivity;
+import com.dong.seckill.entity.SeckillOrder;
+import com.dong.seckill.enums.DeductStatus;
+import com.dong.seckill.enums.SeckillActivityStatus;
+import com.dong.seckill.enums.SeckillOrderStatus;
+import com.dong.seckill.mapper.SeckillActivityMapper;
+import com.dong.seckill.mapper.SeckillOrderMapper;
+import com.dong.seckill.handler.SeckillOrderCreatedHandler;
+import com.dong.seckill.service.SeckillService;
+import com.dong.seckill.service.SeckillStockService;
+import com.dong.seckill.support.SoldOutFlag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+/**
+ * 秒杀实现。四道防线依次生效：
+ * 限流令牌桶挡住超出承载力的流量，
+ * 本地售罄标记让后续请求连 Redis 都不用访问，
+ * Lua 脚本保证扣减与去重原子完成，
+ * 数据库唯一索引兜底防重复购买。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+
+public class SeckillServiceImpl implements SeckillService {
+
+    private static final String ORDER_NO_PREFIX = "SK";
+
+    private static final String TOPIC = "seckill-order-created";
+
+    /**
+     * seckillActivityMapper，MyBatis Mapper 数据访问层。
+     */
+    private final SeckillActivityMapper seckillActivityMapper;
+
+    /**
+     * seckillOrderMapper，MyBatis Mapper 数据访问层。
+     */
+    private final SeckillOrderMapper seckillOrderMapper;
+
+    /**
+     * seckillStockService，业务服务层。
+     */
+    private final SeckillStockService seckillStockService;
+
+    /**
+     * 本地售罄标记，库存归零后短路后续请求。
+     */
+    private final SoldOutFlag soldOutFlag;
+
+    /**
+     * 消息生产者，用于异步创建订单。
+     */
+    private final MessageProducer messageProducer;
+
+    /**
+     * 秒杀订单创建处理器，用于统计运行时状态。
+     */
+    private final SeckillOrderCreatedHandler seckillOrderCreatedHandler;
+
+    /**
+     * 雪花 ID 生成器。
+     */
+    private final Snowflake snowflake;
+
+    /**
+     * 创建秒杀活动。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createActivity(SeckillActivityRequest request) {
+        SeckillActivity activity = request.toEntity();
+        seckillActivityMapper.insert(activity);
+        log.info("seckill activity created id={} stock={}", activity.getId(), activity.getTotalStock());
+        return activity.getId();
+    }
+
+    /**
+     * 预热库存到 Redis 并开启活动。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int prepare(Long activityId) {
+        SeckillActivity activity = requireActivity(activityId);
+        seckillStockService.prepare(activityId, activity.getTotalStock());
+        soldOutFlag.clear(activityId);
+        int updated = seckillActivityMapper.updateStatus(activityId,
+                SeckillActivityStatus.ONLINE.getCode(), activity.getVersion());
+        if (updated == 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "activity was modified by someone else");
+        }
+        seckillActivityMapper.updateAvailableStock(activityId, activity.getTotalStock());
+        log.info("seckill activity prepared id={} stock={}", activityId, activity.getTotalStock());
+        return activity.getTotalStock();
+    }
+
+    @Override
+    @RateLimited(key = "'seckill:activity:' + #activityId",
+            limit = 200, window = 1, unit = TimeUnit.SECONDS,
+            algorithm = RateLimitAlgorithm.TOKEN_BUCKET)
+    /**
+     * 秒杀下单，先扣 Redis 库存再异步建单。
+     */
+    public SeckillReceiptResponse seckill(Long activityId, Long userId, int quantity) {
+        if (quantity <= 0) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "quantity must be positive");
+        }
+
+        SeckillActivity activity = requireActivity(activityId);
+        if (!isActive(activity)) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "activity is not open right now");
+        }
+
+        if (soldOutFlag.isSoldOut(activityId)) {
+            return SeckillReceiptResponse.rejected("sold out");
+        }
+
+        int result = seckillStockService.deduct(activityId, userId, quantity);
+        DeductStatus status = DeductStatus.fromResult(result);
+        if (status == DeductStatus.SOLD_OUT) {
+            soldOutFlag.mark(activityId);
+            return SeckillReceiptResponse.rejected("sold out");
+        }
+        if (status == DeductStatus.DUPLICATED) {
+            return SeckillReceiptResponse.rejected("one purchase per user");
+        }
+        if (status == DeductStatus.NOT_PREPARED) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "stock not prepared yet");
+        }
+
+        if (result == 0) {
+            soldOutFlag.mark(activityId);
+        }
+
+        String orderNo = ORDER_NO_PREFIX + snowflake.nextId();
+        BigDecimal amount = activity.getUnitPrice().multiply(BigDecimal.valueOf(quantity));
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("orderNo", orderNo);
+        message.put("activityId", activityId);
+        message.put("productId", activity.getProductId());
+        message.put("userId", userId);
+        message.put("quantity", quantity);
+        message.put("unitPrice", activity.getUnitPrice());
+        messageProducer.send(TOPIC, orderNo, JsonUtils.toJson(message));
+        log.info("seckill reserved orderNo={} activity={} user={} remaining={}", orderNo, activityId, userId, result);
+        return SeckillReceiptResponse.accepted(orderNo, result, amount);
+    }
+
+    /**
+     * 查询 Redis 中的剩余库存。
+     */
+    @Override
+    public int stockOf(Long activityId) {
+        return seckillStockService.available(activityId);
+    }
+
+    /**
+     * 查询全部活动。
+     */
+    @Override
+    public List<SeckillActivity> activities() {
+        return seckillActivityMapper.selectAll();
+    }
+
+    /**
+     * 按订单号查询订单。
+     */
+    @Override
+    public SeckillOrder order(String orderNo) {
+        SeckillOrder order = seckillOrderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "order " + orderNo + " not found");
+        }
+        return order;
+    }
+
+    /**
+     * 支付秒杀订单。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void pay(String orderNo) {
+        SeckillOrder order = order(orderNo);
+        if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "order is not payable: " + order.getStatus());
+        }
+        seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.PAID.getCode());
+        log.info("seckill order paid orderNo={}", orderNo);
+    }
+
+    /**
+     * 取消订单并回滚库存。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancel(String orderNo) {
+        SeckillOrder order = order(orderNo);
+        if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "order cannot be cancelled: " + order.getStatus());
+        }
+        seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.CANCELLED.getCode());
+        seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());
+        soldOutFlag.clear(order.getActivityId());
+        log.info("seckill order cancelled and stock returned orderNo={}", orderNo);
+    }
+
+    /**
+     * 查看运行时状态，含售罄标记与订单统计。
+     */
+    @Override
+    public Map<String, Object> runtime() {
+        Map<String, Object> runtime = new LinkedHashMap<>();
+        runtime.put("soldOutShortCircuited", soldOutFlag.shortCircuitedCount());
+        runtime.put("ordersCreated", seckillOrderCreatedHandler.createdCount());
+        runtime.put("ordersDuplicated", seckillOrderCreatedHandler.duplicatedCount());
+        return runtime;
+    }
+
+    /**
+     * 判断活动是否处于可参与状态。
+     */
+    private boolean isActive(SeckillActivity activity) {
+        LocalDateTime now = LocalDateTime.now();
+        return activity.getStatus() == SeckillActivityStatus.ONLINE
+                && !now.isBefore(activity.getStartTime())
+                && !now.isAfter(activity.getEndTime());
+    }
+
+    /**
+     * 根据活动 id 查询活动，不存在则抛出异常。
+     */
+    private SeckillActivity requireActivity(Long activityId) {
+        SeckillActivity activity = seckillActivityMapper.selectById(activityId);
+        if (activity == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "activity " + activityId + " not found");
+        }
+        return activity;
+    }
+
+}

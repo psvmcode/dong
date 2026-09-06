@@ -1,0 +1,138 @@
+package com.dong.classic.service.impl;
+
+import com.dong.classic.entity.ShortLink;
+import com.dong.classic.mapper.ShortLinkMapper;
+import com.dong.classic.service.ShortLinkService;
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;
+import com.dong.common.util.Base62Utils;
+import com.dong.common.util.Snowflake;
+import com.dong.framework.redis.RedisService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RedissonClient;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+/**
+ * 短链接实现。短码由发号器生成后做 Base62 编码，
+ * 同一原始链接每次生成的短码都不同，避免被批量遍历。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+
+public class ShortLinkServiceImpl implements ShortLinkService {
+
+    private static final String CODE_CACHE = "lab:short:";
+
+    private static final String HIT_COUNTER = "lab:short:hit:";
+
+    private static final String NULL_MARKER = "null";
+
+    private static final Duration CACHE_TTL = Duration.ofDays(7);
+
+    private static final Duration NULL_TTL = Duration.ofMinutes(10);
+
+    /**
+     * 短链接数据访问接口。
+     */
+    private final ShortLinkMapper shortLinkMapper;
+
+    /**
+     * Redis 服务。
+     */
+    private final RedisService redisService;
+
+    /**
+     * Redisson 客户端。
+     */
+    private final RedissonClient redissonClient;
+
+    /**
+     * 雪花发号器。
+     */
+    private final Snowflake snowflake;
+
+    /**
+     * 创建短链并返回短码。
+     *
+     * @param originUrl 原始链接
+     * @return 短码
+     */
+    @Override
+    public String create(String originUrl) {
+        String code = Base62Utils.encode(snowflake.nextId());
+        ShortLink shortLink = new ShortLink();
+        shortLink.setCode(code);
+        shortLink.setOriginUrl(originUrl);
+        shortLink.setHitCount(0L);
+        shortLinkMapper.insert(shortLink);
+        redisService.set(CODE_CACHE + code, originUrl, CACHE_TTL);
+        log.info("short link created code={}", code);
+        return code;
+    }
+
+    /**
+     * 解析短链。缓存空值标记防止穿透：不存在的 code 第二次不会打到数据库。
+     * 空值标记用特殊前缀区分，避免与真实 URL 混淆。
+     */
+    @Override
+    public String resolve(String code) {
+        String cached = redisService.get(CODE_CACHE + code).orElse(null);
+        if (cached != null) {
+            if (NULL_MARKER.equals(cached)) {
+                throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "short link " + code + " not found");
+            }
+            countHit(code);
+            return cached;
+        }
+        ShortLink shortLink = shortLinkMapper.selectByCode(code);
+        if (shortLink == null) {
+            redisService.set(CODE_CACHE + code, NULL_MARKER, NULL_TTL);
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "short link " + code + " not found");
+        }
+        redisService.set(CODE_CACHE + code, shortLink.getOriginUrl(), CACHE_TTL);
+        countHit(code);
+        return shortLink.getOriginUrl();
+    }
+
+    /**
+     * 根据短码查询短链详情。
+     *
+     * @param code 短码
+     * @return 短链实体
+     */
+    @Override
+    public ShortLink findByCode(String code) {
+        ShortLink shortLink = shortLinkMapper.selectByCode(code);
+        if (shortLink == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "short link " + code + " not found");
+        }
+        return shortLink;
+    }
+
+    /**
+     * 查询短码点击次数。
+     *
+     * @param code 短码
+     * @return 点击次数
+     */
+    @Override
+    public long hitCount(String code) {
+        return redissonClient.getAtomicLong(HIT_COUNTER + code).get();
+    }
+
+    /**
+     * 累加短码点击次数。
+     *
+     * @param code 短码
+     */
+    private void countHit(String code) {
+        RAtomicLong counter = redissonClient.getAtomicLong(HIT_COUNTER + code);
+        counter.incrementAndGet();
+        counter.expire(Duration.ofDays(7));
+    }
+
+}
