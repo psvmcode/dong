@@ -126,6 +126,16 @@ public class CrossBorderRemittanceController {
     }
 
     /**
+     * 人工介入后重新推进清算。补偿重试达到上限会停止自动重发，
+     * 收款账户冻结这类失败在人工解冻后可由此恢复。
+     */
+    @PostMapping("/{remittanceNo}/retry")
+    @Operation(summary = "人工介入后重置重试计数并重新投递清算消息")
+    public Result<RemittanceResponse> retrySettlement(@PathVariable String remittanceNo) {
+        return Result.success(remittanceService.retrySettlement(remittanceNo));
+    }
+
+    /**
      * 按批次查询汇款单。
      */
     @GetMapping("/by-batch/{batchNo}")

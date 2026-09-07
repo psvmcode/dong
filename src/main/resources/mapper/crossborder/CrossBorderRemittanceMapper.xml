@@ -26,6 +26,7 @@
         <result column="batch_no" property="batchNo"/>
         <result column="fail_reason" property="failReason"/>
         <result column="version" property="version"/>
+        <result column="retry_count" property="retryCount"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -33,7 +34,7 @@
     <sql id="columns">
         id, remittance_no, idempotent_key, payer_account_id, payee_account_id, source_currency,
         target_currency, source_amount, exchange_rate, target_amount, fee_amount, channel, status,
-        compliance_status, quote_no, batch_no, fail_reason, version, create_time, update_time
+        compliance_status, quote_no, batch_no, fail_reason, version, retry_count, create_time, update_time
     </sql>
 
     <!-- 按汇款单号查单 -->
@@ -96,6 +97,31 @@
         </where>
     </select>
 
+    <!-- 卡单检测：统计停留过久仍未终结的单子。
+         idx_status 索引保证这类扫描不会全表扫 -->
+    <select id="countStuckBefore" resultType="long">
+        select count(*)
+        from cross_border_remittance
+        where status = #{status}
+          and create_time &lt; #{threshold}
+    </select>
+
+    <!-- 递增补偿重试次数 -->
+    <update id="increaseRetryCount">
+        update cross_border_remittance
+        set retry_count  = retry_count + 1,
+            update_time = now()
+        where remittance_no = #{remittanceNo}
+    </update>
+
+    <!-- 重置补偿重试次数，人工介入后让单子重新进入补偿 -->
+    <update id="resetRetryCount">
+        update cross_border_remittance
+        set retry_count  = 0,
+            update_time = now()
+        where remittance_no = #{remittanceNo}
+    </update>
+
     <!-- 按状态分组统计，一次取回全部状态计数 -->
     <select id="countGroupByStatus" resultType="java.util.LinkedHashMap">
         select status, count(*) as total
@@ -109,11 +135,11 @@
         insert into cross_border_remittance (remittance_no, idempotent_key, payer_account_id, payee_account_id,
                                              source_currency, target_currency, source_amount, exchange_rate,
                                              target_amount, fee_amount, channel, status, compliance_status,
-                                             quote_no, batch_no, fail_reason, version)
+                                             quote_no, batch_no, fail_reason, version, retry_count)
         values (#{remittanceNo}, #{idempotentKey}, #{payerAccountId}, #{payeeAccountId},
                 #{sourceCurrency}, #{targetCurrency}, #{sourceAmount}, #{exchangeRate},
                 #{targetAmount}, #{feeAmount}, #{channel}, #{status}, #{complianceStatus},
-                #{quoteNo}, #{batchNo}, #{failReason}, #{version})
+                #{quoteNo}, #{batchNo}, #{failReason}, #{version}, #{retryCount})
     </insert>
 
     <!-- 乐观锁推进状态，期望状态与版本号都匹配才更新 -->

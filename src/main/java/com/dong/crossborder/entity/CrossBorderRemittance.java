@@ -106,6 +106,11 @@ public class CrossBorderRemittance {
     private Integer version;
 
     /**
+     * 补偿重试次数，达到上限后停止自动重试转人工处理
+     */
+    private Integer retryCount;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

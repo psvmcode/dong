@@ -46,6 +46,28 @@ public interface CrossBorderRemittanceMapper {
     long countByStatus(@Param("status") RemittanceStatus status);
 
     /**
+     * 统计在某个时间点之前创建、且仍停留在该状态的记录数。
+     * 用于卡单检测：资金已扣减却迟迟没有终结的单子必须能被主动发现，
+     * 不能只等客户来问。
+     */
+    long countStuckBefore(@Param("status") RemittanceStatus status,
+                          @Param("threshold") java.time.LocalDateTime threshold);
+
+    /**
+     * 递增补偿重试次数。
+     * 重试必须有计数：没有上限的补偿会把一笔坏单无限重发，
+     * 一直占着扫描名额还不停往 MQ 塞消息。
+     */
+    int increaseRetryCount(@Param("remittanceNo") String remittanceNo);
+
+    /**
+     * 重置补偿重试次数。达到上限的单子会被停止自动重试，
+     * 但很多失败是可恢复的（比如收款账户冻结后又解冻），
+     * 人工确认问题已解决后必须能让它重新进入补偿流程，否则单子永久卡死。
+     */
+    int resetRetryCount(@Param("remittanceNo") String remittanceNo);
+
+    /**
      * 按状态分组统计。一次性取回全部状态的计数，
      * 比逐个状态各查一次省去多轮往返。
      */

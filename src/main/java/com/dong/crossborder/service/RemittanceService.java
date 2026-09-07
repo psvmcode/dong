@@ -74,6 +74,16 @@ public interface RemittanceService {
     void failAndRefund(String remittanceNo, String reason);
 
     /**
+     * 人工介入后重新推进。补偿重试达到上限会停止自动重发，
+     * 但收款账户冻结这类失败是可恢复的：人工解冻后调用本方法重置计数并重新投递，
+     * 否则单子会永久停在中间状态。
+     *
+     * @param remittanceNo 汇款单号
+     * @return 重新推进后的汇款单
+     */
+    RemittanceResponse retrySettlement(String remittanceNo);
+
+    /**
      * 运行时统计，便于观察各状态的单量与中间件使用情况。
      */
     Map<String, Object> runtime();

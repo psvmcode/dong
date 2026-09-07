@@ -564,6 +564,31 @@ public class RemittanceServiceImpl implements RemittanceService {
         }
         String trimmed = reason == null ? "" : reason.substring(0, Math.min(255, reason.length()));
         remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.REFUNDED, trimmed);
+        // 退款意味着这笔交易没做成，占用的当日额度必须还回去。
+        // 单独捕获异常：钱已经退回去了，不能因为额度释放失败把退款本身也回滚掉，
+        // 额度不准可以事后修正，钱退不回来才是事故
+        try {
+            complianceService.releaseDailyLimit(remittance.getPayerAccountId(), remittance.getSourceAmount());
+        } catch (Exception ex) {
+            log.error("release daily limit failed after refund remittanceNo={}", remittanceNo, ex);
+        }
+    }
+
+    /**
+     * 人工介入后重新推进。终态单子不能再动，避免把已经结算或退款的单子重新拉回流程。
+     */
+    @Override
+    public RemittanceResponse retrySettlement(String remittanceNo) {
+        CrossBorderRemittance remittance = requireRemittance(remittanceNo);
+        if (remittance.getStatus().isFinal()) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " already finalized as " + remittance.getStatus());
+        }
+        remittanceMapper.resetRetryCount(remittanceNo);
+        log.warn("settlement retry triggered manually remittanceNo={} status={}",
+                remittanceNo, remittance.getStatus());
+        sendSettlementMessage(remittance);
+        return findByRemittanceNo(remittanceNo);
     }
 
     /**
@@ -628,6 +653,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         remittance.setBatchNo("");
         remittance.setFailReason("");
         remittance.setVersion(0);
+        remittance.setRetryCount(0);
         return remittance;
     }
 

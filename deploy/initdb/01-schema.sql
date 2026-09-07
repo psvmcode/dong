@@ -306,6 +306,7 @@ create table if not exists cross_border_remittance
     batch_no          varchar(32)     not null default ''                      comment '所属清算批次，对账时按批次拉取',
     fail_reason       varchar(255)    not null default ''                      comment '失败或驳回原因',
     version           int             not null default 0                       comment '乐观锁版本号，状态推进的唯一凭据',
+    retry_count       int             not null default 0                       comment '补偿重试次数，达到上限后停止自动重试转人工处理',
     create_time       datetime        not null default current_timestamp       comment '创建时间',
     update_time       datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
     primary key (id),

@@ -6,6 +6,7 @@ import com.dong.common.util.Snowflake;
 import com.dong.crossborder.entity.AccountLedger;
 import com.dong.crossborder.entity.CrossBorderAccount;
 import com.dong.crossborder.entity.CrossBorderRemittance;
+import com.dong.crossborder.enums.AccountStatus;
 import com.dong.crossborder.enums.LedgerDirection;
 import com.dong.crossborder.enums.RemittanceStatus;
 import com.dong.crossborder.mapper.AccountLedgerMapper;
@@ -113,6 +114,11 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
      *
      * <p>状态推进失败必须抛异常让事务回滚：加钱成功却推进失败，
      * 会让单子停在清算中而钱已经进了收款方账户，重试时又加一次。
+     *
+     * <p>收款方状态必须在入账这一刻重新校验，不能信任发起时的检查结果：
+     * 发起与入账之间隔着渠道处理时间（真实场景数小时到两天），
+     * 这期间账户可能因反洗钱调查被冻结。钱一旦进入被冻结的账户就很难追回，
+     * 所以这里宁可让单子卡在清算中等人工处理，也不能放钱进去。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -127,6 +133,13 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
         if (current.getStatus() != RemittanceStatus.SETTLING) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
                     "remittance " + remittance.getRemittanceNo() + " is not settling, status " + current.getStatus());
+        }
+        CrossBorderAccount payee = accountMapper.selectById(current.getPayeeAccountId());
+        if (payee == null || payee.getStatus() == null
+                || payee.getStatus() != AccountStatus.ACTIVE.getCode()) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "payee account " + (payee == null ? current.getPayeeAccountId() : payee.getAccountNo())
+                            + " is not active, credit refused");
         }
         accountMapper.credit(current.getPayeeAccountId(), current.getTargetAmount());
         recordLedger(current, current.getPayeeAccountId(), LedgerDirection.CREDIT,
