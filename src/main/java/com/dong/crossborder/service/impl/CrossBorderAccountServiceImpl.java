@@ -48,6 +48,12 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     private final AccountEventMapper eventMapper;
 
     /**
+     * fxQuoteService。开户时用它校验币种，不接受牌价表里没有的币种，
+     * 否则会开出能建但永远无法询价的账户。
+     */
+    private final com.dong.crossborder.service.FxQuoteService fxQuoteService;
+
+    /**
      * snowflake。
      */
     private final Snowflake snowflake;
@@ -57,6 +63,10 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
      */
     @Override
     public Long create(AccountCreateRequest request) {
+        if (!fxQuoteService.supportedCurrencies().contains(request.getCurrency())) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID,
+                    "unsupported currency " + request.getCurrency());
+        }
         CrossBorderAccount account = new CrossBorderAccount();
         account.setAccountNo("CB" + snowflake.nextId());
         account.setOwnerName(request.getOwnerName());

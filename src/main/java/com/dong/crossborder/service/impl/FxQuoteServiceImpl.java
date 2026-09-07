@@ -224,6 +224,14 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     }
 
     /**
+     * 支持的币种。返回不可变副本，避免调用方改动牌价表。
+     */
+    @Override
+    public java.util.Set<String> supportedCurrencies() {
+        return java.util.Set.copyOf(USD_RATES.keySet());
+    }
+
+    /**
      * 交叉汇率计算。源币种先换成美元，再由美元换成目标币种。
      */
     private BigDecimal midRate(String sourceCurrency, String targetCurrency) {

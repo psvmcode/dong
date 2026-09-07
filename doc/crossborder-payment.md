@@ -855,7 +855,7 @@ curl -X POST "$B/accounts/CB.../unfreeze?reason=closed&operator=risk-team"
 
 # 9. 关闭到期批次 → 执行对账（注入 20% 渠道差错）
 curl -X POST "$B/settlement/close-overdue"
-curl -X POST "$B/recon/SB...?simulatedErrorRate=0.2"
+curl -X POST "$B/recon/SB...?errorRate=0.2"
 
 # 10. 资金自检：用流水反推余额，与实际余额比对
 curl "$B/accounts/CB.../diff?initial=100000"

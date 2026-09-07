@@ -48,6 +48,12 @@ public final class Constants {
 
     public static final int MAX_PAGE_SIZE = 200;
 
+    /**
+     * 页码上限。偏移量由 (pageNum - 1) * pageSize 算出，
+     * 不限制页码会让乘法溢出成负数，直接把 limit 语句变成语法错误。
+     */
+    public static final int MAX_PAGE_NUM = 1_000_000;
+
     private Constants() {
     }
 

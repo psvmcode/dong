@@ -26,7 +26,9 @@ public class PageRequest {
      */
     public static PageRequest of(int pageNum, int pageSize) {
         PageRequest request = new PageRequest();
-        request.setPageNum(pageNum < 1 ? Constants.DEFAULT_PAGE_NUM : pageNum);
+        request.setPageNum(pageNum < 1
+                ? Constants.DEFAULT_PAGE_NUM
+                : Math.min(pageNum, Constants.MAX_PAGE_NUM));
         request.setPageSize(Math.min(pageSize < 1 ? Constants.DEFAULT_PAGE_SIZE : pageSize, Constants.MAX_PAGE_SIZE));
         return request;
     }

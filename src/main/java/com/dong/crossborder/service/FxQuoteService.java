@@ -58,6 +58,12 @@ public interface FxQuoteService {
     List<FxQuoteResponse> available(String currencyPair);
 
     /**
+     * 支持的币种集合。开户与询价都要用它校验输入：
+     * 不接受任意字符串，否则会开出永远无法汇款的账户。
+     */
+    java.util.Set<String> supportedCurrencies();
+
+    /**
      * 清空全部数据，仅测试场景使用。
      */
     int clearAll();

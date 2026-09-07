@@ -5,7 +5,11 @@ import com.dong.crossborder.dto.FxQuoteResponse;
 import com.dong.crossborder.service.FxQuoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +27,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/crossborder/fx")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "跨境支付-汇率")
 
 public class CrossBorderFxController {
@@ -37,9 +42,9 @@ public class CrossBorderFxController {
      */
     @PostMapping("/quote")
     @Operation(summary = "询价，返回带有效期的汇率报价")
-    public Result<FxQuoteResponse> quote(@RequestParam String sourceCurrency,
-                                         @RequestParam String targetCurrency,
-                                         @RequestParam(defaultValue = "300") long validSeconds) {
+    public Result<FxQuoteResponse> quote(@RequestParam @Pattern(regexp = "^[A-Z]{3}$") String sourceCurrency,
+                                         @RequestParam @Pattern(regexp = "^[A-Z]{3}$") String targetCurrency,
+                                         @RequestParam(defaultValue = "300") @Min(1) @Max(86400) long validSeconds) {
         return Result.success(fxQuoteService.quote(sourceCurrency, targetCurrency, validSeconds));
     }
 

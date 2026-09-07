@@ -6,7 +6,10 @@ import com.dong.crossborder.enums.ReconDiffType;
 import com.dong.crossborder.service.ReconciliationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +29,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/crossborder/recon")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "跨境支付-对账")
 
 public class CrossBorderReconController {
@@ -45,7 +49,8 @@ public class CrossBorderReconController {
     @PostMapping("/{batchNo}")
     @Operation(summary = "执行一轮对账，返回对账报告，可注入渠道差错率")
     public Result<ReconReportResponse> reconcile(@PathVariable String batchNo,
-                                                 @RequestParam(defaultValue = "0.0") double errorRate) {
+                                                 @RequestParam(defaultValue = "0.0")
+                                                 @DecimalMin("0") @DecimalMax("1") double errorRate) {
         return Result.success(reconciliationService.reconcile(batchNo, errorRate));
     }
 
@@ -55,7 +60,8 @@ public class CrossBorderReconController {
     @GetMapping("/{batchNo}/channel-statement")
     @Operation(summary = "模拟渠道回单，可注入差错率")
     public Result<List<Map<String, Object>>> channelStatement(@PathVariable String batchNo,
-                                                               @RequestParam(defaultValue = "0.0") double errorRate) {
+                                                               @RequestParam(defaultValue = "0.0")
+                                                               @DecimalMin("0") @DecimalMax("1") double errorRate) {
         return Result.success(reconciliationService.generateChannelStatement(batchNo, errorRate));
     }
 

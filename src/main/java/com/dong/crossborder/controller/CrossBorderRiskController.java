@@ -7,7 +7,11 @@ import com.dong.crossborder.service.ComplianceService;
 import com.dong.crossborder.service.FxExposureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +31,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/crossborder/risk")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "跨境支付-风控")
 
 public class CrossBorderRiskController {
@@ -56,7 +61,8 @@ public class CrossBorderRiskController {
      */
     @GetMapping("/route")
     @Operation(summary = "渠道路由试算，返回各渠道评分与推荐渠道")
-    public Result<Map<String, Object>> route(@RequestParam BigDecimal amount,
+    public Result<Map<String, Object>> route(@RequestParam @DecimalMin("0.01")
+                                             @Digits(integer = 16, fraction = 2) BigDecimal amount,
                                              @RequestParam(defaultValue = "false") boolean urgent) {
         ChannelRouter.RouteDecision decision = channelRouter.route(amount, urgent);
         return Result.success(Map.of(
@@ -71,7 +77,7 @@ public class CrossBorderRiskController {
      */
     @GetMapping("/aml/profile")
     @Operation(summary = "查询付款人当日交易画像")
-    public Result<Map<String, Object>> amlProfile(@RequestParam Long payerAccountId) {
+    public Result<Map<String, Object>> amlProfile(@RequestParam @Positive Long payerAccountId) {
         return Result.success(amlMonitor.structuringProfile(payerAccountId));
     }
 
@@ -100,7 +106,7 @@ public class CrossBorderRiskController {
      */
     @PostMapping("/aml/reset-daily")
     @Operation(summary = "重置账户的日限额占用计数")
-    public Result<Void> resetDaily(@RequestParam Long payerAccountId) {
+    public Result<Void> resetDaily(@RequestParam @Positive Long payerAccountId) {
         complianceService.resetDailyUsage(payerAccountId);
         return Result.success();
     }
