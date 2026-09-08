@@ -24,9 +24,26 @@ import java.util.Map;
 
 public class SignInServiceImpl implements SignInService {
 
+    /**
+     * 位图键前缀，后面拼用户标识与年月，实现每人每月一个位图。
+     */
     private static final String SIGN = "lab:sign:";
 
+    /**
+     * 位图保留期。给 400 天是为了跨年查询时上一年的数据仍在，
+     * 超过保留期的数据由签到流水表兜底，不会真的查不到。
+     */
     private static final Duration RETENTION = Duration.ofDays(400);
+
+    /**
+     * 正常签到来源标记。
+     */
+    private static final String SOURCE_NORMAL = "normal";
+
+    /**
+     * 补签来源标记。
+     */
+    private static final String SOURCE_REPAIR = "repair";
 
     /**
      * Redisson 客户端。
@@ -34,7 +51,34 @@ public class SignInServiceImpl implements SignInService {
     private final RedissonClient redissonClient;
 
     /**
+     * 签到流水数据访问，用于持久化与对账。
+     */
+    private final com.dong.classic.mapper.ClassicSigninRecordMapper signinRecordMapper;
+
+    /**
+     * 落库签到流水。用 insert ignore，重复签到撞唯一键时返回 0 而不报错，
+     * 与位图的幂等语义保持一致。失败不影响签到结果，只记录日志，
+     * 因为位图已经写成功，用户的签到体验不应被落库问题影响。
+     */
+    private void persistSignIn(String userId, LocalDate date, int continuousDays, String source) {
+        try {
+            com.dong.classic.entity.ClassicSigninRecord record =
+                    new com.dong.classic.entity.ClassicSigninRecord();
+            record.setUserId(userId);
+            record.setSignDate(date);
+            record.setContinuousDays(continuousDays);
+            record.setSource(source);
+            signinRecordMapper.insertIgnore(record);
+        } catch (Exception ex) {
+            log.error("persist sign in record failed userId={} date={}", userId, date, ex);
+        }
+    }
+
+    /**
      * 签到，返回 false 表示当天已签过。
+     *
+     * <p>位图负责「有没有签到」的快速判断，签到流水表负责持久化。
+     * 两者都要成功才算完成：只写位图的话，Redis 过期后就查不到历史了。
      *
      * @param userId 用户标识
      * @param date   日期
@@ -47,10 +91,33 @@ public class SignInServiceImpl implements SignInService {
         boolean already = bitSet.get(offset);
         if (!already) {
             bitSet.set(offset);
+            persistSignIn(userId, date, (int) continuousDays(userId, date), SOURCE_NORMAL);
         }
         bitSet.expire(RETENTION);
         log.info("sign in userId={} date={} firstTime={}", userId, date, !already);
         return !already;
+    }
+
+    /**
+     * 补签。与正常签到的区别在于落库时会标记来源，
+     * 运营统计时可以把补签单独算出来。
+     *
+     * @param userId 用户标识
+     * @param date   补签日期
+     * @return 是否成功补签，已签到过则返回 false
+     */
+    @Override
+    public boolean repair(String userId, LocalDate date) {
+        RBitSet bitSet = bitSetOf(userId, date);
+        long offset = dayOffset(date);
+        if (bitSet.get(offset)) {
+            return false;
+        }
+        bitSet.set(offset);
+        bitSet.expire(RETENTION);
+        persistSignIn(userId, date, (int) continuousDays(userId, date), SOURCE_REPAIR);
+        log.warn("sign in repaired userId={} date={}", userId, date);
+        return true;
     }
 
     /**

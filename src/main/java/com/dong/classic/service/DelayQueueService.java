@@ -13,9 +13,13 @@ import java.util.List;
 public interface DelayQueueService {
 
     /**
-     * 投递任务，延迟指定时长后可被消费。
+     * 投递任务，延迟指定时长后可被消费。先落库再入队，返回任务编号便于追踪。
+     *
+     * @param payload 任务内容
+     * @param delay   延迟时间
+     * @return 任务编号
      */
-    void offer(String payload, Duration delay);
+    String offer(String payload, Duration delay);
 
     /**
      * 取出已到期的任务，未到期的不返回。

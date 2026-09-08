@@ -8,27 +8,51 @@
         <result column="code" property="code"/>
         <result column="origin_url" property="originUrl"/>
         <result column="hit_count" property="hitCount"/>
+        <result column="enabled" property="enabled"/>
+        <result column="expire_time" property="expireTime"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
 
+    <sql id="columns">
+        id, code, origin_url, hit_count, enabled, expire_time, create_time
+    </sql>
+
     <!-- 按短码查原始链接 -->
     <select id="selectByCode" resultMap="shortLinkMap">
-        select id, code, origin_url, hit_count, create_time
+        select
+        <include refid="columns"/>
         from short_url
         where code = #{code}
+    </select>
+
+    <!-- 查全部短链，供定时任务回写点击量 -->
+    <select id="selectAll" resultMap="shortLinkMap">
+        select
+        <include refid="columns"/>
+        from short_url
+        order by id desc
+        limit #{limit}
     </select>
 
     <!-- 新增短链记录 -->
     <insert id="insert" parameterType="com.dong.classic.entity.ShortLink"
             useGeneratedKeys="true" keyProperty="id">
-        insert into short_url (code, origin_url, hit_count)
-        values (#{code}, #{originUrl}, #{hitCount})
+        insert into short_url (code, origin_url, hit_count, enabled, expire_time)
+        values (#{code}, #{originUrl}, #{hitCount}, #{enabled}, #{expireTime})
     </insert>
 
-    <!-- 点击计数累加，Redis 计数后异步落库 -->
-    <update id="increaseHitCount">
+    <!-- 回写点击次数，写入绝对值 -->
+    <update id="updateHitCount">
         update short_url
-        set hit_count = hit_count + 1
+        set hit_count = #{hitCount}
+        where code = #{code}
+    </update>
+
+    <!-- 启停短链并设置过期时间 -->
+    <update id="updateStatus">
+        update short_url
+        set enabled     = #{enabled},
+            expire_time = #{expireTime}
         where code = #{code}
     </update>
 

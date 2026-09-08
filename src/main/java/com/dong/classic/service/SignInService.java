@@ -16,6 +16,11 @@ public interface SignInService {
     boolean signIn(String userId, LocalDate date);
 
     /**
+     * 补签。补签与正常签到在流水里用不同来源标记区分，便于运营单独统计。
+     */
+    boolean repair(String userId, LocalDate date);
+
+    /**
      * 查询指定日期是否已签到。
      */
     boolean hasSigned(String userId, LocalDate date);

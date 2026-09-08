@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.classic.mapper.ClassicUvDailyMapper">
+
+    <!-- 每日独立访客快照。HLL 的估算值落库后才能查历史趋势 -->
+
+    <resultMap id="uvMap" type="com.dong.classic.entity.ClassicUvDaily">
+        <id column="id" property="id"/>
+        <result column="page" property="page"/>
+        <result column="stat_date" property="statDate"/>
+        <result column="uv_count" property="uvCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, page, stat_date, uv_count, create_time, update_time
+    </sql>
+
+    <!-- 用 upsert 而不是累加：HLL 给的是估算值，重复统计应覆盖而非相加 -->
+    <insert id="upsert">
+        insert into classic_uv_daily (page, stat_date, uv_count)
+        values (#{page}, #{statDate}, #{uvCount})
+        on duplicate key update uv_count = values(uv_count)
+    </insert>
+
+    <select id="selectByPage" resultMap="uvMap">
+        select
+        <include refid="columns"/>
+        from classic_uv_daily
+        where page = #{page}
+        order by stat_date desc
+        limit #{limit}
+    </select>
+
+    <delete id="clearAll">
+        delete from classic_uv_daily
+    </delete>
+
+</mapper>

@@ -31,10 +31,20 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LockLabServiceImpl implements LockLabService {
 
+    /**
+     * 计数器键前缀，用于演示「不加锁会少加多少」的对比实验。
+     */
     private static final String COUNTER = "lab:lock:counter:";
 
+    /**
+     * 锁的租期。必须大于业务执行时间，否则业务没跑完锁就被释放，
+     * 另一个线程会拿到锁并发执行，锁等于没加。
+     */
     private static final Duration LEASE_TIME = Duration.ofSeconds(10);
 
+    /**
+     * 获取锁的最长等待时间，超时未拿到就放弃，避免请求无限堆积。
+     */
     private static final Duration WAIT_TIME = Duration.ofSeconds(30);
 
     /**

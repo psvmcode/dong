@@ -16,16 +16,94 @@ create table if not exists product
 
 create table if not exists short_url
 (
-    id         bigint unsigned not null auto_increment                  comment '主键',
-    code       varchar(16)     not null                                 comment '短码，Base62 编码后的唯一标识',
-    origin_url varchar(2048)   not null                                 comment '原始长链接',
-    hit_count  bigint          not null default 0                       comment '访问次数，每次跳转累加',
-    create_time datetime       not null default current_timestamp       comment '创建时间',
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    code        varchar(16)     not null                                 comment '短码，Base62 编码后的唯一标识',
+    origin_url  varchar(2048)   not null                                 comment '原始长链接',
+    hit_count   bigint          not null default 0                       comment '访问次数，由定时任务从 Redis 累加器回写，不直接实时更新以免拖慢跳转',
+    enabled     tinyint         not null default 1                       comment '是否启用：1 启用 2 停用，停用的短链拒绝跳转',
+    expire_time datetime        null                                     comment '过期时间，为空表示长期有效',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
     primary key (id),
-    unique key uk_code (code)                                            comment '短码唯一，防止同一长链生成重复短码'
+    unique key uk_code (code)                                            comment '短码唯一，防止同一长链生成重复短码',
+    key idx_expire (expire_time)                                         comment '按过期时间清理失效短链'
 ) engine = innodb
   default charset = utf8mb4
   comment = '短链接。发号器与 Base62 编码的落地表';
+
+create table if not exists classic_signin_record
+(
+    id              bigint unsigned not null auto_increment                  comment '主键',
+    user_id         varchar(64)     not null default ''                      comment '用户标识',
+    sign_date       date            not null                                 comment '签到日期，按月统计与对账的依据',
+    continuous_days int             not null default 0                       comment '截至本次签到的连续天数，冗余保存便于直接查询历史',
+    source          varchar(32)     not null default 'normal'                comment '来源：normal 正常签到 repair 补签',
+    create_time     datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    unique key uk_user_date (user_id, sign_date)                             comment '同一用户同一天只能签到一次，与位图的幂等语义保持一致',
+    key idx_sign_date (sign_date)                                            comment '按日期统计当日签到人数'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '签到流水。位图负责高性能判断，本表负责持久化与对账：Redis 数据过期或丢失后可据此重建位图';
+
+create table if not exists classic_uv_daily
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    page        varchar(128)    not null default ''                      comment '页面标识',
+    stat_date   date            not null                                 comment '统计日期',
+    uv_count    bigint          not null default 0                       comment '当日独立访客估算值，由 HyperLogLog 产出后落库',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    update_time datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_page_date (page, stat_date)                             comment '同一页面同一天只留一条，重复统计做覆盖更新',
+    key idx_stat_date (stat_date)                                         comment '按日期查询趋势'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '每日独立访客快照。HyperLogLog 只在 Redis 且会过期，落库后才能查历史趋势与对账';
+
+create table if not exists classic_leaderboard_snapshot
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    board       varchar(64)     not null default ''                      comment '榜单标识',
+    member      varchar(128)    not null default ''                      comment '成员标识',
+    score       double          not null default 0                       comment '当前分数，与 Redis ZSet 保持一致',
+    update_time datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_board_member (board, member)                            comment '同一榜单同一成员只保留最新分数',
+    key idx_board_score (board, score)                                    comment '按榜单排序，作为数据库侧兜底排名'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '排行榜持久化。ZSet 负责高性能排名，本表保证 Redis 数据丢失后能重建榜单';
+
+create table if not exists classic_delay_task
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    task_no     varchar(64)     not null default ''                      comment '任务编号，投递时生成，便于追踪',
+    payload     varchar(1024)   not null default ''                      comment '任务内容',
+    status      tinyint         not null default 1                       comment '状态：1 待投递 2 已投递 3 已消费 4 已取消',
+    expect_time datetime        not null                                 comment '预计触发时间',
+    actual_time datetime        null                                     comment '实际消费时间，未消费为空',
+    retry_count int             not null default 0                       comment '重投次数，Redis 延迟队列无可靠保证，靠它做补偿',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    unique key uk_task_no (task_no)                                       comment '任务编号唯一',
+    key idx_status_expect (status, expect_time)                           comment '按状态与预计时间扫描待补偿任务'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '延迟任务记录。Redis 延迟队列没有重试与持久化保证，落库才能追踪任务去向并补偿';
+
+create table if not exists classic_geo_place
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    city        varchar(64)     not null default ''                      comment '城市标识，用于分城市建立 GEO 集合',
+    member      varchar(128)    not null default ''                      comment '成员标识，如门店或车辆编号',
+    longitude   double          not null default 0                       comment '经度',
+    latitude    double          not null default 0                       comment '纬度',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    unique key uk_city_member (city, member)                              comment '同一城市内成员唯一'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '地理位置记录。GEO 数据存在 Redis 的 ZSet 里，落库用于持久化与重建';
 
 create table if not exists seckill_activity
 (

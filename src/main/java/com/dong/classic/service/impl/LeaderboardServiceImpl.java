@@ -25,16 +25,30 @@ import java.util.Locale;
 
 public class LeaderboardServiceImpl implements LeaderboardService {
 
+    /**
+     * 榜单键前缀，每个榜单一个 ZSet。
+     */
     private static final String BOARD = "lab:rank:";
 
+    /**
+     * 周榜键前缀，与总榜分开存储，按周切分。
+     */
     private static final String WEEKLY = "lab:rank:weekly:";
 
+    /**
+     * 历史榜单键前缀，结算后的榜单按时间归档，用于查询往期排名。
+     */
     private static final String HISTORY = "lab:rank:history:";
 
     /**
      * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
+
+    /**
+     * 排行榜持久化数据访问，保证 Redis 数据丢失后能重建榜单。
+     */
+    private final com.dong.classic.mapper.ClassicLeaderboardSnapshotMapper snapshotMapper;
 
     /**
      * 设置成员分数，已存在则覆盖。
@@ -46,6 +60,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     @Override
     public void submit(String board, String member, double score) {
         boardSet(board).add(score, member);
+        persist(board, member, score);
         log.info("leaderboard submit board={} member={} score={}", board, member, score);
     }
 
@@ -59,7 +74,23 @@ public class LeaderboardServiceImpl implements LeaderboardService {
      */
     @Override
     public Double addScore(String board, String member, double delta) {
-        return boardSet(board).addScore(member, delta);
+        Double score = boardSet(board).addScore(member, delta);
+        if (score != null) {
+            persist(board, member, score);
+        }
+        return score;
+    }
+
+    /**
+     * 落库成员分数。用 upsert 覆盖语义，与 ZSet 的分数覆盖保持一致。
+     * 失败只记录日志，不能因为落库问题影响榜单更新。
+     */
+    private void persist(String board, String member, double score) {
+        try {
+            snapshotMapper.upsert(board, member, score);
+        } catch (Exception ex) {
+            log.error("persist leaderboard failed board={} member={}", board, member, ex);
+        }
     }
 
     /**

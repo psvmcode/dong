@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.classic.mapper.ClassicLeaderboardSnapshotMapper">
+
+    <!-- 排行榜持久化。ZSet 管高性能排名，本表保证数据可重建 -->
+
+    <resultMap id="snapshotMap" type="com.dong.classic.entity.ClassicLeaderboardSnapshot">
+        <id column="id" property="id"/>
+        <result column="board" property="board"/>
+        <result column="member" property="member"/>
+        <result column="score" property="score"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, board, member, score, update_time
+    </sql>
+
+    <!-- 分数是覆盖语义，重复提交保留最新值 -->
+    <insert id="upsert">
+        insert into classic_leaderboard_snapshot (board, member, score)
+        values (#{board}, #{member}, #{score})
+        on duplicate key update score = values(score)
+    </insert>
+
+    <select id="selectTop" resultMap="snapshotMap">
+        select
+        <include refid="columns"/>
+        from classic_leaderboard_snapshot
+        where board = #{board}
+        order by score desc
+        limit #{limit}
+    </select>
+
+    <select id="countByBoard" resultType="long">
+        select count(*)
+        from classic_leaderboard_snapshot
+        where board = #{board}
+    </select>
+
+    <delete id="clearAll">
+        delete from classic_leaderboard_snapshot
+    </delete>
+
+</mapper>

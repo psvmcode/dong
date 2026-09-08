@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.classic.mapper.ClassicGeoPlaceMapper">
+
+    <!-- 地理位置。GEO 集合存在 Redis，坐标本身落库保存 -->
+
+    <resultMap id="placeMap" type="com.dong.classic.entity.ClassicGeoPlace">
+        <id column="id" property="id"/>
+        <result column="city" property="city"/>
+        <result column="member" property="member"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, city, member, longitude, latitude, create_time
+    </sql>
+
+    <!-- 同一城市内成员唯一，重复添加视为更新坐标 -->
+    <insert id="upsert">
+        insert into classic_geo_place (city, member, longitude, latitude)
+        values (#{city}, #{member}, #{longitude}, #{latitude})
+        on duplicate key update longitude = values(longitude), latitude = values(latitude)
+    </insert>
+
+    <select id="selectByCity" resultMap="placeMap">
+        select
+        <include refid="columns"/>
+        from classic_geo_place
+        where city = #{city}
+        order by id asc
+    </select>
+
+    <delete id="clearAll">
+        delete from classic_geo_place
+    </delete>
+
+</mapper>

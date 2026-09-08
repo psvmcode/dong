@@ -22,6 +22,9 @@ import java.util.Map;
 
 public class GeoServiceImpl implements GeoService {
 
+    /**
+     * GEO 集合键前缀，按城市分集合，避免全量数据挤在一个 key 里。
+     */
     private static final String GEO = "lab:geo:";
 
     /**
@@ -29,8 +32,15 @@ public class GeoServiceImpl implements GeoService {
      */
     private final RedissonClient redissonClient;
 
-    public GeoServiceImpl(RedissonClient redissonClient) {
+    /**
+     * 地理位置数据访问，用于持久化坐标。
+     */
+    private final com.dong.classic.mapper.ClassicGeoPlaceMapper geoPlaceMapper;
+
+    public GeoServiceImpl(RedissonClient redissonClient,
+                          com.dong.classic.mapper.ClassicGeoPlaceMapper geoPlaceMapper) {
         this.redissonClient = redissonClient;
+        this.geoPlaceMapper = geoPlaceMapper;
     }
 
     /**
@@ -45,8 +55,22 @@ public class GeoServiceImpl implements GeoService {
     @Override
     public Long add(String city, double longitude, double latitude, String member) {
         Long added = geoOf(city).add(longitude, latitude, member);
+        persist(city, member, longitude, latitude);
         log.info("geo added city={} member={}", city, member);
         return added;
+    }
+
+    /**
+     * 落库坐标。GEO 集合存在 Redis，坐标本身是业务资产，
+     * 落库后既持久保存，也能在 Redis 数据丢失后重新灌回。
+     * 失败只记录日志，不能因为落库问题影响写入。
+     */
+    private void persist(String city, String member, double longitude, double latitude) {
+        try {
+            geoPlaceMapper.upsert(city, member, longitude, latitude);
+        } catch (Exception ex) {
+            log.error("persist geo place failed city={} member={}", city, member, ex);
+        }
     }
 
     /**

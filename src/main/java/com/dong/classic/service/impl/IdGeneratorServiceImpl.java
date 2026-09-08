@@ -26,6 +26,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class IdGeneratorServiceImpl implements IdGeneratorService {
 
+    /**
+     * 号段模式使用的自增键。号段模式一次取一段 id 缓存在本地，
+     * 用完后再次申请，因此对数据库的压力远小于每条记录都取一次。
+     */
     private static final String SEGMENT_KEY = "lab:id:segment";
 
     /**
