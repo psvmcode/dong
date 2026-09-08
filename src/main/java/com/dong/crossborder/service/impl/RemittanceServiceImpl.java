@@ -67,6 +67,10 @@ public class RemittanceServiceImpl implements RemittanceService {
 
     public static final String SETTLEMENT_TOPIC = "cross-border-settlement";
 
+    /**
+     * 幂等键分布式锁的前缀。锁只用来挡住同一幂等键的并发请求，
+     * 真正的重复汇款由数据库唯一索引兜底。
+     */
     private static final String LOCK_PREFIX = "lab:crossborder:idem:";
 
     /**
@@ -141,20 +145,45 @@ public class RemittanceServiceImpl implements RemittanceService {
      */
     private final Snowflake snowflake;
 
+    /**
+     * 累计创建成功的汇款单数。以下计数器都是进程内的观测指标，
+     * 只用于运行时排查，不作为账务依据——真正的资金状态一律以库表为准。
+     */
     private final LongAdder created = new LongAdder();
 
+    /**
+     * 幂等键命中次数，重复提交被正确识别的次数。
+     */
     private final LongAdder idempotentHit = new LongAdder();
 
+    /**
+     * 被合规检查拒绝的次数。
+     */
     private final LongAdder complianceRejected = new LongAdder();
 
+    /**
+     * 因反洗钱规则挂起待人工审核的次数。
+     */
     private final LongAdder pendingReview = new LongAdder();
 
+    /**
+     * 清算消息发送成功次数。
+     */
     private final LongAdder messageSent = new LongAdder();
 
+    /**
+     * 清算消息发送失败次数，失败的单子会由补偿任务重发。
+     */
     private final LongAdder messageFailed = new LongAdder();
 
+    /**
+     * 人工审核放行次数。
+     */
     private final LongAdder reviewApproved = new LongAdder();
 
+    /**
+     * 人工审核驳回次数。
+     */
     private final LongAdder reviewRejected = new LongAdder();
 
     /**

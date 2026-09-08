@@ -33,6 +33,10 @@ public class ChannelRouterImpl implements ChannelRouter {
      */
     private static final BigDecimal ETA_WEIGHT = new BigDecimal("0.01");
 
+    /**
+     * 加急时的时效权重，是普通权重的五倍。
+     * 「加急要加钱」就体现在这里：慢渠道的时效成本被放大五倍后会被迅速淘汰。
+     */
     private static final BigDecimal URGENT_ETA_WEIGHT = new BigDecimal("0.05");
 
     /**

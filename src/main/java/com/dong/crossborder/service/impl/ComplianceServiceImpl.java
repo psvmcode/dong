@@ -33,8 +33,15 @@ import java.util.List;
 
 public class ComplianceServiceImpl implements ComplianceService {
 
+    /**
+     * 制裁名单在 Redis 中的集合键。用 Set 是因为命中判断要 O(1)，
+     * 每笔交易都要查，不能有性能抖动。
+     */
     private static final String SANCTION_KEY = "lab:crossborder:sanction";
 
+    /**
+     * 日累计限额占用的键前缀，后面拼日期与账户 id，实现按天滚动。
+     */
     private static final String DAILY_USAGE_KEY = "lab:crossborder:daily:";
 
     /**
@@ -66,8 +73,14 @@ public class ComplianceServiceImpl implements ComplianceService {
             return next
             """;
 
+    /**
+     * 日限额累加脚本，返回 1 表示通过、0 表示超限。
+     */
     private static final RedisScript<Long> LIMIT = new DefaultRedisScript<>(LIMIT_SCRIPT, Long.class);
 
+    /**
+     * 日限额释放脚本，返回释放后的占用额。
+     */
     private static final RedisScript<Long> RELEASE = new DefaultRedisScript<>(RELEASE_SCRIPT, Long.class);
 
     /**

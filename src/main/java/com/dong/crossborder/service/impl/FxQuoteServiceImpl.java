@@ -41,8 +41,15 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     private static final BigDecimal SPREAD = new BigDecimal("0.003");
 
+    /**
+     * 中间价缓存的键前缀。牌价变化不剧烈，短暂缓存不影响展示，
+     * 但调整牌价时必须失效缓存，否则会继续用旧价报价。
+     */
     private static final String RATE_CACHE_PREFIX = "lab:crossborder:rate:";
 
+    /**
+     * 中间价缓存有效期，兼顾实时性与读取压力。
+     */
     private static final Duration RATE_CACHE_TTL = Duration.ofSeconds(30);
 
     /**

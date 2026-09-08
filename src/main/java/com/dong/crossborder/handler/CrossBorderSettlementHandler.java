@@ -47,6 +47,10 @@ import java.util.concurrent.atomic.LongAdder;
 
 public class CrossBorderSettlementHandler implements MessageHandler {
 
+    /**
+     * 自动建批时的默认清算截止时间。没有开启中的批次时，
+     * 按这个时长临时开一个，避免单子因找不到批次而无法归集。
+     */
     private static final long DEFAULT_CUTOFF_MINUTES = 30L;
 
     /**
@@ -64,12 +68,24 @@ public class CrossBorderSettlementHandler implements MessageHandler {
      */
     private final CrossBorderLedgerService ledgerService;
 
+    /**
+     * 成功处理的清算消息数。以下计数为进程内观测指标，不参与账务。
+     */
     private final LongAdder processed = new LongAdder();
 
+    /**
+     * 成功推进到「清算中」的次数。
+     */
     private final LongAdder settling = new LongAdder();
 
+    /**
+     * 重复消息被识别并跳过的次数，说明幂等生效。
+     */
     private final LongAdder duplicated = new LongAdder();
 
+    /**
+     * 因状态不符而跳过的次数，如单子已被驳回或查不到。
+     */
     private final LongAdder skipped = new LongAdder();
 
     /**

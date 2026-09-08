@@ -41,6 +41,9 @@ public class AmlMonitorImpl implements AmlMonitor {
      */
     static final int STRUCTURING_COUNT_THRESHOLD = 3;
 
+    /**
+     * 拆分交易监控的键前缀，后面拼日期与账户 id，窗口按自然日滚动。
+     */
     private static final String KEY_PREFIX = "lab:crossborder:aml:";
 
     /**
@@ -67,8 +70,15 @@ public class AmlMonitorImpl implements AmlMonitor {
             return underCount
             """;
 
+    /**
+     * 行为记录脚本，一次更新累计金额、笔数与贴线笔数，保证并发下不漏计。
+     */
     private static final RedisScript<Long> RECORD = new DefaultRedisScript<>(RECORD_SCRIPT, Long.class);
 
+    /**
+     * 监控窗口的有效期。给 48 小时是为了跨日时前一天的数据还能查到，
+     * 判断本身按自然日切分，不会串到第二天。
+     */
     private static final Duration WINDOW_TTL = Duration.ofHours(48);
 
     /**

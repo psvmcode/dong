@@ -89,16 +89,34 @@ public class CrossBorderMaintenanceTask {
      */
     private static final long RECON_WINDOW_DAYS = 7L;
 
+    /**
+     * 补偿扫描执行的轮次。以下计数均为进程内观测指标，重启归零，不参与账务。
+     */
     private final LongAdder compensationRounds = new LongAdder();
 
+    /**
+     * 累计补发出去的清算消息条数。
+     */
     private final LongAdder compensatedMessages = new LongAdder();
 
+    /**
+     * 因处于静默期而本轮跳过的单子数。
+     */
     private final LongAdder skippedInQuietPeriod = new LongAdder();
 
+    /**
+     * 达到重试上限被放弃、转为人工处理的单子数。这个数大于零就要立刻去看。
+     */
     private final LongAdder abandonedRemittance = new LongAdder();
 
+    /**
+     * 检测到卡单的轮次。
+     */
     private final LongAdder stuckRounds = new LongAdder();
 
+    /**
+     * 每日对账中查出差异的批次数。
+     */
     private final LongAdder unmatchedBatches = new LongAdder();
 
     /**

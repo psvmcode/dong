@@ -20,7 +20,8 @@
 | [八、验证记录](#八验证记录) | 实测数据 |
 | [九、踩过的坑](#九踩过的坑) | 真实问题与解法 |
 | [十、编码规范](#十编码规范) | dong-standards |
-| [专项文档](doc/crossborder-payment.md) | 跨境支付业务专项学习 |
+| [跨境支付模块说明](CROSSBORDER.md) | 业务场景 + 技术场景 + 接口清单全景 |
+| [专项文档](doc/crossborder-payment.md) | 跨境支付业务专项学习（设计取舍与原理） |
 
 ---
 
@@ -565,6 +566,7 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 
 ### 5.11 跨境支付（crossborder）
 
+> **跨境支付模块说明**：[`CROSSBORDER.md`](CROSSBORDER.md)（业务场景、技术场景、接口清单全景）。
 > **专项学习文档**：[`doc/crossborder-payment.md`](doc/crossborder-payment.md)。从业务背景、领域概念讲到状态机与风控判定，含完整实操命令与实测数据。本节只做概要。
 
 这是最贴近真实业务的一个场景。一笔跨境汇款从发起到到账要经过九个环节，每个环节都有对应的工程问题：
