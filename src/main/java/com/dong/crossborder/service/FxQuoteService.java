@@ -1,6 +1,7 @@
 package com.dong.crossborder.service;
 
 import com.dong.crossborder.dto.FxQuoteResponse;
+import com.dong.crossborder.dto.FxRateResponse;
 import com.dong.crossborder.enums.SettlementChannel;
 
 import java.math.BigDecimal;
@@ -62,6 +63,21 @@ public interface FxQuoteService {
      * 不接受任意字符串，否则会开出永远无法汇款的账户。
      */
     java.util.Set<String> supportedCurrencies();
+
+    /**
+     * 查询全部牌价。
+     *
+     * @return 牌价列表
+     */
+    java.util.List<FxRateResponse> allRates();
+
+    /**
+     * 调整某个币种的牌价，同时失效中间价缓存。
+     *
+     * @param currency 币种
+     * @param usdRate  一美元兑换该币种的数量
+     */
+    void updateRate(String currency, BigDecimal usdRate);
 
     /**
      * 清空全部数据，仅测试场景使用。

@@ -2,9 +2,12 @@ package com.dong.crossborder.controller;
 
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.FxQuoteResponse;
+import com.dong.crossborder.dto.FxRateResponse;
 import com.dong.crossborder.service.FxQuoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -82,6 +85,28 @@ public class CrossBorderFxController {
                         com.dong.crossborder.enums.SettlementChannel.SWIFT),
                 "fee50kCips", fxQuoteService.fee(new BigDecimal("50000"),
                         com.dong.crossborder.enums.SettlementChannel.CIPS)));
+    }
+
+    /**
+     * 查询全部牌价。牌价落库后才能回答「这笔成交时用的是什么价」。
+     */
+    @GetMapping("/rates")
+    @Operation(summary = "查询全部币种牌价")
+    public Result<List<FxRateResponse>> rates() {
+        return Result.success(fxQuoteService.allRates());
+    }
+
+    /**
+     * 调整牌价。真实系统由交易系统推送，这里提供手动入口，
+     * 调整后会失效中间价缓存，避免询价仍在用旧价。
+     */
+    @PostMapping("/rate")
+    @Operation(summary = "调整某个币种的牌价")
+    public Result<Void> updateRate(@RequestParam @Pattern(regexp = "^[A-Z]{3}$") String currency,
+                                   @RequestParam @DecimalMin(value = "0", inclusive = false)
+                                   @Digits(integer = 12, fraction = 8) BigDecimal usdRate) {
+        fxQuoteService.updateRate(currency, usdRate);
+        return Result.success();
     }
 
     /**

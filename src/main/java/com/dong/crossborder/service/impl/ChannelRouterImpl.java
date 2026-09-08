@@ -1,5 +1,6 @@
 package com.dong.crossborder.service.impl;
 
+import com.dong.crossborder.entity.ChannelConfig;
 import com.dong.crossborder.enums.SettlementChannel;
 import com.dong.crossborder.service.ChannelRouter;
 import com.dong.crossborder.service.FxQuoteService;
@@ -28,23 +29,6 @@ import java.util.Map;
 public class ChannelRouterImpl implements ChannelRouter {
 
     /**
-     * 渠道平均到账分钟数，用于时效打分。
-     */
-    private static final Map<SettlementChannel, Long> ETA_MINUTES = Map.of(
-            SettlementChannel.SWIFT, 2880L,
-            SettlementChannel.CIPS, 60L,
-            SettlementChannel.LOCAL, 30L);
-
-    /**
-     * 渠道单笔上限。LOCAL 依托各国本地清算网络，
-     * 大额要拆分或走其他渠道，这是真实存在的额度约束。
-     */
-    private static final Map<SettlementChannel, BigDecimal> PER_TX_LIMIT = Map.of(
-            SettlementChannel.SWIFT, new BigDecimal("100000000"),
-            SettlementChannel.CIPS, new BigDecimal("50000000"),
-            SettlementChannel.LOCAL, new BigDecimal("300000"));
-
-    /**
      * 时效权重。加急时每多等一小时折算的成本惩罚会显著放大。
      */
     private static final BigDecimal ETA_WEIGHT = new BigDecimal("0.01");
@@ -57,6 +41,13 @@ public class ChannelRouterImpl implements ChannelRouter {
     private final FxQuoteService fxQuoteService;
 
     /**
+     * channelConfigMapper。渠道的时效、上限与费率都从库里读：
+     * 代理行调价、监管改额度、线路故障都是会发生的事，
+     * 写死成常量就只能靠发版应对。
+     */
+    private final com.dong.crossborder.mapper.ChannelConfigMapper channelConfigMapper;
+
+    /**
      * route。
      */
     @Override
@@ -66,14 +57,15 @@ public class ChannelRouterImpl implements ChannelRouter {
         SettlementChannel best = null;
         BigDecimal bestScore = null;
         BigDecimal bestFee = null;
-        for (SettlementChannel channel : SettlementChannel.values()) {
-            BigDecimal limit = PER_TX_LIMIT.get(channel);
-            if (sourceAmount.compareTo(limit) > 0) {
-                reasons.add(channel + " excluded, amount exceeds per tx limit " + limit);
+        // 只遍历启用渠道，停用的渠道等同熔断，不能作为候选
+        for (ChannelConfig config : channelConfigMapper.selectEnabled()) {
+            SettlementChannel channel = SettlementChannel.of(config.getChannel());
+            if (sourceAmount.compareTo(config.getPerTxLimit()) > 0) {
+                reasons.add(channel + " excluded, amount exceeds per tx limit " + config.getPerTxLimit());
                 continue;
             }
             BigDecimal fee = fxQuoteService.fee(sourceAmount, channel);
-            BigDecimal etaCost = BigDecimal.valueOf(ETA_MINUTES.get(channel))
+            BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes())
                     .multiply(weight)
                     .setScale(2, RoundingMode.HALF_UP);
             BigDecimal score = fee.add(etaCost);
@@ -87,7 +79,7 @@ public class ChannelRouterImpl implements ChannelRouter {
         if (best == null) {
             best = SettlementChannel.SWIFT;
             bestFee = fxQuoteService.fee(sourceAmount, best);
-            reasons.add("no channel qualified, fallback to " + best);
+            reasons.add("no enabled channel qualified, fallback to " + best);
         }
         return new RouteDecision(best, bestFee, List.copyOf(reasons));
     }
@@ -99,20 +91,23 @@ public class ChannelRouterImpl implements ChannelRouter {
     public Map<String, Object> scoreAll(BigDecimal sourceAmount, boolean urgent) {
         BigDecimal weight = urgent ? URGENT_ETA_WEIGHT : ETA_WEIGHT;
         Map<String, Object> scores = new LinkedHashMap<>();
-        for (SettlementChannel channel : SettlementChannel.values()) {
-            BigDecimal limit = PER_TX_LIMIT.get(channel);
-            boolean qualified = sourceAmount.compareTo(limit) <= 0;
+        for (ChannelConfig config : channelConfigMapper.selectAll()) {
+            SettlementChannel channel = SettlementChannel.of(config.getChannel());
+            // 停用渠道展示出来但标记为不合格，便于运营看到熔断状态
+            boolean qualified = config.getEnabled() == 1
+                    && sourceAmount.compareTo(config.getPerTxLimit()) <= 0;
             BigDecimal fee = fxQuoteService.fee(sourceAmount, channel);
-            BigDecimal etaCost = BigDecimal.valueOf(ETA_MINUTES.get(channel))
+            BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes())
                     .multiply(weight)
                     .setScale(2, RoundingMode.HALF_UP);
             scores.put(channel.name(), Map.of(
                     "qualified", qualified,
+                    "enabled", config.getEnabled() == 1,
                     "fee", fee,
-                    "etaMinutes", ETA_MINUTES.get(channel),
+                    "etaMinutes", config.getEtaMinutes(),
                     "etaCost", etaCost,
                     "score", fee.add(etaCost),
-                    "perTxLimit", limit));
+                    "perTxLimit", config.getPerTxLimit()));
         }
         return scores;
     }

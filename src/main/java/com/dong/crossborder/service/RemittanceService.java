@@ -84,6 +84,16 @@ public interface RemittanceService {
     RemittanceResponse retrySettlement(String remittanceNo);
 
     /**
+     * 退汇。资金已从收款方原路退回付款方，只针对已送达的单子。
+     *
+     * @param remittanceNo 汇款单号
+     * @param reason       退汇原因，写入单子的失败原因字段
+     * @param operator     操作人，留痕用
+     * @return 退汇后的汇款单
+     */
+    RemittanceResponse returnRemittance(String remittanceNo, String reason, String operator);
+
+    /**
      * 运行时统计，便于观察各状态的单量与中间件使用情况。
      */
     Map<String, Object> runtime();

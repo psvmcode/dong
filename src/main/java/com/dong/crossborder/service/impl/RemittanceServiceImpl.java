@@ -132,6 +132,11 @@ public class RemittanceServiceImpl implements RemittanceService {
     private final CrossBorderSettlementHandler settlementHandler;
 
     /**
+     * eventService。记录每一次状态推进，成功与被拒绝都留痕。
+     */
+    private final com.dong.crossborder.service.RemittanceEventService eventService;
+
+    /**
      * snowflake。
      */
     private final Snowflake snowflake;
@@ -206,6 +211,12 @@ public class RemittanceServiceImpl implements RemittanceService {
             remittance.setStatus(RemittanceStatus.COMPLIANCE_REJECTED);
             remittance.setComplianceStatus(verdict.getCode());
             remittanceMapper.insert(remittance);
+            // 单子已经落库，被拒绝的这次尝试也要留痕，
+            // 否则事后只能看到状态是「拒绝」，看不到是哪一道检查拦下的
+            eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED,
+                    RemittanceStatus.COMPLIANCE_REJECTED, "compliance", "system");
+            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.COMPLIANCE_REJECTED,
+                    "compliance", "rejected by compliance check", "system");
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
                     "remittance rejected by compliance check");
         }
@@ -217,6 +228,8 @@ public class RemittanceServiceImpl implements RemittanceService {
             remittance.setComplianceStatus(verdict.getCode());
             remittance.setFailReason("pending manual review");
             remittanceMapper.insert(remittance);
+            eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED,
+                    RemittanceStatus.PENDING_REVIEW, "compliance", "system");
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
                     "remittance suspended for manual review");
         }
@@ -237,10 +250,15 @@ public class RemittanceServiceImpl implements RemittanceService {
             ledgerService.debitAndPersist(remittance, payer, request.getSourceAmount().add(fee));
         } catch (RuntimeException ex) {
             complianceService.releaseDailyLimit(payer.getId(), request.getSourceAmount());
+            // 扣款失败时单子没有落库，流转日志只能按单号记一笔被拒绝的尝试
+            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.QUOTE_LOCKED,
+                    "debit", ex.getMessage(), "system");
             throw ex;
         }
         fxQuoteService.markUsed(remittance.getQuoteNo());
         created.increment();
+        eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED,
+                RemittanceStatus.FUNDS_DEBITED, "create", "system");
         sendSettlementMessage(remittance);
         return toResponse(remittance);
     }
@@ -402,6 +420,8 @@ public class RemittanceServiceImpl implements RemittanceService {
         }
         complianceService.recordManualDecision(remittanceNo, ComplianceResult.PASS,
                 "approved by " + decision.getReviewer() + appendNote(decision.getNote()));
+        eventService.record(remittanceNo, RemittanceStatus.PENDING_REVIEW,
+                RemittanceStatus.FUNDS_DEBITED, "reviewApprove", decision.getReviewer());
         reviewApproved.increment();
         created.increment();
         CrossBorderRemittance settled = remittanceMapper.selectByRemittanceNo(remittanceNo);
@@ -463,6 +483,9 @@ public class RemittanceServiceImpl implements RemittanceService {
                 + (decision.getNote() == null || decision.getNote().isBlank() ? "" : ": " + decision.getNote());
         remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED,
                 reason.substring(0, Math.min(255, reason.length())));
+        // 审核人必须写进日志：监管检查时要能回答「这笔放行/驳回是谁做的」
+        eventService.record(remittanceNo, RemittanceStatus.PENDING_REVIEW,
+                RemittanceStatus.COMPLIANCE_REJECTED, "reviewReject", decision.getReviewer());
         reviewRejected.increment();
         log.warn("remittance rejected by manual review remittanceNo={} reviewer={}",
                 remittanceNo, decision.getReviewer());
@@ -572,6 +595,77 @@ public class RemittanceServiceImpl implements RemittanceService {
         } catch (Exception ex) {
             log.error("release daily limit failed after refund remittanceNo={}", remittanceNo, ex);
         }
+    }
+
+    /**
+     * 退汇。钱已经到收款方之后发现有问题（账号错、被拒收、监管要求），
+     * 需要把资金从收款方原路退回付款方。
+     *
+     * <p>与「退款」的区别必须分清：退款发生在钱还没汇出去之前，
+     * 退汇发生在钱已到账之后，往往已经产生汇兑损失，且手续费通常不退——
+     * 因为通道成本已经真实发生。
+     *
+     * <p>只允许对已送达的单子发起：钱还没到收款方就谈不上退汇，
+     * 那种情况走的是 failAndRefund。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public RemittanceResponse returnRemittance(String remittanceNo, String reason, String operator) {
+        CrossBorderRemittance remittance = requireRemittance(remittanceNo);
+        RemittanceStatus current = remittance.getStatus();
+        if (!current.isDelivered()) {
+            eventService.recordRejected(remittanceNo, current, "return",
+                    "only delivered remittance can be returned, current=" + current, operator);
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " is not delivered, current status " + current);
+        }
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.RETURNING,
+                current, remittance.getVersion());
+        if (claimed <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "remittance " + remittanceNo + " is being handled by another request");
+        }
+        CrossBorderAccount payee = requireAccountById(remittance.getPayeeAccountId());
+        CrossBorderAccount payer = requireAccountById(remittance.getPayerAccountId());
+        // 先从收款方扣回。余额不足说明钱已被取走，这种情况不能凭空造钱退给付款方，
+        // 必须抛出让事务回滚，转为人工追讨
+        int deducted = accountMapper.deduct(payee.getId(), remittance.getTargetAmount(), 0);
+        if (deducted <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
+                    "payee account " + payee.getAccountNo() + " balance insufficient for return");
+        }
+        ledgerMapper.insert(buildLedger(remittance, payee.getId(), LedgerDirection.DEBIT,
+                remittance.getTargetAmount(), remittance.getTargetCurrency(),
+                accountMapper.selectById(payee.getId()).getBalance()));
+        accountMapper.credit(payer.getId(), remittance.getSourceAmount());
+        ledgerMapper.insert(buildLedger(remittance, payer.getId(), LedgerDirection.CREDIT,
+                remittance.getSourceAmount(), remittance.getSourceCurrency(),
+                accountMapper.selectById(payer.getId()).getBalance()));
+        // updateFailReason 会同时推进状态与版本，不必再调一次 updateStatus。
+        // 到这里已经用 updateStatus 抢占过 RETURNING，只有一个线程能执行本段
+        String trimmed = reason == null ? "" : reason.substring(0, Math.min(255, reason.length()));
+        remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.RETURNED, trimmed);
+        eventService.record(remittanceNo, current, RemittanceStatus.RETURNED, "return",
+                operator == null || operator.isBlank() ? "system" : operator);
+        log.warn("remittance returned remittanceNo={} reason={} operator={}", remittanceNo, trimmed, operator);
+        return findByRemittanceNo(remittanceNo);
+    }
+
+    /**
+     * 构造一条流水。balanceAfter 取事务内重新读到的余额，保证流水能还原当时快照。
+     */
+    private AccountLedger buildLedger(CrossBorderRemittance remittance, Long accountId,
+                                      LedgerDirection direction, BigDecimal amount,
+                                      String currency, BigDecimal balanceAfter) {
+        AccountLedger ledger = new AccountLedger();
+        ledger.setLedgerNo("LG" + snowflake.nextId());
+        ledger.setRemittanceNo(remittance.getRemittanceNo());
+        ledger.setAccountId(accountId);
+        ledger.setDirection(direction);
+        ledger.setCurrency(currency);
+        ledger.setAmount(amount);
+        ledger.setBalanceAfter(balanceAfter);
+        return ledger;
     }
 
     /**

@@ -396,6 +396,55 @@ create table if not exists cross_border_recon_diff
   default charset = utf8mb4
   comment = '对账差异。对账前先清旧差异，保证重复对账不会越跑差异越多';
 
+create table if not exists cross_border_fx_rate
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    currency    varchar(8)      not null default ''                      comment '币种代码，与账户币种一致',
+    usd_rate    decimal(18, 8)  not null default 0                       comment '一美元兑换该币种的数量，7.15 表示 1 美元兑 7.15 该币种',
+    status      tinyint         not null default 1                       comment '状态：1 启用 2 停用，停用的币种不能开户也不能询价',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    update_time datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_currency (currency)                                       comment '币种唯一'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '汇率牌价。取代原先写死在代码里的常量表，落库后才可调整、可审计、可追溯每次报价的来源';
+
+create table if not exists cross_border_channel_config
+(
+    id           bigint unsigned not null auto_increment                  comment '主键',
+    channel      tinyint         not null default 1                       comment '清算渠道：1 SWIFT 2 CIPS 3 本地清算',
+    eta_minutes  bigint          not null default 0                       comment '预计到账分钟数，渠道路由评分里的时效成本',
+    per_tx_limit decimal(18, 2)  not null default 0                       comment '单笔金额上限，超过该额度的汇款不能走这个渠道',
+    fixed_fee    decimal(18, 2)  not null default 0                       comment '固定手续费，每笔都收',
+    rate_fee     decimal(18, 6)  not null default 0                       comment '比例手续费，按汇出金额乘算',
+    enabled      tinyint         not null default 1                       comment '是否启用：1 启用 2 停用，停用的渠道不参与路由打分',
+    create_time  datetime        not null default current_timestamp       comment '创建时间',
+    update_time  datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_channel (channel)                                         comment '渠道唯一'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '清算渠道配置。时效、限额与费率原先是代码常量，落库才能由运营按渠道实际情况调整';
+
+create table if not exists cross_border_remittance_event
+(
+    id            bigint unsigned not null auto_increment                  comment '主键',
+    remittance_no varchar(32)     not null default ''                      comment '所属汇款单号',
+    from_status   tinyint         not null default 0                       comment '变更前状态编码',
+    to_status     tinyint         not null default 0                       comment '变更后状态编码，原地打转时与变更前相同',
+    event         varchar(32)     not null default ''                      comment '触发动作名，如 create、lockQuote、settle、return',
+    result        tinyint         not null default 1                       comment '结果：1 成功 0 被拒绝',
+    reason        varchar(255)    not null default ''                      comment '说明，被拒绝时填原因，成功时填来源',
+    operator      varchar(64)     not null default ''                      comment '操作人或来源标识，人工审核时记审核人',
+    create_time   datetime        not null default current_timestamp       comment '发生时间',
+    primary key (id),
+    key idx_remittance_no (remittance_no)                                     comment '按汇款单查完整流转历史',
+    key idx_create_time (create_time)                                         comment '按时间排序'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '汇款单流转日志。成功与被拒绝都记，出问题时能还原这笔钱到底经历过什么';
+
 create database if not exists dong_lab_replica default character set utf8mb4 collate utf8mb4_general_ci;
 
 use dong_lab_replica;

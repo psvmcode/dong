@@ -45,6 +45,11 @@ public class CrossBorderRemittanceController {
     private final ComplianceService complianceService;
 
     /**
+     * eventService，业务服务层。
+     */
+    private final com.dong.crossborder.service.RemittanceEventService eventService;
+
+    /**
      * 发起汇款。idempotentKey 由调用方生成，同一键重放会返回原单而不是重复汇款。
      */
     @PostMapping
@@ -123,6 +128,29 @@ public class CrossBorderRemittanceController {
     public Result<RemittanceResponse> rejectReview(@PathVariable String remittanceNo,
                                                    @Valid @RequestBody ReviewDecisionRequest decision) {
         return Result.success(remittanceService.rejectReview(remittanceNo, decision));
+    }
+
+    /**
+     * 退汇。资金已到收款方后发现有问题时原路退回，
+     * 只允许对已送达的单子发起，手续费按行业惯例不退。
+     */
+    @PostMapping("/{remittanceNo}/return")
+    @Operation(summary = "发起退汇，资金从收款方退回付款方")
+    public Result<RemittanceResponse> returnRemittance(@PathVariable String remittanceNo,
+                                                       @RequestParam(defaultValue = "") String reason,
+                                                       @RequestParam(defaultValue = "system") String operator) {
+        return Result.success(remittanceService.returnRemittance(remittanceNo, reason, operator));
+    }
+
+    /**
+     * 查询流转历史。状态字段只回答「现在是什么状态」，
+     * 这里回答「它怎么变成这样的」，排查与审计都靠它。
+     */
+    @GetMapping("/{remittanceNo}/events")
+    @Operation(summary = "查询汇款单的完整状态流转历史")
+    public Result<List<com.dong.crossborder.dto.RemittanceEventResponse>> events(
+            @PathVariable String remittanceNo) {
+        return Result.success(eventService.history(remittanceNo));
     }
 
     /**

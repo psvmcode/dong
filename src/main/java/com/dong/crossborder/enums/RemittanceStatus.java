@@ -59,7 +59,20 @@ public enum RemittanceStatus {
     /**
      * 待人工审核，合规人员放行后继续推进，驳回则走退款。
      */
-    PENDING_REVIEW(9);
+    PENDING_REVIEW(9),
+
+    /**
+     * 退汇中。收款方信息有误、被拒收或监管要求退回时发起，
+     * 资金正在从收款方退回付款方，这一刻钱处于逆向在途。
+     */
+    RETURNING(10),
+
+    /**
+     * 已退汇。资金已退回付款方，是终态。
+     * 与「已退款」的区别：退款发生在钱还没汇出去之前，
+     * 退汇发生在钱已经到收款方之后再原路退回，通常已产生汇兑损失。
+     */
+    RETURNED(11);
 
     /**
      * 汇款状态编码，落库存储。
@@ -87,7 +100,17 @@ public enum RemittanceStatus {
      * @return true 表示已到达终态
      */
     public boolean isFinal() {
-        return this == SETTLED || this == REFUNDED || this == COMPLIANCE_REJECTED || this == FAILED;
+        return this == SETTLED || this == REFUNDED || this == COMPLIANCE_REJECTED || this == FAILED
+                || this == RETURNED;
+    }
+
+    /**
+     * 判断是否已到达收款方，退汇只对这类单子有意义。
+     *
+     * @return true 表示资金已经离开启付款方
+     */
+    public boolean isDelivered() {
+        return this == SETTLED || this == SETTLING;
     }
 
     /**

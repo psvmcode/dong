@@ -49,6 +49,11 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
     private final Snowflake snowflake;
 
     /**
+     * eventService。入账是资金真正到收款方的一步，必须留痕。
+     */
+    private final com.dong.crossborder.service.RemittanceEventService eventService;
+
+    /**
      * debitAndPersist。
      */
     @Override
@@ -150,6 +155,8 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
                     "remittance " + remittance.getRemittanceNo() + " settled by another request");
         }
+        eventService.record(current.getRemittanceNo(), RemittanceStatus.SETTLING,
+                RemittanceStatus.SETTLED, "settle", "system");
         return true;
     }
 

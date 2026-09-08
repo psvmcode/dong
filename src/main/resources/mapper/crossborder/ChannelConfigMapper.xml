@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.crossborder.mapper.ChannelConfigMapper">
+
+    <!-- 清算渠道配置。时效、限额与费率都是可运营调整的参数，
+         停用的渠道不参与路由打分，是渠道故障时的熔断手段 -->
+
+    <resultMap id="channelMap" type="com.dong.crossborder.entity.ChannelConfig">
+        <id column="id" property="id"/>
+        <result column="channel" property="channel"/>
+        <result column="eta_minutes" property="etaMinutes"/>
+        <result column="per_tx_limit" property="perTxLimit"/>
+        <result column="fixed_fee" property="fixedFee"/>
+        <result column="rate_fee" property="rateFee"/>
+        <result column="enabled" property="enabled"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, channel, eta_minutes, per_tx_limit, fixed_fee, rate_fee, enabled, create_time, update_time
+    </sql>
+
+    <select id="selectByChannel" resultMap="channelMap">
+        select
+        <include refid="columns"/>
+        from cross_border_channel_config
+        where channel = #{channel}
+    </select>
+
+    <select id="selectAll" resultMap="channelMap">
+        select
+        <include refid="columns"/>
+        from cross_border_channel_config
+        order by channel asc
+    </select>
+
+    <select id="selectEnabled" resultMap="channelMap">
+        select
+        <include refid="columns"/>
+        from cross_border_channel_config
+        where enabled = 1
+        order by channel asc
+    </select>
+
+    <insert id="insert" parameterType="com.dong.crossborder.entity.ChannelConfig"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into cross_border_channel_config (channel, eta_minutes, per_tx_limit, fixed_fee, rate_fee, enabled)
+        values (#{channel}, #{etaMinutes}, #{perTxLimit}, #{fixedFee}, #{rateFee}, #{enabled})
+    </insert>
+
+    <update id="update" parameterType="com.dong.crossborder.entity.ChannelConfig">
+        update cross_border_channel_config
+        set eta_minutes  = #{etaMinutes},
+            per_tx_limit = #{perTxLimit},
+            fixed_fee    = #{fixedFee},
+            rate_fee     = #{rateFee},
+            enabled      = #{enabled},
+            update_time  = now()
+        where channel = #{channel}
+    </update>
+
+    <update id="updateEnabled">
+        update cross_border_channel_config
+        set enabled     = #{enabled},
+            update_time = now()
+        where channel = #{channel}
+    </update>
+
+</mapper>

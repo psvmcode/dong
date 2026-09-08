@@ -41,6 +41,45 @@ public class CrossBorderSettlementController {
     private final ReconDiffMapper reconDiffMapper;
 
     /**
+     * channelConfigService，业务服务层。
+     */
+    private final com.dong.crossborder.service.ChannelConfigService channelConfigService;
+
+    /**
+     * 查询全部渠道配置。停用的渠道展示出来但不参与路由。
+     */
+    @GetMapping("/channels")
+    @Operation(summary = "查询清算渠道配置，含时效、限额与费率")
+    public Result<List<com.dong.crossborder.entity.ChannelConfig>> channels() {
+        return Result.success(channelConfigService.all());
+    }
+
+    /**
+     * 调整渠道参数。
+     */
+    @PostMapping("/channel/{channel}")
+    @Operation(summary = "调整渠道的时效、限额与费率")
+    public Result<Void> updateChannel(@PathVariable int channel,
+                                      @RequestParam long etaMinutes,
+                                      @RequestParam java.math.BigDecimal perTxLimit,
+                                      @RequestParam java.math.BigDecimal fixedFee,
+                                      @RequestParam java.math.BigDecimal rateFee,
+                                      @RequestParam(defaultValue = "1") int enabled) {
+        channelConfigService.update(channel, etaMinutes, perTxLimit, fixedFee, rateFee, enabled);
+        return Result.success();
+    }
+
+    /**
+     * 启停渠道。渠道故障时停用，流量会自动切到其他渠道。
+     */
+    @PostMapping("/channel/{channel}/toggle")
+    @Operation(summary = "启停渠道，渠道故障时的熔断开关")
+    public Result<Void> toggleChannel(@PathVariable int channel, @RequestParam boolean enabled) {
+        channelConfigService.setEnabled(channel, enabled);
+        return Result.success();
+    }
+
+    /**
      * 创建清算批次。
      */
     @PostMapping("/batch")

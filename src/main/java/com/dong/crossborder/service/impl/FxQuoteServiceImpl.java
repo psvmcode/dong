@@ -37,18 +37,6 @@ import java.util.Map;
 public class FxQuoteServiceImpl implements FxQuoteService {
 
     /**
-     * 各币种对美元的中间价。真实系统由风控或交易系统实时推送，
-     * 这里用静态表模拟，重点是展示锁汇机制本身。
-     */
-    private static final Map<String, BigDecimal> USD_RATES = Map.of(
-            "USD", new BigDecimal("1.0000"),
-            "CNY", new BigDecimal("7.1500"),
-            "EUR", new BigDecimal("0.9200"),
-            "JPY", new BigDecimal("150.0000"),
-            "HKD", new BigDecimal("7.8000"),
-            "GBP", new BigDecimal("0.7900"));
-
-    /**
      * 点差，买卖价之间的差额比例。
      */
     private static final BigDecimal SPREAD = new BigDecimal("0.003");
@@ -61,6 +49,18 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      * fxQuoteMapper，MyBatis Mapper 数据访问层。
      */
     private final FxQuoteMapper fxQuoteMapper;
+
+    /**
+     * fxRateMapper。牌价从库里读，不再写死成常量：
+     * 汇率是会变的经营数据，写死意味着每次调整都要改代码发版，
+     * 也无法回答「这笔成交用的牌价是谁定的」。
+     */
+    private final com.dong.crossborder.mapper.FxRateMapper fxRateMapper;
+
+    /**
+     * channelConfigMapper。固定费与比例费按渠道取，与牌价同样要求可调整。
+     */
+    private final com.dong.crossborder.mapper.ChannelConfigMapper channelConfigMapper;
 
     /**
      * redisService，业务服务层。
@@ -180,21 +180,21 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     /**
      * 手续费按渠道区分。SWIFT 要经过代理行，成本最高；
      * CIPS 走人民币清算更便宜；本地清算成本最低。
-     * 都由固定费加比例费构成，这是真实渠道的计费方式。
+     * 都由固定费加比例费构成，费率取自渠道配置表以便运营调整。
      */
     @Override
     public BigDecimal fee(BigDecimal sourceAmount, SettlementChannel channel) {
         if (channel == null) {
             channel = SettlementChannel.SWIFT;
         }
-        return switch (channel) {
-            case SWIFT -> new BigDecimal("50").add(sourceAmount.multiply(new BigDecimal("0.001")))
-                    .setScale(2, RoundingMode.HALF_UP);
-            case CIPS -> new BigDecimal("10").add(sourceAmount.multiply(new BigDecimal("0.0005")))
-                    .setScale(2, RoundingMode.HALF_UP);
-            case LOCAL -> new BigDecimal("5").add(sourceAmount.multiply(new BigDecimal("0.0002")))
-                    .setScale(2, RoundingMode.HALF_UP);
-        };
+        com.dong.crossborder.entity.ChannelConfig config =
+                channelConfigMapper.selectByChannel(channel.getCode());
+        if (config == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "channel not configured " + channel);
+        }
+        return config.getFixedFee()
+                .add(sourceAmount.multiply(config.getRateFee()))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
@@ -224,24 +224,55 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     }
 
     /**
-     * 支持的币种。返回不可变副本，避免调用方改动牌价表。
+     * 查询全部牌价。
+     */
+    @Override
+    public List<com.dong.crossborder.dto.FxRateResponse> allRates() {
+        return fxRateMapper.selectAll().stream()
+                .map(com.dong.crossborder.dto.FxRateResponse::from)
+                .toList();
+    }
+
+    /**
+     * 调整牌价。真实系统由交易系统推送，这里提供手动调整的入口。
+     */
+    @Override
+    public void updateRate(String currency, BigDecimal usdRate) {
+        requireRate(currency);
+        fxRateMapper.updateRate(currency, usdRate);
+        // 中间价有缓存，改牌价后必须失效，否则询价仍在用旧价
+        redisService.delete(RATE_CACHE_PREFIX + currency);
+        log.info("fx rate updated currency={} usdRate={}", currency, usdRate);
+    }
+
+    /**
+     * 支持的币种取自牌价表，牌价里没有的币种一律不接受。
      */
     @Override
     public java.util.Set<String> supportedCurrencies() {
-        return java.util.Set.copyOf(USD_RATES.keySet());
+        return fxRateMapper.selectAll().stream()
+                .map(com.dong.crossborder.entity.FxRate::getCurrency)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     /**
      * 交叉汇率计算。源币种先换成美元，再由美元换成目标币种。
      */
     private BigDecimal midRate(String sourceCurrency, String targetCurrency) {
-        BigDecimal sourceToUsd = USD_RATES.get(sourceCurrency);
-        BigDecimal targetToUsd = USD_RATES.get(targetCurrency);
-        if (sourceToUsd == null || targetToUsd == null) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "unsupported currency pair " + sourceCurrency + "/" + targetCurrency);
-        }
+        BigDecimal sourceToUsd = requireRate(sourceCurrency).getUsdRate();
+        BigDecimal targetToUsd = requireRate(targetCurrency).getUsdRate();
         return targetToUsd.divide(sourceToUsd, 8, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 取指定币种的牌价，停用或不存在都按不支持处理。
+     */
+    private com.dong.crossborder.entity.FxRate requireRate(String currency) {
+        com.dong.crossborder.entity.FxRate rate = fxRateMapper.selectByCurrency(currency);
+        if (rate == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "unsupported currency " + currency);
+        }
+        return rate;
     }
 
 }
