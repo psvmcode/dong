@@ -1,7 +1,7 @@
 # 跨境支付业务专项学习
 
 > 配套代码：`src/main/java/com/dong/lab/crossborder/`（68 个文件，7092 行）
-> 建表语句：`db/schema.sql` 中 `cross_border_*` 共 8 张表
+> 建表语句：`../../db/schema.sql` 中 `cross_border_*` 共 8 张表
 > 接口入口：`http://127.0.0.1:8090/api/crossborder/**`（6 个控制器，38 个接口）
 
 本文以**业务为主线**，把跨境支付的领域知识讲清楚，再落到本项目每一行关键实现，最后给出可直接复制的实操命令。文中所有数字都是实测结果，不是估算。

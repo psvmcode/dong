@@ -10,11 +10,11 @@
 | 位置 | 定位 | 读者 |
 |---|---|---|
 | `doc/scenario/`（本目录） | **模块全景**，按场景横向铺开 | 想快速掌握一个模块 |
-| `../`（上层） | **专项深挖**，就一个主题讲透 | 想深入理解某处设计取舍 |
+| [`../topic/`](../topic/README.md) | **专题深挖**，就一个主题讲透 | 想深入理解某处设计取舍 |
 
 例如跨境支付：先看本目录的 [crossborder.md](crossborder.md) 建立整体认识，
-再按需读 [`../crossborder-payment.md`](../crossborder-payment.md)（业务深度）
-或 [`../crossborder-interview-prep.md`](../crossborder-interview-prep.md)（面试向）。
+再按需读 [`../topic/crossborder-payment.md`](../topic/crossborder-payment.md)（业务深度）
+或 [`../topic/crossborder-interview-prep.md`](../topic/crossborder-interview-prep.md)（面试向）。
 
 ---
 

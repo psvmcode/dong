@@ -23,7 +23,8 @@
 | [场景文档目录](doc/scenario/README.md) | 按业务场景组织的模块全景，入口在此 |
 | [跨境支付模块说明](doc/scenario/crossborder.md) | 业务场景 + 技术场景 + 接口清单全景 |
 | [经典 Redis 场景说明](doc/scenario/classic.md) | 短链/签到/UV/排行榜/延迟队列/GEO |
-| [专项文档](doc/crossborder-payment.md) | 跨境支付业务专项学习（设计取舍与原理） |
+| [专题文档目录](doc/topic/README.md) | 按主题纵向深挖，入口在此 |
+| [跨境支付专项学习](doc/topic/crossborder-payment.md) | 业务背景、状态机、风控判定（设计取舍与原理） |
 
 ---
 
@@ -569,7 +570,7 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 ### 5.11 跨境支付（crossborder）
 
 > **跨境支付模块说明**：[`doc/scenario/crossborder.md`](doc/scenario/crossborder.md)（业务场景、技术场景、接口清单全景）。
-> **专项学习文档**：[`doc/crossborder-payment.md`](doc/crossborder-payment.md)。从业务背景、领域概念讲到状态机与风控判定，含完整实操命令与实测数据。本节只做概要。
+> **专项学习文档**：[`doc/topic/crossborder-payment.md`](doc/topic/crossborder-payment.md)。从业务背景、领域概念讲到状态机与风控判定，含完整实操命令与实测数据。本节只做概要。
 
 这是最贴近真实业务的一个场景。一笔跨境汇款从发起到到账要经过九个环节，每个环节都有对应的工程问题：
 
