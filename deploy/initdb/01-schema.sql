@@ -105,6 +105,55 @@ create table if not exists classic_geo_place
   default charset = utf8mb4
   comment = '地理位置记录。GEO 数据存在 Redis 的 ZSet 里，落库用于持久化与重建';
 
+create table if not exists classic_id_generated
+(
+    id             bigint unsigned not null auto_increment                  comment '主键',
+    strategy       varchar(32)     not null default ''                      comment '发号策略：snowflake 雪花 segment 号段 redis 自增 uuid',
+    id_count       int             not null default 0                       comment '本批生成的数量',
+    last_id     varchar(64)     not null default ''                      comment '本批最后一个值',
+    elapsed_millis double          not null default 0                       comment '生成耗时，用于横向对比四种策略的性能',
+    create_time    datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    key idx_strategy (strategy)                                             comment '按策略查历史性能'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '发号器生成记录。每次批量生成记一条，积累后可对比四种策略的耗时差异';
+
+create table if not exists classic_lock_lab_result
+(
+    id             bigint unsigned not null auto_increment                  comment '主键',
+    mode           varchar(32)     not null default ''                      comment '实验模式：no-lock 不加锁 redisson-lock 加锁',
+    expected_count int             not null default 0                       comment '期望计数，等于线程数乘以每线程循环数',
+    actual_count   int             not null default 0                       comment '实际计数，不加锁时会小于期望值',
+    lock_acquired  int             not null default 0                       comment '成功拿到锁的次数',
+    lock_timed_out int             not null default 0                       comment '等待锁超时的次数，必须单独统计否则结论失真',
+    lost_updates   int             not null default 0                       comment '丢失的更新数，等于期望减实际，是本实验的核心指标',
+    elapsed_millis bigint          not null default 0                       comment '实验耗时，加锁与不加锁相差一到两个数量级',
+    create_time    datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    key idx_mode (mode)                                                     comment '按模式查历史实验结果'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '分布式锁对照实验结果。落库后可回看历史实验，不必每次重跑';
+
+create table if not exists classic_rate_limit_lab_result
+(
+    id                  bigint unsigned not null auto_increment                  comment '主键',
+    biz_key             varchar(64)     not null default ''                      comment '限流业务键',
+    algorithm           varchar(32)     not null default ''                      comment '限流算法：fixed_window 固定窗口 sliding_window 滑动窗口 token_bucket 令牌桶 leaky_bucket 漏桶',
+    limit_count         bigint          not null default 0                       comment '窗口内允许通过的次数',
+    window_seconds      bigint          not null default 0                       comment '窗口时长，单位秒',
+    attempts            int             not null default 0                       comment '本轮突发尝试的总次数',
+    first_burst_allowed bigint          not null default 0                       comment '第一轮突发放行的次数',
+    second_burst_allowed bigint         not null default -1                      comment '第二轮突发放行的次数，-1 表示未做第二轮',
+    distributed         tinyint         not null default 1                       comment '是否分布式限流：1 是 2 否',
+    create_time         datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    key idx_biz_key (biz_key)                                                    comment '按业务键查历史对比'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '限流算法对比结果。四种算法一轮突发放行数必然相同，差异在配额如何恢复，落库便于回看';
+
 create table if not exists seckill_activity
 (
     id              bigint unsigned not null auto_increment                  comment '主键',

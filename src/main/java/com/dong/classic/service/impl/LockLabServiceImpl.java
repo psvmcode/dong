@@ -58,6 +58,11 @@ public class LockLabServiceImpl implements LockLabService {
     private final DistributedLockService distributedLockService;
 
     /**
+     * 实验记录落库，保存每次锁实验的结果。
+     */
+    private final com.dong.classic.mapper.ClassicLabRecordMapper labRecordMapper;
+
+    /**
      * 执行不加锁的并发自增对照实验。
      *
      * @param threads 线程数
@@ -128,7 +133,32 @@ public class LockLabServiceImpl implements LockLabService {
         result.put("elapsedMillis", System.currentTimeMillis() - start);
         log.info("lock lab mode={} expected={} actual={} acquired={} timedOut={}",
                 result.get("mode"), total, actual, succeeded.get(), timedOut.get());
+        persist(guarded ? "redisson-lock" : "no-lock", total, actual,
+                succeeded.get(), timedOut.get(), System.currentTimeMillis() - start);
         return result;
+    }
+
+    /**
+     * 落库实验结果。核心指标是丢失更新数，等于期望值减实际值。
+     * 锁等待超时次数单独记录，不能混进丢失更新，否则实验结论失真。
+     * 失败只记录日志，实验已经跑完，不应因为落库问题丢掉结果。
+     */
+    private void persist(String mode, int expected, long actual,
+                         long acquired, long timedOut, long elapsed) {
+        try {
+            com.dong.classic.entity.ClassicLockLabResult record =
+                    new com.dong.classic.entity.ClassicLockLabResult();
+            record.setMode(mode);
+            record.setExpectedCount(expected);
+            record.setActualCount((int) actual);
+            record.setLockAcquired((int) acquired);
+            record.setLockTimedOut((int) timedOut);
+            record.setLostUpdates((int) (expected - actual));
+            record.setElapsedMillis(elapsed);
+            labRecordMapper.insertLockLabResult(record);
+        } catch (Exception ex) {
+            log.error("persist lock lab result failed mode={}", mode, ex);
+        }
     }
 
     /**

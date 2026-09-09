@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.classic.mapper.ClassicLabRecordMapper">
+
+    <!-- 实验类场景落库：发号器、锁、限流 -->
+
+    <!-- 注意 last_id 而不是 last_value：last_value 是 MySQL 的窗口函数保留字 -->
+
+    <insert id="insertIdGenerated" parameterType="com.dong.classic.entity.ClassicIdGenerated">
+        insert into classic_id_generated (strategy, id_count, last_id, elapsed_millis)
+        values (#{strategy}, #{idCount}, #{lastId}, #{elapsedMillis})
+    </insert>
+
+    <insert id="insertLockLabResult" parameterType="com.dong.classic.entity.ClassicLockLabResult">
+        insert into classic_lock_lab_result
+        (mode, expected_count, actual_count, lock_acquired, lock_timed_out, lost_updates, elapsed_millis)
+        values (#{mode}, #{expectedCount}, #{actualCount}, #{lockAcquired}, #{lockTimedOut},
+                #{lostUpdates}, #{elapsedMillis})
+    </insert>
+
+    <insert id="insertRateLimitResult" parameterType="com.dong.classic.entity.ClassicRateLimitLabResult">
+        insert into classic_rate_limit_lab_result
+        (biz_key, algorithm, limit_count, window_seconds, attempts,
+         first_burst_allowed, second_burst_allowed, distributed)
+        values (#{bizKey}, #{algorithm}, #{limitCount}, #{windowSeconds}, #{attempts},
+                #{firstBurstAllowed}, #{secondBurstAllowed}, #{distributed})
+    </insert>
+
+    <select id="selectIdGenerated" resultType="com.dong.classic.entity.ClassicIdGenerated">
+        select id, strategy, id_count, last_id, elapsed_millis, create_time
+        from classic_id_generated
+        where strategy = #{strategy}
+        order by id desc
+        limit #{limit}
+    </select>
+
+    <select id="selectLockLabResult" resultType="com.dong.classic.entity.ClassicLockLabResult">
+        select id, mode, expected_count, actual_count, lock_acquired, lock_timed_out,
+               lost_updates, elapsed_millis, create_time
+        from classic_lock_lab_result
+        where mode = #{mode}
+        order by id desc
+        limit #{limit}
+    </select>
+
+    <select id="selectRateLimitResult" resultType="com.dong.classic.entity.ClassicRateLimitLabResult">
+        select id, biz_key, algorithm, limit_count, window_seconds, attempts,
+               first_burst_allowed, second_burst_allowed, distributed, create_time
+        from classic_rate_limit_lab_result
+        where biz_key = #{bizKey}
+        order by id desc
+        limit #{limit}
+    </select>
+
+</mapper>

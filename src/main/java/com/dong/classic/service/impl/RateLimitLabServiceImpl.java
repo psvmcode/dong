@@ -29,6 +29,37 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
     private final RateLimitManager rateLimitManager;
 
     /**
+     * 实验记录落库，保存每次算法对比的结果。
+     */
+    private final com.dong.classic.mapper.ClassicLabRecordMapper labRecordMapper;
+
+    /**
+     * 落库一条算法对比结果。
+     *
+     * <p>第二轮放行数是关键：四种算法一轮突发的放行量必然相同，
+     * 差异只在配额如何恢复，所以没做第二轮时记 -1 以示区别。
+     * 失败只记录日志，实验已经跑完，不应因为落库问题丢掉结果。
+     */
+    private void persist(String bizKey, String algorithm, long limit, long windowSeconds,
+                         int attempts, long firstBurst, long secondBurst, boolean distributed) {
+        try {
+            com.dong.classic.entity.ClassicRateLimitLabResult record =
+                    new com.dong.classic.entity.ClassicRateLimitLabResult();
+            record.setBizKey(bizKey);
+            record.setAlgorithm(algorithm);
+            record.setLimitCount(limit);
+            record.setWindowSeconds(windowSeconds);
+            record.setAttempts(attempts);
+            record.setFirstBurstAllowed(firstBurst);
+            record.setSecondBurstAllowed(secondBurst);
+            record.setDistributed(distributed ? 1 : 2);
+            labRecordMapper.insertRateLimitResult(record);
+        } catch (Exception ex) {
+            log.error("persist rate limit result failed algorithm={}", algorithm, ex);
+        }
+    }
+
+    /**
      * 对比限流效果。
      */
     @Override
@@ -54,13 +85,16 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
             Map<String, Object> detail = new LinkedHashMap<>();
             detail.put("firstBurstAllowed", firstBurst);
             detail.put("firstBurstRejected", attempts - firstBurst);
+            long secondBurst = -1L;
             if (delayMillis > 0) {
                 sleep(delayMillis);
-                long secondBurst = burst(key, rule, attempts, distributed);
+                secondBurst = burst(key, rule, attempts, distributed);
                 detail.put("secondBurstAllowed", secondBurst);
                 detail.put("recoveredInGap", secondBurst);
             }
             result.put(algorithm.name(), detail);
+            persist(bizKey, algorithm.name(), limit, windowSeconds, attempts,
+                    firstBurst, secondBurst, distributed);
         }
         log.info("rate limit comparison finished distributed={} limit={} attempts={} delayMillis={}",
                 distributed, limit, attempts, delayMillis);

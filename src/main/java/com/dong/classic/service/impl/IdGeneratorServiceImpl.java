@@ -48,7 +48,12 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
     private final RedissonClient redissonClient;
 
     /**
-     * 按策略批量生成 id 并统计耗时。
+     * 实验记录落库，保存每批发号的策略与耗时。
+     */
+    private final com.dong.classic.mapper.ClassicLabRecordMapper labRecordMapper;
+
+    /**
+     * 按策略批量生成 id 并统计耗时，结果落库便于后续横向对比。
      *
      * @param strategy 发号策略
      * @param count    生成数量
@@ -85,12 +90,34 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
                     "unknown strategy " + strategy + ", use snowflake | segment | redis | uuid");
         }
 
+        double elapsed = (System.nanoTime() - start) / 1_000_000.0;
+        persist(strategy, count, last.get(), elapsed);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("strategy", strategy);
         result.put("count", count);
         result.put("lastId", last.get());
-        result.put("elapsedMillis", (System.nanoTime() - start) / 1_000_000.0);
+        result.put("elapsedMillis", elapsed);
         return result;
+    }
+
+    /**
+     * 落库本批发号记录。记的是批次而不是单个 id，
+     * 一次生成几万个 id 只落库一条，避免落库本身成为性能瓶颈，
+     * 反而干扰「对比发号器性能」这个实验目的。
+     * 失败只记录日志，不能让发号失败。
+     */
+    private void persist(String strategy, int count, long lastValue, double elapsed) {
+        try {
+            com.dong.classic.entity.ClassicIdGenerated record =
+                    new com.dong.classic.entity.ClassicIdGenerated();
+            record.setStrategy(strategy);
+            record.setIdCount(count);
+            record.setLastId(String.valueOf(lastValue));
+            record.setElapsedMillis(elapsed);
+            labRecordMapper.insertIdGenerated(record);
+        } catch (Exception ex) {
+            log.error("persist id generated record failed strategy={}", strategy, ex);
+        }
     }
 
 }
