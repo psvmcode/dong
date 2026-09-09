@@ -21,8 +21,11 @@
 
 | 目录 | 内容 |
 |---|---|
-| [`java/`](java/README.md) | Java 语言与并发 |
-| [`mysql/`](mysql/README.md) | MySQL 索引、事务、锁 |
+| [`java/`](java/README.md) | Java 语言、并发、动态代理 |
+| [`jvm/`](jvm/README.md) | 内存模型、GC、类加载 |
+| [`mysql/`](mysql/README.md) | 索引、事务隔离、MVCC、锁、执行计划 |
+| [`redis/`](redis/README.md) | 持久化、缓存一致性、分布式锁 |
+| [`spring/`](spring/README.md) | 事务、Bean 生命周期、循环依赖 |
 
 ---
 
