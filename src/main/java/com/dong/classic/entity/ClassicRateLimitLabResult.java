@@ -21,6 +21,8 @@ public class ClassicRateLimitLabResult {
      */
     private Long id;
 
+
+
     /**
      * 限流业务键
      */

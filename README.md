@@ -25,6 +25,7 @@
 | [经典 Redis 场景说明](doc/scenario/classic.md) | 短链/签到/UV/排行榜/延迟队列/GEO |
 | [专题文档目录](doc/topic/README.md) | 按主题纵向深挖，入口在此 |
 | [跨境支付专项学习](doc/topic/crossborder-payment.md) | 业务背景、状态机、风控判定（设计取舍与原理） |
+| [知识点学习目录](doc/learning/README.md) | 通用技术知识点整理，脱离具体项目 |
 
 ---
 
