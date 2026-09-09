@@ -17,17 +17,19 @@
 
 ---
 
-## 文档清单
+## 目录结构
 
-### Java 并发
-
-| 文档 | 主题 |
+| 目录 | 内容 |
 |---|---|
-| [volatile：一句话和两个坑](java-volatile.md) | 可见性、禁止重排序、**不保证原子性** |
+| [`java/`](java/README.md) | Java 语言与并发 |
+| [`mysql/`](mysql/README.md) | MySQL 索引、事务、锁 |
 
 ---
 
 ## 命名约定
 
-`<领域>-<知识点>.md`，例如 `java-volatile.md`、`redis-persistence.md`。
-领域前缀便于日后按语言或中间件归类检索。
+按领域分目录，文件名只写知识点本身：`<知识点>.md`，
+例如 `java/volatile.md`、`mysql/mvcc.md`。
+
+领域由**所在目录**表达，不再用文件名前缀——
+这样同一份文档移动到别的领域目录时，文件名不用改。
