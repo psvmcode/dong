@@ -1,8 +1,8 @@
 # 跨境支付模块说明
 
 > 本文是跨境支付的**全景说明**，覆盖业务场景、技术场景与接口清单三部分。
-> 若想深入理解某一处的设计取舍，另见 `doc/crossborder-payment.md`（业务深度）与
-> `doc/crossborder-interview-prep.md`（面试向讲解，未纳入版本库）。
+> 若想深入理解某一处的设计取舍，另见 `../crossborder-payment.md`（业务深度）与
+> `../crossborder-interview-prep.md`（面试向讲解，未纳入版本库）。
 
 ---
 
@@ -265,7 +265,7 @@ CREATED → QUOTE_LOCKED → FUNDS_DEBITED → SETTLING → SETTLED
 
 ### 3.8 输入防御
 
-所有入参都有边界约束（详见 `doc/crossborder-payment.md` 与代码注释）：
+所有入参都有边界约束（详见 `../crossborder-payment.md` 与代码注释）：
 
 - 金额：`@DecimalMin` + `@Digits(integer=16, fraction=2)`，小数位与 `decimal(18,2)` 对齐，避免静默四舍五入
 - 字符串：`@Size` 与数据库字段长度一致，超长会变成 500 而非业务拒绝
@@ -402,9 +402,9 @@ CREATED → QUOTE_LOCKED → FUNDS_DEBITED → SETTLING → SETTLED
 | `cross_border_settlement_batch` | 清算批次 |
 | `cross_border_recon_diff` | 对账差异 |
 
-完整 DDL 见 `db/schema.sql`。
+完整 DDL 见 `../../db/schema.sql`。
 
-> 改完 DDL 必须执行 `./deploy/gen-initdb.sh` 重新生成 `deploy/initdb/`，
+> 改完 DDL 必须执行 `../../deploy/gen-initdb.sh` 重新生成 `../../deploy/initdb/`，
 > 两个 initdb 是容器首次启动时用的「库内脚本」，无建库语句，**不要手工编辑**。
 
 ---
@@ -460,4 +460,4 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--dong.elasticsearch.enabled=fa
 open http://127.0.0.1:8090/doc.html
 ```
 
-完整链路的 curl 示例见 `doc/crossborder-payment.md` 第九节。
+完整链路的 curl 示例见 `../crossborder-payment.md` 第九节。

@@ -333,9 +333,9 @@ try {
 > `classic_id_generated` 的字段叫 `last_id` 而不是 `last_value`：
 > `LAST_VALUE` 是 MySQL 的窗口函数保留字，直接用作列名会报语法错误。
 
-完整 DDL 见 `db/schema.sql`。
+完整 DDL 见 `../../db/schema.sql`。
 
-> 改完 DDL 必须执行 `./deploy/gen-initdb.sh` 重新生成 `deploy/initdb/`。
+> 改完 DDL 必须执行 `../../deploy/gen-initdb.sh` 重新生成 `../../deploy/initdb/`。
 > 这两个 initdb 是容器首次启动时用的「库内脚本」，无建库语句，**不要手工编辑**。
 
 ---
