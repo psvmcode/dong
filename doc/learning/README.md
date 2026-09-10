@@ -26,6 +26,7 @@
 | [`mysql/`](mysql/README.md) | 索引、事务隔离、MVCC、锁、执行计划 |
 | [`redis/`](redis/README.md) | 持久化、缓存一致性、分布式锁 |
 | [`spring/`](spring/README.md) | 事务、Bean 生命周期、循环依赖 |
+| [`mq/`](mq/README.md) | 消息不丢、幂等、顺序、堆积与死信 |
 
 ---
 
