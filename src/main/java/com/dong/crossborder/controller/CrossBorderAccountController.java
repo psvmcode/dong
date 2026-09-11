@@ -79,7 +79,9 @@ public class CrossBorderAccountController {
     @GetMapping("/accounts/{accountNo}/diff")
     @Operation(summary = "校验账户余额与流水的差额，入参必须是精确小数，不能用浮点")
     public Result<Map<String, Object>> balanceDiff(@PathVariable String accountNo,
-                                                   @RequestParam(defaultValue = "0") java.math.BigDecimal initial) {
+                                                   @RequestParam(defaultValue = "0")
+                                                   @Digits(integer = 16, fraction = 2)
+                                                   java.math.BigDecimal initial) {
         AccountResponse account = accountService.findByAccountNo(accountNo);
         java.math.BigDecimal diff = accountService.balanceDiff(account.getId(), initial);
         return Result.success(Map.of(

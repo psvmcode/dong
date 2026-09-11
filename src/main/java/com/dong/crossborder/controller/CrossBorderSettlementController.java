@@ -68,9 +68,15 @@ public class CrossBorderSettlementController {
     @Operation(summary = "调整渠道的时效、限额与费率")
     public Result<Void> updateChannel(@PathVariable int channel,
                                       @RequestParam long etaMinutes,
-                                      @RequestParam java.math.BigDecimal perTxLimit,
-                                      @RequestParam java.math.BigDecimal fixedFee,
-                                      @RequestParam java.math.BigDecimal rateFee,
+                                      @RequestParam
+                                      @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2)
+                                      java.math.BigDecimal perTxLimit,
+                                      @RequestParam
+                                      @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2)
+                                      java.math.BigDecimal fixedFee,
+                                      @RequestParam
+                                      @NotNull @PositiveOrZero @Digits(integer = 4, fraction = 6)
+                                      java.math.BigDecimal rateFee,
                                       @RequestParam(defaultValue = "1") int enabled) {
         channelConfigService.update(channel, etaMinutes, perTxLimit, fixedFee, rateFee, enabled);
         return Result.success();
