@@ -1,6 +1,8 @@
 package com.dong.classic.service.impl;
 
 import com.dong.classic.service.LockLabService;
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;
 import com.dong.framework.lock.DistributedLockService;
 import com.dong.framework.lock.LockHandle;
 import com.dong.framework.redis.RedisService;
@@ -46,6 +48,13 @@ public class LockLabServiceImpl implements LockLabService {
      * 获取锁的最长等待时间，超时未拿到就放弃，避免请求无限堆积。
      */
     private static final Duration WAIT_TIME = Duration.ofSeconds(30);
+
+    /**
+     * 实验总任务数上限。线程数与循环数分别受限还不够，
+     * 两个参数相乘才是真实任务量——只限制其中一个等于没限制。
+     * 这一层校验不能只放在 Controller：Service 也可能被内部调用。
+     */
+    private static final int MAX_TOTAL_TASKS = 20_000;
 
     /**
      * Redis 服务。
@@ -97,7 +106,12 @@ public class LockLabServiceImpl implements LockLabService {
     private Map<String, Object> run(int threads, int loops, boolean guarded) {
         String key = COUNTER + System.nanoTime();
         redisService.set(key, "0");
-        int total = Math.max(1, threads) * Math.max(1, loops);
+        long requested = (long) Math.max(1, threads) * Math.max(1, loops);
+        if (requested > MAX_TOTAL_TASKS) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID,
+                    "total tasks " + requested + " exceeds limit " + MAX_TOTAL_TASKS);
+        }
+        int total = (int) requested;
         long start = System.currentTimeMillis();
         AtomicLong succeeded = new AtomicLong();
         AtomicLong timedOut = new AtomicLong();

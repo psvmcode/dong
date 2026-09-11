@@ -1,5 +1,11 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.PageResult;
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.ComplianceRecordResponse;
@@ -28,6 +34,7 @@ import java.util.Map;
  * 清算由消息队列异步推进。
  */
 @RestController
+@Validated
 @RequestMapping("/api/crossborder/remittance")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-汇款")
@@ -83,8 +90,10 @@ public class CrossBorderRemittanceController {
     @Operation(summary = "分页查询汇款单，可按状态过滤")
     public Result<PageResult<RemittanceResponse>> findByPage(
             @RequestParam(required = false) RemittanceStatus status,
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "20") int pageSize) {
+            @RequestParam(defaultValue = "1")
+            @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
+            @RequestParam(defaultValue = "20")
+            @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         return Result.success(remittanceService.findByPage(status, pageNum, pageSize));
     }
 
@@ -104,8 +113,10 @@ public class CrossBorderRemittanceController {
     @GetMapping("/pending-review")
     @Operation(summary = "查询待人工审核的汇款单")
     public Result<PageResult<RemittanceResponse>> pendingReview(
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "20") int pageSize) {
+            @RequestParam(defaultValue = "1")
+            @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
+            @RequestParam(defaultValue = "20")
+            @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         return Result.success(remittanceService.findByPage(RemittanceStatus.PENDING_REVIEW, pageNum, pageSize));
     }
 
@@ -137,8 +148,10 @@ public class CrossBorderRemittanceController {
     @PostMapping("/{remittanceNo}/return")
     @Operation(summary = "发起退汇，资金从收款方退回付款方")
     public Result<RemittanceResponse> returnRemittance(@PathVariable String remittanceNo,
-                                                       @RequestParam(defaultValue = "") String reason,
-                                                       @RequestParam(defaultValue = "system") String operator) {
+                                                       @RequestParam(defaultValue = "")
+                                                       @NotBlank @Size(max = 512) String reason,
+                                                       @RequestParam(defaultValue = "system")
+                                                       @NotBlank @Size(max = 128) String operator) {
         return Result.success(remittanceService.returnRemittance(remittanceNo, reason, operator));
     }
 

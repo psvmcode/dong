@@ -1,5 +1,11 @@
 package com.dong.classic.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.classic.entity.ClassicIdGenerated;
 import com.dong.classic.entity.ClassicLockLabResult;
 import com.dong.classic.entity.ClassicRateLimitLabResult;
@@ -19,6 +25,7 @@ import java.util.List;
  * 结果落库后可以回看历史，不必每次重新跑一遍。
  */
 @RestController
+@Validated
 @RequestMapping("/api/classic/lab-record")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-实验记录")
@@ -36,8 +43,10 @@ public class ClassicLabRecordController {
     @GetMapping("/id")
     @Operation(summary = "查询某发号策略的历史生成记录")
     public Result<List<ClassicIdGenerated>> idGenerated(
-            @RequestParam(defaultValue = "snowflake") String strategy,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "snowflake")
+            @NotBlank @Size(max = 32) String strategy,
+            @RequestParam(defaultValue = "10")
+            @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(labRecordMapper.selectIdGenerated(strategy, limit));
     }
 
@@ -47,8 +56,10 @@ public class ClassicLabRecordController {
     @GetMapping("/lock")
     @Operation(summary = "查询锁实验的历史结果")
     public Result<List<ClassicLockLabResult>> lockLab(
-            @RequestParam(defaultValue = "no-lock") String mode,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "no-lock")
+            @NotBlank @Size(max = 32) String mode,
+            @RequestParam(defaultValue = "10")
+            @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(labRecordMapper.selectLockLabResult(mode, limit));
     }
 
@@ -58,8 +69,10 @@ public class ClassicLabRecordController {
     @GetMapping("/limiter")
     @Operation(summary = "查询限流算法对比的历史结果")
     public Result<List<ClassicRateLimitLabResult>> rateLimit(
-            @RequestParam(defaultValue = "demo") String bizKey,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "demo")
+            @NotBlank @Size(max = 128) String bizKey,
+            @RequestParam(defaultValue = "20")
+            @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(labRecordMapper.selectRateLimitResult(bizKey, limit));
     }
 

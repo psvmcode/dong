@@ -1,5 +1,7 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.FxQuoteResponse;
 import com.dong.crossborder.dto.FxRateResponse;
@@ -65,8 +67,10 @@ public class CrossBorderFxController {
      */
     @GetMapping("/available")
     @Operation(summary = "查询某货币对的可用报价")
-    public Result<List<FxQuoteResponse>> available(@RequestParam String sourceCurrency,
-                                                   @RequestParam String targetCurrency) {
+    public Result<List<FxQuoteResponse>> available(@RequestParam
+ @NotBlank @Size(max = 128) String sourceCurrency,
+                                                   @RequestParam
+ @NotBlank @Size(max = 128) String targetCurrency) {
         return Result.success(fxQuoteService.available(sourceCurrency + "/" + targetCurrency));
     }
 
@@ -75,8 +79,10 @@ public class CrossBorderFxController {
      */
     @GetMapping("/rate")
     @Operation(summary = "查询当前中间价，走缓存")
-    public Result<Map<String, Object>> currentRate(@RequestParam String sourceCurrency,
-                                                   @RequestParam String targetCurrency) {
+    public Result<Map<String, Object>> currentRate(@RequestParam
+ @NotBlank @Size(max = 128) String sourceCurrency,
+                                                   @RequestParam
+ @NotBlank @Size(max = 128) String targetCurrency) {
         BigDecimal rate = fxQuoteService.currentRate(sourceCurrency, targetCurrency);
         return Result.success(Map.of(
                 "currencyPair", sourceCurrency + "/" + targetCurrency,

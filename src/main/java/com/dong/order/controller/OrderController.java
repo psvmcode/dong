@@ -1,5 +1,11 @@
 package com.dong.order.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.order.dto.OrderBenchmarkResponse;
 import com.dong.order.dto.OrderCreateRequest;
@@ -29,6 +35,7 @@ import java.util.List;
  * 想看并发下会发生什么，直接压 benchmark 接口对比 cas 与 none 两种模式。
  */
 @RestController
+@Validated
 @RequestMapping("/api/order")
 @RequiredArgsConstructor
 @Tag(name = "订单履约状态机")
@@ -90,7 +97,8 @@ public class OrderController {
      */
     @GetMapping
     @Operation(summary = "查询最近创建的订单")
-    public Result<List<OrderResponse>> recent(@RequestParam(defaultValue = "20") int limit) {
+    public Result<List<OrderResponse>> recent(@RequestParam(defaultValue = "20")
+ @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(orderService.recent(limit));
     }
 
@@ -99,8 +107,10 @@ public class OrderController {
      */
     @PostMapping("/benchmark")
     @Operation(summary = "并发推进对比实验，cas 带乐观锁，none 不带")
-    public Result<OrderBenchmarkResponse> benchmark(@RequestParam(defaultValue = "16") int threads,
-                                                    @RequestParam(defaultValue = "cas") String mode) {
+    public Result<OrderBenchmarkResponse> benchmark(@RequestParam(defaultValue = "16")
+ @Min(1) @Max(Constants.MAX_THREADS) int threads,
+                                                    @RequestParam(defaultValue = "cas")
+                                                    @NotBlank @Size(max = 32) String mode) {
         return Result.success(orderService.benchmark(threads, mode));
     }
 

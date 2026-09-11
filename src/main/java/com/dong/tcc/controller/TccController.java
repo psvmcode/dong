@@ -1,5 +1,9 @@
 package com.dong.tcc.controller;
 
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.tcc.dto.TccOrderRequest;
 import com.dong.tcc.dto.TccResultResponse;
@@ -28,6 +32,7 @@ import java.util.Map;
  * 悬挂是 Cancel 先到、Try 后到，需要在 Try 前检查事务状态。
  */
 @RestController
+@Validated
 @RequestMapping("/api/tcc")
 @RequiredArgsConstructor
 @Tag(name = "分布式事务-TCC")
@@ -46,7 +51,8 @@ public class TccController {
     @Operation(summary = "初始化库存与账户，作为演示数据")
     public Result<Void> seed(@RequestParam Long userId,
                              @RequestParam Long productId,
-                             @RequestParam(defaultValue = "100") int available,
+                             @RequestParam(defaultValue = "100")
+                             @Min(0) @Max(1_000_000) int available,
                              @RequestParam(defaultValue = "100000") long balance) {
         tccCoordinatorService.seed(userId, productId, available, balance);
         return Result.success();

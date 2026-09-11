@@ -1,5 +1,10 @@
 package com.dong.doc.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.PageResult;
@@ -23,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 无 schema 的特性避免了每次加字段都要改表结构。
  */
 @RestController
+@Validated
 @RequestMapping("/api/doc/operation-log")
 @RequiredArgsConstructor
 @Tag(name = "文档-操作日志")
@@ -49,9 +55,12 @@ public class OperationLogController {
      */
     @GetMapping
     @Operation(summary = "按业务类型分页查询操作日志")
-    public Result<PageResult<OperationLogDocument>> findByPage(@RequestParam(required = false) String bizType,
-                                                               @RequestParam(defaultValue = "1") int pageNum,
-                                                               @RequestParam(defaultValue = "20") int pageSize) {
+    public Result<PageResult<OperationLogDocument>> findByPage(@RequestParam(required = false)
+ @NotBlank @Size(max = 128) String bizType,
+                                                               @RequestParam(defaultValue = "1")
+                                                               @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
+                                                               @RequestParam(defaultValue = "20")
+                                                               @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         return Result.success(requireService().findByPage(bizType, pageNum, pageSize));
     }
 

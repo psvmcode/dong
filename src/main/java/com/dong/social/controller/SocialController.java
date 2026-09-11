@@ -1,5 +1,11 @@
 package com.dong.social.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.social.dto.FeedResponse;
 import com.dong.social.service.SocialService;
@@ -23,6 +29,7 @@ import java.util.Map;
  * 拉模式写一份、读时聚合，适合大 V。真实系统通常两者结合。
  */
 @RestController
+@Validated
 @RequestMapping("/api/social")
 @RequiredArgsConstructor
 @Tag(name = "社交关系")
@@ -104,7 +111,8 @@ public class SocialController {
      */
     @PostMapping("/feed")
     @Operation(summary = "发布一条动态")
-    public Result<Long> publishFeed(@RequestParam Long authorId, @RequestParam String content) {
+    public Result<Long> publishFeed(@RequestParam Long authorId, @RequestParam
+ @NotBlank @Size(max = 4096) String content) {
         return Result.success(socialService.publishFeed(authorId, content));
     }
 
@@ -114,7 +122,8 @@ public class SocialController {
     @GetMapping("/timeline/push")
     @Operation(summary = "推模式时间线，直接读取已准备好的结果")
     public Result<List<FeedResponse>> timelinePush(@RequestParam Long userId,
-                                                  @RequestParam(defaultValue = "20") int size) {
+                                                  @RequestParam(defaultValue = "20")
+                                                  @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int size) {
         return Result.success(socialService.timelinePush(userId, size));
     }
 
@@ -124,8 +133,10 @@ public class SocialController {
     @GetMapping("/timeline/pull")
     @Operation(summary = "拉模式时间线，读时聚合所有关注者的动态")
     public Result<List<FeedResponse>> timelinePull(@RequestParam Long userId,
-                                                  @RequestParam(defaultValue = "1") int pageNum,
-                                                  @RequestParam(defaultValue = "20") int pageSize) {
+                                                  @RequestParam(defaultValue = "1")
+                                                  @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
+                                                  @RequestParam(defaultValue = "20")
+                                                  @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         return Result.success(socialService.timelinePull(userId, pageNum, pageSize));
     }
 

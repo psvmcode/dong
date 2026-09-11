@@ -1,5 +1,11 @@
 package com.dong.classic.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.classic.dto.RankItemResponse;
 import com.dong.classic.service.LeaderboardService;
 import com.dong.common.result.Result;
@@ -20,6 +26,7 @@ import java.util.List;
  * 相比数据库 order by 加 limit，在高频更新场景下代价低得多。
  */
 @RestController
+@Validated
 @RequestMapping("/api/classic/rank")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-排行榜")
@@ -36,8 +43,10 @@ public class LeaderboardController {
      */
     @PostMapping("/submit")
     @Operation(summary = "提交分数，覆盖该成员原有成绩")
-    public Result<Void> submit(@RequestParam(defaultValue = "default") String board,
-                               @RequestParam String member,
+    public Result<Void> submit(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
+                               @RequestParam
+ @NotBlank @Size(max = 128) String member,
                                @RequestParam double score) {
         leaderboardService.submit(board, member, score);
         return Result.success();
@@ -48,8 +57,10 @@ public class LeaderboardController {
      */
     @PostMapping("/add")
     @Operation(summary = "累加分数，返回累加后的结果")
-    public Result<Double> addScore(@RequestParam(defaultValue = "default") String board,
-                                   @RequestParam String member,
+    public Result<Double> addScore(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
+                                   @RequestParam
+ @NotBlank @Size(max = 128) String member,
                                    @RequestParam double delta) {
         return Result.success(leaderboardService.addScore(board, member, delta));
     }
@@ -59,8 +70,10 @@ public class LeaderboardController {
      */
     @GetMapping("/top")
     @Operation(summary = "查询排行榜前 N 名")
-    public Result<List<RankItemResponse>> top(@RequestParam(defaultValue = "default") String board,
-                                              @RequestParam(defaultValue = "10") int size) {
+    public Result<List<RankItemResponse>> top(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
+                                              @RequestParam(defaultValue = "10")
+                                              @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int size) {
         return Result.success(leaderboardService.top(board, size));
     }
 
@@ -69,8 +82,10 @@ public class LeaderboardController {
      */
     @GetMapping("/rank")
     @Operation(summary = "查询某个成员的名次，从 0 开始")
-    public Result<Long> rank(@RequestParam(defaultValue = "default") String board,
-                             @RequestParam String member) {
+    public Result<Long> rank(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
+                             @RequestParam
+ @NotBlank @Size(max = 128) String member) {
         return Result.success(leaderboardService.rankOf(board, member));
     }
 
@@ -79,8 +94,10 @@ public class LeaderboardController {
      */
     @GetMapping("/score")
     @Operation(summary = "查询某个成员的分数")
-    public Result<Double> score(@RequestParam(defaultValue = "default") String board,
-                                @RequestParam String member) {
+    public Result<Double> score(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
+                                @RequestParam
+ @NotBlank @Size(max = 128) String member) {
         return Result.success(leaderboardService.scoreOf(board, member));
     }
 
@@ -89,9 +106,12 @@ public class LeaderboardController {
      */
     @GetMapping("/around")
     @Operation(summary = "查询某个成员前后指定范围内的排名")
-    public Result<List<RankItemResponse>> around(@RequestParam(defaultValue = "default") String board,
-                                                 @RequestParam String member,
-                                                 @RequestParam(defaultValue = "2") int range) {
+    public Result<List<RankItemResponse>> around(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
+                                                 @RequestParam
+ @NotBlank @Size(max = 128) String member,
+                                                 @RequestParam(defaultValue = "2")
+                                                 @Min(1) @Max(100) int range) {
         return Result.success(leaderboardService.around(board, member, range));
     }
 
@@ -100,7 +120,8 @@ public class LeaderboardController {
      */
     @GetMapping("/size")
     @Operation(summary = "查询排行榜总人数")
-    public Result<Long> size(@RequestParam(defaultValue = "default") String board) {
+    public Result<Long> size(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board) {
         return Result.success(leaderboardService.size(board));
     }
 
@@ -110,7 +131,8 @@ public class LeaderboardController {
      */
     @PostMapping("/settle-weekly")
     @Operation(summary = "结算周榜，固化历史并清空当前榜单")
-    public Result<Long> settleWeekly(@RequestParam(defaultValue = "default") String board,
+    public Result<Long> settleWeekly(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board,
                                      @RequestParam(required = false)
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return Result.success(leaderboardService.settleWeekly(board, date == null ? LocalDate.now() : date));
@@ -121,7 +143,8 @@ public class LeaderboardController {
      */
     @PostMapping("/clear")
     @Operation(summary = "清空整个排行榜")
-    public Result<Void> clear(@RequestParam(defaultValue = "default") String board) {
+    public Result<Void> clear(@RequestParam(defaultValue = "default")
+ @NotBlank @Size(max = 128) String board) {
         leaderboardService.clear(board);
         return Result.success();
     }

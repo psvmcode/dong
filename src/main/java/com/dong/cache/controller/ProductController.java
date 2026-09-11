@@ -1,5 +1,9 @@
 package com.dong.cache.controller;
 
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.cache.dto.ProductResponse;
 import com.dong.cache.dto.ProductSaveRequest;
 import com.dong.cache.service.ProductService;
@@ -26,6 +30,7 @@ import java.util.List;
  * findById 与 findByIdGuarded 构成一对可直接对比的读路径。
  */
 @RestController
+@Validated
 @RequestMapping("/api/cache/products")
 @RequiredArgsConstructor
 @Tag(name = "缓存-商品")
@@ -62,8 +67,10 @@ public class ProductController {
      */
     @GetMapping
     @Operation(summary = "分页查询商品，有意不经过缓存")
-    public Result<PageResult<ProductResponse>> findByPage(@RequestParam(defaultValue = "1") int pageNum,
-                                                          @RequestParam(defaultValue = "20") int pageSize) {
+    public Result<PageResult<ProductResponse>> findByPage(@RequestParam(defaultValue = "1")
+ @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
+                                                          @RequestParam(defaultValue = "20")
+                                                          @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         PageResult<com.dong.cache.entity.Product> page = productService.findByPage(PageRequest.of(pageNum, pageSize));
         return Result.success(page.map(ProductResponse::from));
     }

@@ -54,6 +54,50 @@ public final class Constants {
      */
     public static final int MAX_PAGE_NUM = 1_000_000;
 
+    /**
+     * 通用批量条数上限。凡是「一次处理 N 条」的参数都用它封顶，
+     * 不封顶的话传一个极大值就能把内存吃光。
+     */
+    public static final int MAX_BATCH_SIZE = 1000;
+
+    /**
+     * 并发线程数上限。压测类接口靠它兜底，
+     * 否则传一个天文数字会瞬间创建海量任务。
+     */
+    public static final int MAX_THREADS = 200;
+
+    /**
+     * 单线程循环次数上限。与线程数相乘才是实际任务量，
+     * 两个参数都必须限制，只限制一个等于没限制。
+     */
+    public static final int MAX_LOOPS = 500;
+
+    /**
+     * 通用查询条数上限，比批量上限更严，因为查询要组装返回对象。
+     */
+    public static final int MAX_QUERY_LIMIT = 200;
+
+    /**
+     * 普通字符串长度上限，用于名称、编码、标识等短字段。
+     */
+    public static final int MAX_NAME_LENGTH = 128;
+
+    /**
+     * 长文本长度上限，用于描述、备注、消息体。
+     */
+    public static final int MAX_TEXT_LENGTH = 4096;
+
+    /**
+     * 延迟时长上限，单位秒，即 24 小时。
+     * 不限制的话传 Long.MAX_VALUE 会让任务永远不触发且无法回收。
+     */
+    public static final long MAX_DELAY_SECONDS = 86_400L;
+
+    /**
+     * 时间窗口上限，单位秒，即 24 小时。
+     */
+    public static final long MAX_WINDOW_SECONDS = 86_400L;
+
     private Constants() {
     }
 

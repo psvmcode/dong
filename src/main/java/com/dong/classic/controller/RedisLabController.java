@@ -6,13 +6,19 @@ import com.dong.classic.service.GeoService;
 import com.dong.classic.service.IdGeneratorService;
 import com.dong.classic.service.LockLabService;
 import com.dong.classic.service.RateLimitLabService;
+import com.dong.common.constant.Constants;
 import com.dong.common.result.Result;
 import com.dong.framework.limiter.RateLimitAlgorithm;
 import com.dong.framework.limiter.RateLimitManager;
 import com.dong.framework.limiter.RateLimitRule;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +35,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/classic")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "经典场景-Redis")
 
 public class RedisLabController {
@@ -69,8 +76,9 @@ public class RedisLabController {
      */
     @PostMapping("/delay-queue/offer")
     @Operation(summary = "投递延迟任务，到达指定时间后才可被消费")
-    public Result<Void> offer(@RequestParam String payload,
-                              @RequestParam(defaultValue = "5") long delaySeconds) {
+    public Result<Void> offer(@RequestParam @NotBlank @Size(max = Constants.MAX_TEXT_LENGTH) String payload,
+                              @RequestParam(defaultValue = "5")
+                              @Min(0) @Max(Constants.MAX_DELAY_SECONDS) long delaySeconds) {
         delayQueueService.offer(payload, Duration.ofSeconds(delaySeconds));
         return Result.success();
     }
@@ -80,7 +88,8 @@ public class RedisLabController {
      */
     @GetMapping("/delay-queue/take")
     @Operation(summary = "取出已到期的延迟任务")
-    public Result<List<String>> take(@RequestParam(defaultValue = "10") int limit) {
+    public Result<List<String>> take(@RequestParam(defaultValue = "10")
+                                     @Min(1) @Max(Constants.MAX_BATCH_SIZE) int limit) {
         return Result.success(delayQueueService.take(limit));
     }
 
@@ -98,10 +107,11 @@ public class RedisLabController {
      */
     @PostMapping("/geo")
     @Operation(summary = "添加地理位置坐标")
-    public Result<Long> geoAdd(@RequestParam(defaultValue = "beijing") String city,
-                               @RequestParam double longitude,
-                               @RequestParam double latitude,
-                               @RequestParam String member) {
+    public Result<Long> geoAdd(@RequestParam(defaultValue = "beijing")
+                               @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String city,
+                               @RequestParam @Min(-180) @Max(180) double longitude,
+                               @RequestParam @Min(-90) @Max(90) double latitude,
+                               @RequestParam @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String member) {
         return Result.success(geoService.add(city, longitude, latitude, member));
     }
 
@@ -111,11 +121,14 @@ public class RedisLabController {
      */
     @GetMapping("/geo/nearby")
     @Operation(summary = "查询指定坐标附近范围内的成员")
-    public Result<List<NearbyPlaceResponse>> nearby(@RequestParam(defaultValue = "beijing") String city,
-                                                    @RequestParam double longitude,
-                                                    @RequestParam double latitude,
-                                                    @RequestParam(defaultValue = "5") double radiusKm,
-                                                    @RequestParam(defaultValue = "10") int limit) {
+    public Result<List<NearbyPlaceResponse>> nearby(@RequestParam(defaultValue = "beijing")
+                                                    @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String city,
+                                                    @RequestParam @Min(-180) @Max(180) double longitude,
+                                                    @RequestParam @Min(-90) @Max(90) double latitude,
+                                                    @RequestParam(defaultValue = "5")
+                                                    @Min(0) @Max(20000) double radiusKm,
+                                                    @RequestParam(defaultValue = "10")
+                                                    @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(geoService.nearby(city, longitude, latitude, radiusKm, limit));
     }
 
@@ -124,9 +137,10 @@ public class RedisLabController {
      */
     @GetMapping("/geo/distance")
     @Operation(summary = "计算两个成员之间的距离")
-    public Result<Double> distance(@RequestParam(defaultValue = "beijing") String city,
-                                   @RequestParam String first,
-                                   @RequestParam String second) {
+    public Result<Double> distance(@RequestParam(defaultValue = "beijing")
+                                   @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String city,
+                                   @RequestParam @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String first,
+                                   @RequestParam @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String second) {
         return Result.success(geoService.distance(city, first, second));
     }
 
@@ -137,8 +151,10 @@ public class RedisLabController {
      */
     @GetMapping("/id")
     @Operation(summary = "按指定策略批量生成 id，并给出耗时")
-    public Result<Map<String, Object>> generateId(@RequestParam(defaultValue = "snowflake") String strategy,
-                                                  @RequestParam(defaultValue = "1000") int count) {
+    public Result<Map<String, Object>> generateId(@RequestParam(defaultValue = "snowflake")
+                                                  @NotBlank @Size(max = 32) String strategy,
+                                                  @RequestParam(defaultValue = "1000")
+                                                  @Min(1) @Max(Constants.MAX_BATCH_SIZE) int count) {
         return Result.success(idGeneratorService.generate(strategy, count));
     }
 
@@ -147,8 +163,10 @@ public class RedisLabController {
      */
     @GetMapping("/lock/without-lock")
     @Operation(summary = "不加锁的并发自增，用作对照组，会丢失更新")
-    public Result<Map<String, Object>> withoutLock(@RequestParam(defaultValue = "16") int threads,
-                                                   @RequestParam(defaultValue = "20") int loops) {
+    public Result<Map<String, Object>> withoutLock(@RequestParam(defaultValue = "16")
+                                                   @Min(1) @Max(Constants.MAX_THREADS) int threads,
+                                                   @RequestParam(defaultValue = "20")
+                                                   @Min(1) @Max(Constants.MAX_LOOPS) int loops) {
         return Result.success(lockLabService.withoutLock(threads, loops));
     }
 
@@ -158,8 +176,10 @@ public class RedisLabController {
      */
     @GetMapping("/lock/with-lock")
     @Operation(summary = "加 Redisson 锁的并发自增，结果精确但耗时高得多")
-    public Result<Map<String, Object>> withLock(@RequestParam(defaultValue = "16") int threads,
-                                                @RequestParam(defaultValue = "20") int loops) {
+    public Result<Map<String, Object>> withLock(@RequestParam(defaultValue = "16")
+                                                @Min(1) @Max(Constants.MAX_THREADS) int threads,
+                                                @RequestParam(defaultValue = "20")
+                                                @Min(1) @Max(Constants.MAX_LOOPS) int loops) {
         return Result.success(lockLabService.withLock(threads, loops));
     }
 
@@ -168,10 +188,12 @@ public class RedisLabController {
      */
     @GetMapping("/limiter/try")
     @Operation(summary = "用指定算法尝试获取一次配额")
-    public Result<Boolean> tryAcquire(@RequestParam(defaultValue = "demo") String key,
+    public Result<Boolean> tryAcquire(@RequestParam(defaultValue = "demo")
+                                      @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String key,
                                       @RequestParam(defaultValue = "TOKEN_BUCKET") RateLimitAlgorithm algorithm,
-                                      @RequestParam(defaultValue = "10") long limit,
-                                      @RequestParam(defaultValue = "60") long windowSeconds,
+                                      @RequestParam(defaultValue = "10") @Min(1) @Max(1_000_000) long limit,
+                                      @RequestParam(defaultValue = "60")
+                                      @Min(1) @Max(Constants.MAX_WINDOW_SECONDS) long windowSeconds,
                                       @RequestParam(defaultValue = "true") boolean distributed) {
         RateLimitRule rule = new RateLimitRule(limit, Duration.ofSeconds(windowSeconds), algorithm);
         return Result.success(rateLimitManager.tryAcquire(key, rule, distributed));
@@ -190,12 +212,15 @@ public class RedisLabController {
      */
     @GetMapping("/limiter/compare")
     @Operation(summary = "对比固定窗口、滑动窗口、令牌桶、漏桶四种算法，可指定两轮突发间隔")
-    public Result<Map<String, Object>> compare(@RequestParam(defaultValue = "demo") String bizKey,
-                                               @RequestParam(defaultValue = "10") long limit,
-                                               @RequestParam(defaultValue = "60") long windowSeconds,
-                                               @RequestParam(defaultValue = "50") int attempts,
+    public Result<Map<String, Object>> compare(@RequestParam(defaultValue = "demo")
+                                               @NotBlank @Size(max = Constants.MAX_NAME_LENGTH) String bizKey,
+                                               @RequestParam(defaultValue = "10") @Min(1) @Max(1_000_000) long limit,
+                                               @RequestParam(defaultValue = "60")
+                                               @Min(1) @Max(Constants.MAX_WINDOW_SECONDS) long windowSeconds,
+                                               @RequestParam(defaultValue = "50")
+                                               @Min(1) @Max(Constants.MAX_BATCH_SIZE) int attempts,
                                                @RequestParam(defaultValue = "true") boolean distributed,
-                                               @RequestParam(defaultValue = "0") long gapMillis) {
+                                               @RequestParam(defaultValue = "0") @Min(0) @Max(60_000) long gapMillis) {
         return Result.success(rateLimitLabService.compare(bizKey, limit, windowSeconds, attempts, distributed, gapMillis));
     }
 

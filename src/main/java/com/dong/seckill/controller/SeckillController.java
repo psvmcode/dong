@@ -1,5 +1,9 @@
 package com.dong.seckill.controller;
 
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.framework.mq.MqFacade;
 import com.dong.seckill.dto.SeckillActivityRequest;
@@ -32,6 +36,7 @@ import java.util.Map;
  * 数据库唯一索引兜底防重复购买。
  */
 @RestController
+@Validated
 @RequestMapping("/api/seckill")
 @RequiredArgsConstructor
 @Tag(name = "秒杀")
@@ -75,7 +80,8 @@ public class SeckillController {
     @Operation(summary = "秒杀下单，先扣 Redis 库存再异步建单")
     public Result<SeckillReceiptResponse> seckill(@PathVariable Long id,
                                                   @RequestParam Long userId,
-                                                  @RequestParam(defaultValue = "1") int quantity) {
+                                                  @RequestParam(defaultValue = "1")
+                                                  @Min(1) @Max(1000) int quantity) {
         return Result.success(seckillService.seckill(id, userId, quantity));
     }
 

@@ -1,5 +1,7 @@
 package com.dong.classic.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import com.dong.classic.dto.ShortLinkResponse;
 import com.dong.classic.service.ShortLinkService;
 import com.dong.common.result.Result;
@@ -41,7 +43,8 @@ public class ShortLinkController {
      */
     @PostMapping
     @Operation(summary = "生成短链，返回短码，可指定有效分钟数")
-    public Result<String> create(@RequestParam String url,
+    public Result<String> create(@RequestParam
+ @NotBlank @Size(max = 2048) String url,
                                  @RequestParam(defaultValue = "0") @Min(0) @Max(525600) long expireMinutes) {
         return Result.success(shortLinkService.create(url, expireMinutes));
     }
@@ -51,7 +54,8 @@ public class ShortLinkController {
      */
     @PostMapping("/toggle")
     @Operation(summary = "启停短链，停用后立即拒绝跳转")
-    public Result<Void> toggle(@RequestParam String code, @RequestParam boolean enabled) {
+    public Result<Void> toggle(@RequestParam
+ @NotBlank @Size(max = 128) String code, @RequestParam boolean enabled) {
         shortLinkService.toggle(code, enabled);
         return Result.success();
     }
@@ -70,7 +74,8 @@ public class ShortLinkController {
      */
     @GetMapping("/resolve")
     @Operation(summary = "解析短码为原始地址，并累加点击数")
-    public Result<String> resolve(@RequestParam String code) {
+    public Result<String> resolve(@RequestParam
+ @NotBlank @Size(max = 128) String code) {
         return Result.success(shortLinkService.resolve(code));
     }
 
@@ -79,7 +84,8 @@ public class ShortLinkController {
      */
     @GetMapping("/detail")
     @Operation(summary = "查询短链详情")
-    public Result<ShortLinkResponse> detail(@RequestParam String code) {
+    public Result<ShortLinkResponse> detail(@RequestParam
+ @NotBlank @Size(max = 128) String code) {
         return Result.success(ShortLinkResponse.from(shortLinkService.findByCode(code)));
     }
 
@@ -88,7 +94,8 @@ public class ShortLinkController {
      */
     @GetMapping("/hits")
     @Operation(summary = "查询短链被点击的次数")
-    public Result<Long> hits(@RequestParam String code) {
+    public Result<Long> hits(@RequestParam
+ @NotBlank @Size(max = 128) String code) {
         return Result.success(shortLinkService.hitCount(code));
     }
 

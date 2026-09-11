@@ -99,6 +99,7 @@ public class ShortLinkServiceImpl implements ShortLinkService {
      */
     @Override
     public String create(String originUrl, long expireMinutes) {
+        validateOriginUrl(originUrl);
         LocalDateTime expireTime = expireMinutes > 0
                 ? LocalDateTime.now().plusMinutes(expireMinutes)
                 : null;
@@ -242,6 +243,67 @@ public class ShortLinkServiceImpl implements ShortLinkService {
             // 计数失败不能让跳转失败，跳转才是主流程
             log.warn("count hit failed code={}", code, ex);
         }
+    }
+
+    /**
+     * 校验原始链接，只放行公网 http/https。
+     *
+     * <p>这一步不能省。短链跳转是服务端下发 Location 让浏览器去访问，
+     * 如果不限制目标，就能构造出指向内网的短链：
+     * 云元数据地址（169.254.169.254）、内网管理后台、file:// 本地文件，
+     * 都能借服务端的可信位置去访问——这就是 SSRF。
+     * 另外 javascript: 这类伪协议会直接变成 XSS。
+     *
+     * @param originUrl 原始链接
+     */
+    private void validateOriginUrl(String originUrl) {
+        if (originUrl == null || originUrl.isBlank()) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "url must not be blank");
+        }
+        java.net.URI uri;
+        try {
+            uri = java.net.URI.create(originUrl.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "malformed url");
+        }
+        String scheme = uri.getScheme();
+        if (scheme == null
+                || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID,
+                    "only http and https are allowed");
+        }
+        String host = uri.getHost();
+        if (host == null || isPrivateHost(host)) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID,
+                    "host is not allowed: " + host);
+        }
+    }
+
+    /**
+     * 判断是否内网、回环、链路本地地址。
+     * 169.254.0.0/16 是链路本地段，云厂商的元数据服务就在这个段里，
+     * 是最常被拿来打 SSRF 的目标，必须拦。
+     *
+     * @param host 主机名或 IP
+     * @return 是否为不可访问的地址
+     */
+    private boolean isPrivateHost(String host) {
+        String lower = host.toLowerCase();
+        if ("localhost".equals(lower) || lower.endsWith(".localhost")
+                || lower.endsWith(".internal") || "0.0.0.0".equals(lower)) {
+            return true;
+        }
+        java.net.InetAddress address;
+        try {
+            address = java.net.InetAddress.getByName(lower);
+        } catch (java.net.UnknownHostException ex) {
+            // 解析不了主机名，放行到后面由其它环节处理，不在这里误杀
+            return false;
+        }
+        return address.isLoopbackAddress()
+                || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress()
+                || address.isAnyLocalAddress();
     }
 
     /**

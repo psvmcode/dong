@@ -1,5 +1,11 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.ReconDiffResponse;
 import com.dong.crossborder.dto.SettlementBatchResponse;
@@ -24,6 +30,7 @@ import java.util.Map;
  * 对账把渠道回单与本地流水比对，差异逐笔记账由运营处理。
  */
 @RestController
+@Validated
 @RequestMapping("/api/crossborder/settlement")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-清算")
@@ -85,8 +92,10 @@ public class CrossBorderSettlementController {
     @PostMapping("/batch")
     @Operation(summary = "创建清算批次，指定渠道与清算截止时间")
     public Result<String> createBatch(@RequestParam SettlementChannel channel,
-                                      @RequestParam String currency,
-                                      @RequestParam(defaultValue = "10") long cutoffMinutes) {
+                                      @RequestParam
+ @NotBlank @Size(max = 128) String currency,
+                                      @RequestParam(defaultValue = "10")
+                                      @Min(0) @Max(14_400) long cutoffMinutes) {
         return Result.success(settlementService.createBatch(channel, currency, cutoffMinutes));
     }
 
@@ -114,7 +123,8 @@ public class CrossBorderSettlementController {
     @PostMapping("/batch/{batchNo}/collect")
     @Operation(summary = "把已扣款的汇款单并入批次")
     public Result<Integer> collect(@PathVariable String batchNo,
-                                   @RequestParam(defaultValue = "100") int limit) {
+                                   @RequestParam(defaultValue = "100")
+                                   @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(settlementService.collect(batchNo, limit));
     }
 
@@ -141,7 +151,8 @@ public class CrossBorderSettlementController {
      */
     @GetMapping("/recon")
     @Operation(summary = "查询对账差异，可按批次过滤")
-    public Result<Map<String, Object>> recon(@RequestParam(required = false) String batchNo) {
+    public Result<Map<String, Object>> recon(@RequestParam(required = false)
+ @NotBlank @Size(max = 128) String batchNo) {
         List<ReconDiffResponse> diffs = (batchNo == null || batchNo.isBlank()
                 ? reconDiffMapper.selectAll(100)
                 : reconDiffMapper.selectByBatchNo(batchNo)).stream()

@@ -1,5 +1,8 @@
 package com.dong.replica.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.Result;
@@ -25,6 +28,7 @@ import java.util.Map;
  * MariaDB 默认关闭，关闭时容器里没有对应 service bean，直接注入会启动失败。
  */
 @RestController
+@Validated
 @RequestMapping("/api/replica/accounts")
 @RequiredArgsConstructor
 @Tag(name = "多数据源-账户")
@@ -42,7 +46,8 @@ public class UserAccountController {
     @PostMapping
     @Operation(summary = "创建账户，写入第二数据源")
     public Result<Long> create(@RequestParam Long userId,
-                               @RequestParam(defaultValue = "") String username,
+                               @RequestParam(defaultValue = "")
+                               @NotBlank @Size(max = 128) String username,
                                @RequestParam(defaultValue = "0") long balance) {
         return Result.success(requireService().create(userId, username, balance));
     }

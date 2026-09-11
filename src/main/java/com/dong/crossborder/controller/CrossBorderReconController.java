@@ -1,5 +1,7 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.ReconReportResponse;
 import com.dong.crossborder.enums.ReconDiffType;
@@ -82,7 +84,8 @@ public class CrossBorderReconController {
     @Operation(summary = "处理单笔对账差异")
     public Result<Map<String, Object>> handleDiff(@PathVariable Long id,
                                                    @RequestParam ReconDiffType diffType,
-                                                   @RequestParam(defaultValue = "review") String decision) {
+                                                   @RequestParam(defaultValue = "review")
+                                                   @NotBlank @Size(max = 128) String decision) {
         return Result.success(reconciliationService.handleDiff(id, diffType, decision));
     }
 
@@ -92,7 +95,8 @@ public class CrossBorderReconController {
     @PostMapping("/{batchNo}/handle-all")
     @Operation(summary = "批量处理某批次全部未处理差异")
     public Result<Integer> handleAll(@PathVariable String batchNo,
-                                     @RequestParam(defaultValue = "batch review") String decision) {
+                                     @RequestParam(defaultValue = "batch review")
+                                     @NotBlank @Size(max = 128) String decision) {
         return Result.success(reconciliationService.handleAllUnhandled(batchNo, decision));
     }
 

@@ -1,5 +1,8 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.AccountCreateRequest;
 import com.dong.crossborder.dto.AccountEventResponse;
@@ -26,6 +29,7 @@ import java.util.Map;
  * 因为各币种资金分开清算，不能混在一个余额里。
  */
 @RestController
+@Validated
 @RequestMapping("/api/crossborder")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-账户")
@@ -92,8 +96,10 @@ public class CrossBorderAccountController {
     @PostMapping("/accounts/{accountNo}/freeze")
     @Operation(summary = "冻结账户，事件落库留痕")
     public Result<AccountResponse> freeze(@PathVariable String accountNo,
-                                          @RequestParam(defaultValue = "") String reason,
-                                          @RequestParam(defaultValue = "") String operator) {
+                                          @RequestParam(defaultValue = "")
+                                          @NotBlank @Size(max = 512) String reason,
+                                          @RequestParam(defaultValue = "")
+                                          @NotBlank @Size(max = 128) String operator) {
         return Result.success(accountService.freeze(accountNo, reason, operator));
     }
 
@@ -103,8 +109,10 @@ public class CrossBorderAccountController {
     @PostMapping("/accounts/{accountNo}/unfreeze")
     @Operation(summary = "解冻账户，事件落库留痕")
     public Result<AccountResponse> unfreeze(@PathVariable String accountNo,
-                                            @RequestParam(defaultValue = "") String reason,
-                                            @RequestParam(defaultValue = "") String operator) {
+                                            @RequestParam(defaultValue = "")
+                                            @NotBlank @Size(max = 512) String reason,
+                                            @RequestParam(defaultValue = "")
+                                            @NotBlank @Size(max = 128) String operator) {
         return Result.success(accountService.unfreeze(accountNo, reason, operator));
     }
 
@@ -122,7 +130,8 @@ public class CrossBorderAccountController {
      */
     @PostMapping("/sanction")
     @Operation(summary = "加入制裁名单")
-    public Result<Void> addSanction(@RequestParam String ownerName) {
+    public Result<Void> addSanction(@RequestParam
+ @NotBlank @Size(max = 128) String ownerName) {
         complianceService.addSanction(ownerName);
         return Result.success();
     }
@@ -132,7 +141,8 @@ public class CrossBorderAccountController {
      */
     @DeleteMapping("/sanction")
     @Operation(summary = "从制裁名单移除")
-    public Result<Void> removeSanction(@RequestParam String ownerName) {
+    public Result<Void> removeSanction(@RequestParam
+ @NotBlank @Size(max = 128) String ownerName) {
         complianceService.removeSanction(ownerName);
         return Result.success();
     }
