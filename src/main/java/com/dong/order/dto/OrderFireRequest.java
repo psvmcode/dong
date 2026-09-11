@@ -1,5 +1,6 @@
 package com.dong.order.dto;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
@@ -33,7 +34,8 @@ public class OrderFireRequest {
     /**
      * 退款金额，申请退款事件必填。
      */
-    private BigDecimal refundAmount;
+        @Digits(integer = 16, fraction = 2)
+private BigDecimal refundAmount;
 
     /**
      * 拒绝原因，取消或退款失败时填写。

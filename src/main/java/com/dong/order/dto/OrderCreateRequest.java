@@ -1,5 +1,6 @@
 package com.dong.order.dto;
 
+import jakarta.validation.constraints.Digits;
 import com.dong.order.entity.TradeOrder;
 import com.dong.order.enums.OrderStatus;
 import jakarta.validation.constraints.DecimalMin;
@@ -36,6 +37,7 @@ public class OrderCreateRequest {
      */
     @NotNull
     @DecimalMin("0.01")
+    @Digits(integer = 16, fraction = 2)
     private BigDecimal payAmount;
 
     /**

@@ -1,5 +1,6 @@
 package com.dong.cache.dto;
 
+import jakarta.validation.constraints.Digits;
 import com.dong.cache.entity.Product;
 import com.dong.cache.enums.ProductStatus;
 import jakarta.validation.constraints.DecimalMin;
@@ -29,6 +30,7 @@ public class ProductSaveRequest {
      */
     @NotNull
     @DecimalMin("0.01")
+    @Digits(integer = 16, fraction = 2)
     private BigDecimal price;
 
     /**

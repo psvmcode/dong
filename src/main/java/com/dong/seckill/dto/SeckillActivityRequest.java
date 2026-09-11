@@ -1,5 +1,6 @@
 package com.dong.seckill.dto;
 
+import jakarta.validation.constraints.Digits;
 import com.dong.seckill.entity.SeckillActivity;
 import com.dong.seckill.enums.SeckillActivityStatus;
 import jakarta.validation.constraints.DecimalMin;
@@ -39,6 +40,7 @@ public class SeckillActivityRequest {
      */
     @NotNull
     @DecimalMin("0.01")
+    @Digits(integer = 16, fraction = 2)
     private BigDecimal unitPrice;
 
     /**
