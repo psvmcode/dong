@@ -1,5 +1,6 @@
 package com.dong.classic.controller;
 
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.dong.classic.dto.ShortLinkResponse;
@@ -106,7 +107,8 @@ public class ShortLinkController {
      */
     @GetMapping("/s/{code}")
     @Operation(summary = "短链跳转，用 302 而非 301，否则点击统计会失效")
-    public ResponseEntity<Void> redirect(@PathVariable String code) {
+    public ResponseEntity<Void> redirect(@PathVariable
+ @NotBlank @Size(max = 128) String code) {
         String origin = shortLinkService.resolve(code);
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(origin)).build();
     }

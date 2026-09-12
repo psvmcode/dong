@@ -1,5 +1,6 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.dong.common.result.Result;
@@ -58,7 +59,8 @@ public class CrossBorderFxController {
      */
     @GetMapping("/{quoteNo}")
     @Operation(summary = "查询报价详情与剩余有效期")
-    public Result<FxQuoteResponse> findByQuoteNo(@PathVariable String quoteNo) {
+    public Result<FxQuoteResponse> findByQuoteNo(@PathVariable
+ @NotBlank @Size(max = 128) String quoteNo) {
         return Result.success(fxQuoteService.findByQuoteNo(quoteNo));
     }
 

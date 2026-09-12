@@ -1,5 +1,6 @@
 package com.dong.order.controller;
 
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.dong.common.constant.Constants;
@@ -61,7 +62,8 @@ public class OrderController {
      */
     @PostMapping("/{orderNo}/events")
     @Operation(summary = "触发订单事件推进状态")
-    public Result<OrderResponse> fire(@PathVariable String orderNo, @Valid @RequestBody OrderFireRequest request) {
+    public Result<OrderResponse> fire(@PathVariable
+ @NotBlank @Size(max = 128) String orderNo, @Valid @RequestBody OrderFireRequest request) {
         return Result.success(orderService.fire(orderNo, request));
     }
 
@@ -70,7 +72,8 @@ public class OrderController {
      */
     @GetMapping("/{orderNo}")
     @Operation(summary = "查询订单详情")
-    public Result<OrderResponse> detail(@PathVariable String orderNo) {
+    public Result<OrderResponse> detail(@PathVariable
+ @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.detail(orderNo));
     }
 
@@ -79,7 +82,8 @@ public class OrderController {
      */
     @GetMapping("/{orderNo}/available-events")
     @Operation(summary = "查询当前状态可触发的事件")
-    public Result<List<String>> availableEvents(@PathVariable String orderNo) {
+    public Result<List<String>> availableEvents(@PathVariable
+ @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.availableEvents(orderNo));
     }
 
@@ -88,7 +92,8 @@ public class OrderController {
      */
     @GetMapping("/{orderNo}/logs")
     @Operation(summary = "查询订单状态流转日志")
-    public Result<List<OrderTransitionLogResponse>> logs(@PathVariable String orderNo) {
+    public Result<List<OrderTransitionLogResponse>> logs(@PathVariable
+ @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.logs(orderNo));
     }
 
@@ -128,7 +133,8 @@ public class OrderController {
      */
     @DeleteMapping("/{orderNo}")
     @Operation(summary = "删除订单及其流转日志")
-    public Result<Void> remove(@PathVariable String orderNo) {
+    public Result<Void> remove(@PathVariable
+ @NotBlank @Size(max = 128) String orderNo) {
         orderService.remove(orderNo);
         return Result.success();
     }

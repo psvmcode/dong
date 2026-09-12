@@ -1,5 +1,8 @@
 package com.dong.cache.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Positive;
 import com.dong.common.constant.Constants;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
@@ -47,7 +50,8 @@ public class ProductController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "查询商品，依次经过 L1、L2 和数据库")
-    public Result<ProductResponse> findById(@PathVariable Long id) {
+    public Result<ProductResponse> findById(@PathVariable
+ @Positive Long id) {
         return Result.success(ProductResponse.from(productService.findById(id)));
     }
 
@@ -57,7 +61,8 @@ public class ProductController {
      */
     @GetMapping("/{id}/guarded")
     @Operation(summary = "查询商品，id 不可能存在时由布隆过滤器提前拒绝")
-    public Result<ProductResponse> findByIdGuarded(@PathVariable Long id) {
+    public Result<ProductResponse> findByIdGuarded(@PathVariable
+ @Positive Long id) {
         return Result.success(ProductResponse.from(productService.findByIdGuarded(id)));
     }
 
@@ -98,7 +103,8 @@ public class ProductController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新商品，先更新数据库再失效缓存")
-    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody ProductSaveRequest request) {
+    public Result<Void> update(@PathVariable
+ @Positive Long id, @Valid @RequestBody ProductSaveRequest request) {
         productService.update(id, request);
         return Result.success();
     }
@@ -108,7 +114,8 @@ public class ProductController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除商品，并失效对应缓存")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@PathVariable
+ @Positive Long id) {
         productService.delete(id);
         return Result.success();
     }

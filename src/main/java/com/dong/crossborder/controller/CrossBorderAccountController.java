@@ -1,5 +1,8 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -61,7 +64,8 @@ public class CrossBorderAccountController {
      */
     @GetMapping("/accounts/{accountNo}")
     @Operation(summary = "按账号查询账户，含可用余额")
-    public Result<AccountResponse> findByAccountNo(@PathVariable String accountNo) {
+    public Result<AccountResponse> findByAccountNo(@PathVariable
+ @NotBlank @Size(max = 128) String accountNo) {
         return Result.success(accountService.findByAccountNo(accountNo));
     }
 
@@ -79,7 +83,8 @@ public class CrossBorderAccountController {
      */
     @GetMapping("/accounts/{accountNo}/diff")
     @Operation(summary = "校验账户余额与流水的差额，入参必须是精确小数，不能用浮点")
-    public Result<Map<String, Object>> balanceDiff(@PathVariable String accountNo,
+    public Result<Map<String, Object>> balanceDiff(@PathVariable
+ @NotBlank @Size(max = 128) String accountNo,
                                                    @RequestParam(defaultValue = "0")
                                                    @Digits(integer = 16, fraction = 2)
                                                    java.math.BigDecimal initial) {
@@ -98,7 +103,8 @@ public class CrossBorderAccountController {
      */
     @PostMapping("/accounts/{accountNo}/freeze")
     @Operation(summary = "冻结账户，事件落库留痕")
-    public Result<AccountResponse> freeze(@PathVariable String accountNo,
+    public Result<AccountResponse> freeze(@PathVariable
+ @NotBlank @Size(max = 128) String accountNo,
                                           @RequestParam(defaultValue = "")
                                           @NotBlank @Size(max = 512) String reason,
                                           @RequestParam(defaultValue = "")
@@ -111,7 +117,8 @@ public class CrossBorderAccountController {
      */
     @PostMapping("/accounts/{accountNo}/unfreeze")
     @Operation(summary = "解冻账户，事件落库留痕")
-    public Result<AccountResponse> unfreeze(@PathVariable String accountNo,
+    public Result<AccountResponse> unfreeze(@PathVariable
+ @NotBlank @Size(max = 128) String accountNo,
                                             @RequestParam(defaultValue = "")
                                             @NotBlank @Size(max = 512) String reason,
                                             @RequestParam(defaultValue = "")
@@ -124,7 +131,8 @@ public class CrossBorderAccountController {
      */
     @GetMapping("/accounts/{accountNo}/events")
     @Operation(summary = "查询账户冻结/解冻事件历史")
-    public Result<List<AccountEventResponse>> events(@PathVariable String accountNo) {
+    public Result<List<AccountEventResponse>> events(@PathVariable
+ @NotBlank @Size(max = 128) String accountNo) {
         return Result.success(accountService.events(accountNo));
     }
 

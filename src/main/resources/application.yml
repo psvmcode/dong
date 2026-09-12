@@ -63,6 +63,11 @@ spring:
     default-property-inclusion: non_null
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+    # 反序列化安全：限制字符串长度与嵌套深度，挡住超大 payload 与深度嵌套攻击
+    stream-read-constraints:
+      max-string-length: 200000
+      max-nesting-depth: 32
+      max-number-length: 50
 
 rocketmq:
   name-server: ${LAB_PUBLIC_HOST}:9876
@@ -73,6 +78,16 @@ rocketmq:
 server:
   port: 8090
   shutdown: graceful
+  tomcat:
+    # 请求体上限，防止超大 body 直接把内存吃光
+    max-http-form-post-size: 2MB
+    max-swallow-size: 2MB
+    connection-timeout: 20000
+    # 限制最大工作线程，避免慢请求把线程池耗光导致整个服务无响应
+    threads:
+      max: 200
+      min-spare: 10
+    max-keep-alive-requests: 100
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml

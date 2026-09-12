@@ -117,14 +117,23 @@ public class GlobalExceptionHandler {
     /**
      * 处理未预期异常。
      *
+     * <p>这里绝不把原始异常消息返回给客户端。未预期异常的消息里可能带着
+     * SQL 语句、表名字段名、服务器文件路径、内网地址、第三方接口细节——
+     * 直接回传等于把系统内部结构主动交给调用方，是典型的的信息泄露。
+     *
+     * <p>正确做法是：完整堆栈只写日志，给客户端一个 traceId。
+     * 用户报问题时凭 traceId 就能在日志里精确定位，排查效率不受影响。
+     *
      * @param ex 未预期异常
      * @return 失败响应
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleUnexpected(Exception ex) {
-        log.error("unexpected error", ex);
-        return Result.fail(Constants.CODE_INTERNAL_ERROR, Constants.MESSAGE_INTERNAL_ERROR, ex.getMessage());
+        String traceId = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        log.error("unexpected error traceId={}", traceId, ex);
+        return Result.fail(Constants.CODE_INTERNAL_ERROR, Constants.MESSAGE_INTERNAL_ERROR,
+                "traceId=" + traceId);
     }
 
 }

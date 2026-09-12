@@ -1,5 +1,6 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.dong.common.constant.Constants;
@@ -70,7 +71,8 @@ public class CrossBorderRemittanceController {
      */
     @GetMapping("/{remittanceNo}")
     @Operation(summary = "按汇款单号查询")
-    public Result<RemittanceResponse> findByRemittanceNo(@PathVariable String remittanceNo) {
+    public Result<RemittanceResponse> findByRemittanceNo(@PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(remittanceService.findByRemittanceNo(remittanceNo));
     }
 
@@ -79,7 +81,8 @@ public class CrossBorderRemittanceController {
      */
     @GetMapping("/by-idempotent/{idempotentKey}")
     @Operation(summary = "按幂等键查询，用于超时重试后的确认")
-    public Result<RemittanceResponse> findByIdempotentKey(@PathVariable String idempotentKey) {
+    public Result<RemittanceResponse> findByIdempotentKey(@PathVariable
+ @NotBlank @Size(max = 128) String idempotentKey) {
         return Result.success(remittanceService.findByIdempotentKey(idempotentKey));
     }
 
@@ -102,7 +105,8 @@ public class CrossBorderRemittanceController {
      */
     @GetMapping("/{remittanceNo}/compliance")
     @Operation(summary = "查询汇款单的合规检查记录")
-    public Result<List<ComplianceRecordResponse>> compliance(@PathVariable String remittanceNo) {
+    public Result<List<ComplianceRecordResponse>> compliance(@PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(complianceService.recordsOf(remittanceNo));
     }
 
@@ -126,7 +130,8 @@ public class CrossBorderRemittanceController {
      */
     @PostMapping("/{remittanceNo}/review/approve")
     @Operation(summary = "人工审核放行，继续锁汇扣款清算")
-    public Result<RemittanceResponse> approveReview(@PathVariable String remittanceNo,
+    public Result<RemittanceResponse> approveReview(@PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo,
                                                     @Valid @RequestBody ReviewDecisionRequest decision) {
         return Result.success(remittanceService.approveReview(remittanceNo, decision));
     }
@@ -136,7 +141,8 @@ public class CrossBorderRemittanceController {
      */
     @PostMapping("/{remittanceNo}/review/reject")
     @Operation(summary = "人工审核驳回，终态并释放日限额")
-    public Result<RemittanceResponse> rejectReview(@PathVariable String remittanceNo,
+    public Result<RemittanceResponse> rejectReview(@PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo,
                                                    @Valid @RequestBody ReviewDecisionRequest decision) {
         return Result.success(remittanceService.rejectReview(remittanceNo, decision));
     }
@@ -147,7 +153,8 @@ public class CrossBorderRemittanceController {
      */
     @PostMapping("/{remittanceNo}/return")
     @Operation(summary = "发起退汇，资金从收款方退回付款方")
-    public Result<RemittanceResponse> returnRemittance(@PathVariable String remittanceNo,
+    public Result<RemittanceResponse> returnRemittance(@PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo,
                                                        @RequestParam(defaultValue = "")
                                                        @NotBlank @Size(max = 512) String reason,
                                                        @RequestParam(defaultValue = "system")
@@ -162,7 +169,8 @@ public class CrossBorderRemittanceController {
     @GetMapping("/{remittanceNo}/events")
     @Operation(summary = "查询汇款单的完整状态流转历史")
     public Result<List<com.dong.crossborder.dto.RemittanceEventResponse>> events(
-            @PathVariable String remittanceNo) {
+            @PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(eventService.history(remittanceNo));
     }
 
@@ -172,7 +180,8 @@ public class CrossBorderRemittanceController {
      */
     @PostMapping("/{remittanceNo}/retry")
     @Operation(summary = "人工介入后重置重试计数并重新投递清算消息")
-    public Result<RemittanceResponse> retrySettlement(@PathVariable String remittanceNo) {
+    public Result<RemittanceResponse> retrySettlement(@PathVariable
+ @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(remittanceService.retrySettlement(remittanceNo));
     }
 
@@ -181,7 +190,8 @@ public class CrossBorderRemittanceController {
      */
     @GetMapping("/by-batch/{batchNo}")
     @Operation(summary = "按清算批次查询汇款单")
-    public Result<List<RemittanceResponse>> findByBatchNo(@PathVariable String batchNo) {
+    public Result<List<RemittanceResponse>> findByBatchNo(@PathVariable
+ @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(remittanceService.findByBatchNo(batchNo));
     }
 

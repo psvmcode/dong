@@ -1,5 +1,6 @@
 package com.dong.crossborder.controller;
 
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -69,7 +70,8 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/channel/{channel}")
     @Operation(summary = "调整渠道的时效、限额与费率")
-    public Result<Void> updateChannel(@PathVariable int channel,
+    public Result<Void> updateChannel(@PathVariable
+ @Min(0) @Max(99) int channel,
                                       @RequestParam long etaMinutes,
                                       @RequestParam
                                       @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2)
@@ -90,7 +92,8 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/channel/{channel}/toggle")
     @Operation(summary = "启停渠道，渠道故障时的熔断开关")
-    public Result<Void> toggleChannel(@PathVariable int channel, @RequestParam boolean enabled) {
+    public Result<Void> toggleChannel(@PathVariable
+ @Min(0) @Max(99) int channel, @RequestParam boolean enabled) {
         channelConfigService.setEnabled(channel, enabled);
         return Result.success();
     }
@@ -113,7 +116,8 @@ public class CrossBorderSettlementController {
      */
     @GetMapping("/batch/{batchNo}")
     @Operation(summary = "查询清算批次详情")
-    public Result<SettlementBatchResponse> findByBatchNo(@PathVariable String batchNo) {
+    public Result<SettlementBatchResponse> findByBatchNo(@PathVariable
+ @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(settlementService.findByBatchNo(batchNo));
     }
 
@@ -131,7 +135,8 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/batch/{batchNo}/collect")
     @Operation(summary = "把已扣款的汇款单并入批次")
-    public Result<Integer> collect(@PathVariable String batchNo,
+    public Result<Integer> collect(@PathVariable
+ @NotBlank @Size(max = 128) String batchNo,
                                    @RequestParam(defaultValue = "100")
                                    @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(settlementService.collect(batchNo, limit));
@@ -142,7 +147,8 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/batch/{batchNo}/settle")
     @Operation(summary = "执行清算，给收款方入账并推进状态")
-    public Result<Integer> settle(@PathVariable String batchNo) {
+    public Result<Integer> settle(@PathVariable
+ @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(settlementService.settle(batchNo));
     }
 

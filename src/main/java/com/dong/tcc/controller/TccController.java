@@ -1,5 +1,8 @@
 package com.dong.tcc.controller;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Positive;
 import com.dong.common.constant.Constants;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
@@ -72,7 +75,8 @@ public class TccController {
      */
     @GetMapping("/{xid}")
     @Operation(summary = "查询事务状态")
-    public Result<Map<String, Object>> status(@PathVariable String xid) {
+    public Result<Map<String, Object>> status(@PathVariable
+ @NotBlank @Size(max = 128) String xid) {
         return Result.success(tccCoordinatorService.status(xid));
     }
 
@@ -81,7 +85,8 @@ public class TccController {
      */
     @GetMapping("/{xid}/branches")
     @Operation(summary = "查询事务的各分支记录")
-    public Result<List<TccBranch>> branches(@PathVariable String xid) {
+    public Result<List<TccBranch>> branches(@PathVariable
+ @NotBlank @Size(max = 128) String xid) {
         return Result.success(tccCoordinatorService.branches(xid));
     }
 
