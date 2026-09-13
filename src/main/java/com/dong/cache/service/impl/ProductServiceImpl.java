@@ -101,7 +101,15 @@ public class ProductServiceImpl implements ProductService {
      */
     @Override
     public List<Product> findAll() {
-        return productMapper.selectAll();
+        List<Product> all = productMapper.selectAll();
+        // 这个接口没有分页，数据量一旦超出预期就会把内存吃光。
+        // 全量接口必须设上限：宁可截断并告警，也不能让一次查询拖垮整个服务。
+        if (all.size() > Constants.MAX_BATCH_SIZE) {
+            log.warn("findAll exceeds safe limit, truncated: {} > {}",
+                    all.size(), Constants.MAX_BATCH_SIZE);
+            return all.subList(0, Constants.MAX_BATCH_SIZE);
+        }
+        return all;
     }
 
     /**
