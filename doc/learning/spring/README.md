@@ -12,6 +12,7 @@
 | [事务](transaction.md) | `@Transactional` 九个失效场景、传播行为 |
 | [Bean 生命周期](bean-lifecycle.md) | 实例化→填充→初始化→销毁，扩展点在哪 |
 | [循环依赖](circular-dependency.md) | 三级缓存、为什么必须三级、什么情况解决不了 |
+| [Maven 依赖冲突](maven-dependency-conflict.md) | 传递与仲裁机制、排查命令、dependencyManagement |
 
 ---
 
