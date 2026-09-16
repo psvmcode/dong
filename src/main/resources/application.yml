@@ -39,9 +39,12 @@ spring:
       uri: mongodb://${LAB_MONGO_USERNAME}:${LAB_MONGO_PASSWORD}@${LAB_PUBLIC_HOST}:27017/dong_lab?authSource=admin
 
   elasticsearch:
-    uris: ${LAB_PUBLIC_HOST}:9200
+    uris: http://${LAB_PUBLIC_HOST}:9200
     username: elastic
     password: ${LAB_ES_PASSWORD}
+    # 不设超时的话慢查询会把调用线程一直挂住，这里给 ES 侧单独设一个比接口超时更短的上限
+    connection-timeout: 3s
+    socket-timeout: 30s
 
   kafka:
     bootstrap-servers: ${LAB_PUBLIC_HOST}:9092
