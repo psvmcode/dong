@@ -1,9 +1,9 @@
 package com.dong.search.controller;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
@@ -48,15 +48,20 @@ public class SearchController {
 
     /**
      * 全文检索，支持关键字、分类过滤、价格区间、高亮与分面聚合。
+     *
+     * <p>三个过滤条件都是可选的，全不传等价于按分页遍历。可选参数上只能加 @Size，
+     * 一旦加 @NotBlank，required=false 就形同虚设，方法体里的 null 分支也永远走不到。
      */
     @GetMapping
     @Operation(summary = "全文检索，支持过滤、高亮与分面聚合")
     public Result<ProductSearchResponse> search(@RequestParam(required = false)
- @NotBlank @Size(max = 256) String keyword,
+ @Size(max = 256) String keyword,
                                                 @RequestParam(required = false)
-                                                @NotBlank @Size(max = 128) String category,
-                                                @RequestParam(required = false) Double minPrice,
-                                                @RequestParam(required = false) Double maxPrice,
+                                                @Size(max = 128) String category,
+                                                @RequestParam(required = false)
+                                                @PositiveOrZero Double minPrice,
+                                                @RequestParam(required = false)
+                                                @PositiveOrZero Double maxPrice,
                                                 @RequestParam(defaultValue = "1")
                                                 @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
                                                 @RequestParam(defaultValue = "20")

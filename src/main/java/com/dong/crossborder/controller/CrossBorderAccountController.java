@@ -105,9 +105,9 @@ public class CrossBorderAccountController {
     @Operation(summary = "冻结账户，事件落库留痕")
     public Result<AccountResponse> freeze(@PathVariable
  @NotBlank @Size(max = 128) String accountNo,
-                                          @RequestParam(defaultValue = "")
+                                          @RequestParam
                                           @NotBlank @Size(max = 512) String reason,
-                                          @RequestParam(defaultValue = "")
+                                          @RequestParam
                                           @NotBlank @Size(max = 128) String operator) {
         return Result.success(accountService.freeze(accountNo, reason, operator));
     }
@@ -119,9 +119,9 @@ public class CrossBorderAccountController {
     @Operation(summary = "解冻账户，事件落库留痕")
     public Result<AccountResponse> unfreeze(@PathVariable
  @NotBlank @Size(max = 128) String accountNo,
-                                            @RequestParam(defaultValue = "")
+                                            @RequestParam
                                             @NotBlank @Size(max = 512) String reason,
-                                            @RequestParam(defaultValue = "")
+                                            @RequestParam
                                             @NotBlank @Size(max = 128) String operator) {
         return Result.success(accountService.unfreeze(accountNo, reason, operator));
     }

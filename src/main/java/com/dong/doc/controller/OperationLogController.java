@@ -1,6 +1,5 @@
 package com.dong.doc.controller;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
@@ -56,7 +55,7 @@ public class OperationLogController {
     @GetMapping
     @Operation(summary = "按业务类型分页查询操作日志")
     public Result<PageResult<OperationLogDocument>> findByPage(@RequestParam(required = false)
- @NotBlank @Size(max = 128) String bizType,
+ @Size(max = 128) String bizType,
                                                                @RequestParam(defaultValue = "1")
                                                                @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
                                                                @RequestParam(defaultValue = "20")

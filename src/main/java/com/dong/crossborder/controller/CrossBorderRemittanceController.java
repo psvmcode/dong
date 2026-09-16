@@ -155,7 +155,7 @@ public class CrossBorderRemittanceController {
     @Operation(summary = "发起退汇，资金从收款方退回付款方")
     public Result<RemittanceResponse> returnRemittance(@PathVariable
  @NotBlank @Size(max = 128) String remittanceNo,
-                                                       @RequestParam(defaultValue = "")
+                                                       @RequestParam
                                                        @NotBlank @Size(max = 512) String reason,
                                                        @RequestParam(defaultValue = "system")
                                                        @NotBlank @Size(max = 128) String operator) {

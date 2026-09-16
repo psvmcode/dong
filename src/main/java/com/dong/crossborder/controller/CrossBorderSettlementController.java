@@ -167,7 +167,7 @@ public class CrossBorderSettlementController {
     @GetMapping("/recon")
     @Operation(summary = "查询对账差异，可按批次过滤")
     public Result<Map<String, Object>> recon(@RequestParam(required = false)
- @NotBlank @Size(max = 128) String batchNo) {
+ @Size(max = 128) String batchNo) {
         List<ReconDiffResponse> diffs = (batchNo == null || batchNo.isBlank()
                 ? reconDiffMapper.selectAll(100)
                 : reconDiffMapper.selectByBatchNo(batchNo)).stream()

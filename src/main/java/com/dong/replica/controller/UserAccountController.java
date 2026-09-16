@@ -46,7 +46,7 @@ public class UserAccountController {
     @PostMapping
     @Operation(summary = "创建账户，写入第二数据源")
     public Result<Long> create(@RequestParam Long userId,
-                               @RequestParam(defaultValue = "")
+                               @RequestParam
                                @NotBlank @Size(max = 128) String username,
                                @RequestParam(defaultValue = "0") long balance) {
         return Result.success(requireService().create(userId, username, balance));
