@@ -12,6 +12,7 @@
 | [持久化](persistence.md) | RDB 快照、AOF 日志、混合持久化、为什么持久化不等于备份 |
 | [缓存一致性](cache-consistency.md) | 穿透/击穿/雪崩、先删缓存还是先改库 |
 | [分布式锁](distributed-lock.md) | SET NX PX、看门狗、Redlock 争议 |
+| [大 key](big-key.md) | 阻塞单线程、怎么发现、UNLINK 与拆分 |
 
 ---
 
