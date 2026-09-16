@@ -27,6 +27,7 @@
 | [`redis/`](redis/README.md) | 持久化、缓存一致性、分布式锁 |
 | [`spring/`](spring/README.md) | 事务、Bean 生命周期、循环依赖 |
 | [`mq/`](mq/README.md) | 消息不丢、幂等、顺序、堆积与死信 |
+| [`es/`](es/README.md) | CPU 打满排查与救火 |
 | [`distributed/`](distributed/README.md) | 分布式事务、CAP/BASE |
 | [`system-design/`](system-design/README.md) | 短链、秒杀、分布式 ID |
 | [`algorithm/`](algorithm/README.md) | 高频算法模板与边界处理 |
