@@ -2,6 +2,7 @@ package com.dong.cache.service.impl;
 
 import com.dong.cache.dto.ProductSaveRequest;
 import com.dong.cache.entity.Product;
+import com.dong.cache.event.ProductChangedEvent;
 import com.dong.cache.mapper.ProductMapper;
 import com.dong.cache.service.ProductService;
 import com.dong.common.constant.Constants;
@@ -14,6 +15,7 @@ import com.dong.framework.cache.MultiLevelCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,10 @@ import java.time.Duration;
 import java.util.List;
 /**
  * 商品服务实现。
+ *
+ * <p>增删改都在事务提交后各发布一次商品变更事件，搜索模块据此把数据同步进 Elasticsearch。
+ * 这里只发事件、不直接调同步服务：一是缓存模块不该反向依赖搜索模块，
+ * 二是 ES 抖动时同步必然失败，不能让它牵连商品写入这条主流程。
  */
 @Slf4j
 @Service
@@ -58,6 +64,11 @@ public class ProductServiceImpl implements ProductService {
      * 缓存命中统计组件。
      */
     private final CacheStats cacheStats;
+
+    /**
+     * 商品变更事件发布器，由搜索模块在事务提交后消费。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 走完整多级缓存链路。防穿透只靠缓存空值标记，
@@ -123,6 +134,7 @@ public class ProductServiceImpl implements ProductService {
         productMapper.insert(product);
         RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
         filter.add(String.valueOf(product.getId()));
+        eventPublisher.publishEvent(new ProductChangedEvent(product.getId()));
         log.info("product created id={}", product.getId());
         return product.getId();
     }
@@ -144,6 +156,7 @@ public class ProductServiceImpl implements ProductService {
         existing.setStock(request.getStock());
         productMapper.update(existing);
         multiLevelCache.invalidateEventually(cacheKey(id));
+        eventPublisher.publishEvent(new ProductChangedEvent(id));
         log.info("product updated id={}", id);
     }
 
@@ -155,6 +168,7 @@ public class ProductServiceImpl implements ProductService {
     public void delete(Long id) {
         productMapper.deleteById(id);
         multiLevelCache.invalidateEventually(cacheKey(id));
+        eventPublisher.publishEvent(new ProductChangedEvent(id));
         log.info("product deleted id={}", id);
     }
 

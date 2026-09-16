@@ -11,6 +11,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.CountRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.search.Highlight;
 import co.elastic.clients.elasticsearch.core.search.HighlightField;
@@ -91,17 +92,7 @@ public class SearchServiceImpl implements SearchService {
                             .build())
                     .toList();
             var response = elasticsearchClient.bulk(builder -> builder.index(indexName()).operations(operations));
-            if (Boolean.TRUE.equals(response.errors())) {
-                String reason = response.items().stream()
-                        .filter(item -> item.error() != null)
-                        .map(item -> item.id() + ": " + item.error().reason())
-                        .limit(3)
-                        .reduce((first, second) -> first + "; " + second)
-                        .orElse("unknown");
-                log.error("bulk index reported errors: {}", reason);
-                throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "bulk index failed: " + reason);
-            }
-
+            checkBulkResponse(response);
             log.info("bulk indexed {} documents", list.size());
         } catch (BusinessException ex) {
             throw ex;
@@ -182,6 +173,87 @@ public class SearchServiceImpl implements SearchService {
         } catch (Exception ex) {
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "count failed", ex);
         }
+    }
+
+    /**
+     * listAll。
+     */
+    @Override
+    public Map<String, ProductDocument> listAll(int limit) {
+        try {
+            SearchResponse<ProductDocument> response = elasticsearchClient.search(builder -> builder
+                    .index(indexName())
+                    .size(limit)
+                    .query(query -> query.matchAll(matchAll -> matchAll)), ProductDocument.class);
+            Map<String, ProductDocument> documents = new LinkedHashMap<>();
+            for (Hit<ProductDocument> hit : response.hits().hits()) {
+                if (hit.source() != null) {
+                    documents.put(hit.id(), hit.source());
+                }
+            }
+            return documents;
+        } catch (Exception ex) {
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "list all failed", ex);
+        }
+    }
+
+    /**
+     * bulkDelete。
+     */
+    @Override
+    public void bulkDelete(Iterable<String> ids) {
+        List<String> list = new ArrayList<>();
+        ids.forEach(list::add);
+        if (list.isEmpty()) {
+            return;
+        }
+        try {
+            List<BulkOperation> operations = list.stream()
+                    .map(id -> new BulkOperation.Builder()
+                            .delete(delete -> delete.index(indexName()).id(id))
+                            .build())
+                    .toList();
+            var response = elasticsearchClient.bulk(builder -> builder.index(indexName()).operations(operations));
+            checkBulkResponse(response);
+            log.info("bulk deleted {} documents", list.size());
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "bulk delete failed", ex);
+        }
+    }
+
+    /**
+     * refresh。
+     */
+    @Override
+    public void refresh() {
+        try {
+            elasticsearchClient.indices().refresh(request -> request.index(indexName()));
+        } catch (Exception ex) {
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "refresh failed", ex);
+        }
+    }
+
+    /**
+     * 检查 bulk 响应里的失败项。ES 的 bulk 接口即使单条失败也返回 200，
+     * 只有 errors 标志为 true 才说明真有失败，此时必须把原因捞出来，
+     * 否则日期格式不匹配这类问题会静默吞掉整批写入。
+     *
+     * @param response bulk 响应
+     */
+    private void checkBulkResponse(BulkResponse response) {
+        if (!Boolean.TRUE.equals(response.errors())) {
+            return;
+        }
+        String reason = response.items().stream()
+                .filter(item -> item.error() != null)
+                .map(item -> item.id() + ": " + item.error().reason())
+                .limit(3)
+                .reduce((first, second) -> first + "; " + second)
+                .orElse("unknown");
+        log.error("bulk request reported errors: {}", reason);
+        throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "bulk request failed: " + reason);
     }
 
     /**

@@ -18,6 +18,12 @@ public final class Constants {
 
     public static final int CODE_IDEMPOTENT_REJECTED = 1006;
 
+    /**
+     * 数据量超出安全容量，操作被拒绝。用于必须全量处理、又不允许截断的场景：
+     * 例如两边对账时截断会得出错误结论，把没查到的一侧直接当成多余数据删掉。
+     */
+    public static final int CODE_CAPACITY_EXCEEDED = 1007;
+
     public static final int CODE_INTERNAL_ERROR = 5000;
 
     public static final String MESSAGE_SUCCESS = "success";
@@ -35,6 +41,8 @@ public final class Constants {
     public static final String MESSAGE_DEPENDENCY_UNAVAILABLE = "downstream dependency is unavailable";
 
     public static final String MESSAGE_IDEMPOTENT_REJECTED = "duplicate request rejected";
+
+    public static final String MESSAGE_CAPACITY_EXCEEDED = "capacity exceeded, narrow the scope first";
 
     public static final String MESSAGE_INTERNAL_ERROR = "internal server error";
 

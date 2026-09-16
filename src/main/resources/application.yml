@@ -156,6 +156,10 @@ dong:
   elasticsearch:
     enabled: true
     index-prefix: dong_lab
+    # 定时对账自愈：实时同步漏掉的（ES 当时不可用、进程刚提交完就挂掉、有人绕过应用改库）
+    # 都靠它收敛回一致状态，没有差异时不打日志
+    reconcile-interval-ms: 600000
+    reconcile-initial-delay-ms: 60000
 
   mongodb:
     enabled: true

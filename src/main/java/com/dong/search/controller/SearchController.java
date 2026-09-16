@@ -3,11 +3,13 @@ package com.dong.search.controller;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.Result;
+import com.dong.search.dto.ConsistencyReport;
 import com.dong.search.dto.ProductSearchRequest;
 import com.dong.search.dto.ProductSearchResponse;
 import com.dong.search.service.SearchService;
@@ -17,10 +19,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 /**
  * 商品搜索。索引映射由启动时显式创建，category 为 keyword 以支持聚合，
  * name 和 description 用 ik_max_word 索引、ik_smart 查询。
@@ -55,7 +59,7 @@ public class SearchController {
     @GetMapping
     @Operation(summary = "全文检索，支持过滤、高亮与分面聚合")
     public Result<ProductSearchResponse> search(@RequestParam(required = false)
- @Size(max = 256) String keyword,
+                                                @Size(max = 256) String keyword,
                                                 @RequestParam(required = false)
                                                 @Size(max = 128) String category,
                                                 @RequestParam(required = false)
@@ -77,14 +81,47 @@ public class SearchController {
     }
 
     /**
-     * 从 MySQL 全量重建索引。
+     * 从 MySQL 全量重建索引，顺带清理数据库里已经不存在的孤儿文档。
      * 注意 bulk 接口即使单条失败也返回 200，必须检查响应里的 errors 标志，
      * 否则日期格式不匹配这类问题会静默吞掉所有写入。
      */
     @PostMapping("/sync")
-    @Operation(summary = "从 MySQL 全量重建 Elasticsearch 索引")
+    @Operation(summary = "从 MySQL 全量重建 Elasticsearch 索引，并清理孤儿文档")
     public Result<Integer> sync() {
         return Result.success(requireSyncService().syncAll());
+    }
+
+    /**
+     * 重同步单个商品。按 id 回查数据库：查得到就覆盖索引文档，查不到就把索引文档删掉。
+     * 用于单条数据出问题时的定点修复，比全量重建轻得多。
+     */
+    @PostMapping("/sync/{productId}")
+    @Operation(summary = "按 id 重同步单个商品，库里有则覆盖文档，没有则删除文档")
+    public Result<Void> syncOne(@PathVariable
+ @Positive Long productId) {
+        requireSyncService().syncOne(productId);
+        return Result.success();
+    }
+
+    /**
+     * 一致性对账，只读不写。报告三类差异：库里有索引没有（漏同步）、
+     * 两边都有但内容对不上（同步到一半，或者有人绕过应用直接改过索引）、
+     * 索引有库里没有（孤儿文档，搜索时会返回已经不存在的商品）。
+     */
+    @GetMapping("/consistency")
+    @Operation(summary = "ES 与 MySQL 一致性对账，只报告不修复")
+    public Result<ConsistencyReport> consistency() {
+        return Result.success(requireSyncService().checkConsistency());
+    }
+
+    /**
+     * 按对账结果修复：补写缺失与内容过期的文档，删除孤儿文档。
+     * 数据量超过上限会直接拒绝执行，因为截断之后没查到的那一侧会被当成孤儿文档误删。
+     */
+    @PostMapping("/consistency/repair")
+    @Operation(summary = "按对账结果修复 ES，补写缺失与过期文档并删除孤儿文档")
+    public Result<ConsistencyReport> repairConsistency() {
+        return Result.success(requireSyncService().repairConsistency());
     }
 
     /**
