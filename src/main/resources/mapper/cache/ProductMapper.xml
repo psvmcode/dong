@@ -9,13 +9,15 @@
         <result column="category" property="category"/>
         <result column="price" property="price"/>
         <result column="stock" property="stock"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
         <result column="status" property="status" javaType="com.dong.cache.enums.ProductStatus"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <sql id="columns">
-        id, name, category, price, stock, status, create_time, update_time
+        id, name, category, price, stock, longitude, latitude, status, create_time, update_time
     </sql>
 
     <!-- 按主键查商品 -->
@@ -56,17 +58,19 @@
     <!-- 新增商品，主键回填 -->
     <insert id="insert" parameterType="com.dong.cache.entity.Product"
             useGeneratedKeys="true" keyProperty="id">
-        insert into product (name, category, price, stock, status)
-        values (#{name}, #{category}, #{price}, #{stock}, #{status})
+        insert into product (name, category, price, stock, longitude, latitude, status)
+        values (#{name}, #{category}, #{price}, #{stock}, #{longitude}, #{latitude}, #{status})
     </insert>
 
     <!-- 更新商品 -->
     <update id="update" parameterType="com.dong.cache.entity.Product">
         update product
-        set name     = #{name},
-            category = #{category},
-            price    = #{price},
-            stock    = #{stock}
+        set name      = #{name},
+            category  = #{category},
+            price     = #{price},
+            stock     = #{stock},
+            longitude = #{longitude},
+            latitude  = #{latitude}
         where id = #{id}
     </update>
 

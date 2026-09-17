@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -250,8 +251,37 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         document.setPrice(product.getPrice());
         document.setStock(product.getStock());
         document.setStatus(statusName(product));
+        document.setSuggest(suggestInputs(product));
+        document.setLocation(toLocation(product));
         document.setCreateTime(product.getCreateTime());
         return document;
+    }
+
+    /**
+     * 补全素材。除商品名外把分类也塞进去：补全只支持前缀匹配，
+     * 多给一个入口，用户输入分类名也能补全出商品。
+     */
+    private List<String> suggestInputs(Product product) {
+        List<String> inputs = new ArrayList<>();
+        inputs.add(product.getName());
+        if (product.getCategory() != null && !product.getCategory().isBlank()) {
+            inputs.add(product.getCategory());
+        }
+        return inputs;
+    }
+
+    /**
+     * 坐标。库里是 longitude 与 latitude 两列，ES 的 geo_point 要求是一个整体字段，
+     * 而且顺序是 lat 在前 lon 在后——这个顺序写反了不报错，只会算出完全错误的距离。
+     */
+    private Map<String, Double> toLocation(Product product) {
+        if (product.getLongitude() == null || product.getLatitude() == null) {
+            return null;
+        }
+        Map<String, Double> location = new LinkedHashMap<>();
+        location.put("lat", product.getLatitude());
+        location.put("lon", product.getLongitude());
+        return location;
     }
 
     /**

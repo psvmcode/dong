@@ -154,6 +154,8 @@ public class ProductServiceImpl implements ProductService {
         existing.setCategory(request.getCategory());
         existing.setPrice(request.getPrice());
         existing.setStock(request.getStock());
+        existing.setLongitude(request.getLongitude());
+        existing.setLatitude(request.getLatitude());
         productMapper.update(existing);
         multiLevelCache.invalidateEventually(cacheKey(id));
         eventPublisher.publishEvent(new ProductChangedEvent(id));

@@ -70,6 +70,11 @@ public class ProductSearchResponse {
      */
         private List<String> highlight;
 
+    /**
+     * descriptionHighlight。
+     */
+        private List<String> descriptionHighlight;
+
     }
 
     /**

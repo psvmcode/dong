@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Digits;
 import com.dong.cache.entity.Product;
 import com.dong.cache.enums.ProductStatus;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -40,6 +42,23 @@ public class ProductSaveRequest {
     private Integer stock;
 
     /**
+     * 门店经度。可选，不填表示这个商品不参与地理检索，
+     * 填了就必须和纬度一起给，只有经度是算不出距离的。
+     */
+    @DecimalMin("-180")
+    @DecimalMax("180")
+    @Digits(integer = 3, fraction = 6)
+    private Double longitude;
+
+    /**
+     * 门店纬度。可选，不填表示这个商品不参与地理检索。
+     */
+    @DecimalMin("-90")
+    @DecimalMax("90")
+    @Digits(integer = 2, fraction = 6)
+    private Double latitude;
+
+    /**
      * 转换为商品实体。
      *
      * @return 商品实体
@@ -50,6 +69,8 @@ public class ProductSaveRequest {
         product.setCategory(category == null ? "" : category);
         product.setPrice(price);
         product.setStock(stock == null ? 0 : stock);
+        product.setLongitude(longitude);
+        product.setLatitude(latitude);
         product.setStatus(ProductStatus.ON_SALE);
         return product;
     }
@@ -124,6 +145,42 @@ public class ProductSaveRequest {
      */
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    /**
+     * 获取门店经度。
+     *
+     * @return 门店经度
+     */
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    /**
+     * 设置门店经度。
+     *
+     * @param longitude 门店经度
+     */
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    /**
+     * 获取门店纬度。
+     *
+     * @return 门店纬度
+     */
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    /**
+     * 设置门店纬度。
+     *
+     * @param latitude 门店纬度
+     */
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
     }
 
 }

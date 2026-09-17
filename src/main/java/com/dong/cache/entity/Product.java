@@ -39,7 +39,17 @@ public class Product {
     private Integer stock;
 
     /**
-     * 商品状态，1 上架 0 下架
+     * 门店经度。地理检索场景用，为空表示这个商品不参与距离计算。
+     */
+    private Double longitude;
+
+    /**
+     * 门店纬度。地理检索场景用，为空表示这个商品不参与距离计算。
+     */
+    private Double latitude;
+
+    /**
+     * 商品状态，1 上架 2 已下架
      */
     private ProductStatus status;
 

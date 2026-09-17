@@ -2,8 +2,14 @@ package com.dong.search.service;
 
 import com.dong.search.dto.ProductSearchRequest;
 import com.dong.search.dto.ProductSearchResponse;
+import com.dong.search.dto.DeepSearchResponse;
+import com.dong.search.dto.NearbySearchResponse;
+import com.dong.search.dto.ProductSearchRequest;
+import com.dong.search.dto.ProductSearchResponse;
+import com.dong.search.dto.SearchAggregateResponse;
 import com.dong.search.entity.ProductDocument;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -59,9 +65,55 @@ public interface SearchService {
     void refresh();
 
     /**
-     * 全文检索，支持过滤、高亮与分面聚合。
+     * 全文检索，支持关键字、分类过滤、价格区间、排序、多字段高亮与分面聚合。
      */
     ProductSearchResponse search(ProductSearchRequest request);
+
+    /**
+     * 深分页检索，用 search_after 而不是 from+size。
+     *
+     * <p>from+size 翻到第 N 页要每个分片都捞前 from+size 条再归并截断，
+     * 页数越深代价越大，ES 还卡着 max_result_window 的硬上限；
+     * search_after 只认「上一页最后一条之后」，代价是不能跳页。
+     *
+     * @param sort  排序方式，见 ProductSearchRequest 里的排序常量
+     * @param after 上一页返回的游标，第一页传 null
+     * @param size  每页条数
+     * @return 本页数据与下一页游标
+     */
+    DeepSearchResponse searchAfter(String sort, String after, int size);
+
+    /**
+     * 聚合统计。分面、数值统计、区间分布、时间直方图一次查完，
+     * 过滤条件与检索保持一致，统计的才是用户看到的那一批数据。
+     *
+     * @param request 过滤条件
+     * @return 聚合结果
+     */
+    SearchAggregateResponse aggregate(ProductSearchRequest request);
+
+    /**
+     * 前缀补全。走 completion suggester，不查倒排而是查内存里的 FST，
+     * 所以快，代价是必须额外存一份 suggest 字段，且只能前缀匹配。
+     *
+     * @param prefix 用户输入的前缀
+     * @param size   最多返回几条
+     * @return 补全建议
+     */
+    List<String> suggest(String prefix, int size);
+
+    /**
+     * 附近商品。按与给定坐标的距离过滤并排序。
+     *
+     * <p>没填经纬度的商品不会有 location 字段，ES 会把它们直接排除在距离查询之外。
+     *
+     * @param latitude  纬度
+     * @param longitude 经度
+     * @param radiusKm  半径，单位公里
+     * @param size      最多返回几条
+     * @return 由近到远的商品
+     */
+    NearbySearchResponse nearby(double latitude, double longitude, double radiusKm, int size);
 
     /**
      * 查询文档总数。
