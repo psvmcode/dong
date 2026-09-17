@@ -26,7 +26,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class RedPacketServiceImpl implements RedPacketService {
 
     private static final String PACKET_NO_PREFIX = "RP";

@@ -20,7 +20,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @ConditionalOnProperty(prefix = "dong.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-
 public class ProductChangedListener {
 
     /**

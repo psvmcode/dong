@@ -19,7 +19,6 @@ import java.math.BigDecimal;
  */
 @Slf4j
 @Component
-
 public class OrderStateMachine {
 
     /**

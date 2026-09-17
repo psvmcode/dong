@@ -37,7 +37,6 @@ import java.util.Map;
 @RequestMapping("/api/crossborder")
 @RequiredArgsConstructor
 @Tag(name = "跨境支付-账户")
-
 public class CrossBorderAccountController {
 
     /**

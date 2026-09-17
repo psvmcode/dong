@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * available 与 frozen 配合实现资源隔离。
  */
 @Data
-
 public class TccInventory {
 
     /**

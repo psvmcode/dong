@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 与账户状态字段互为印证：状态是「现在」，事件是「怎么走到现在的」。
  */
 @Data
-
 public class AccountEvent {
 
     /**

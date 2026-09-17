@@ -11,7 +11,6 @@ import java.util.List;
  * 返回值是受影响行数，0 就说明有人抢先改过了。
  */
 @Mapper
-
 public interface TradeOrderMapper {
 
     /**

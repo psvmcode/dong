@@ -31,7 +31,6 @@ import java.net.URI;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "经典场景-短链接")
-
 public class ShortLinkController {
 
     /**

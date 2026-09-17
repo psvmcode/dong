@@ -9,7 +9,6 @@ import java.util.List;
  * 清算渠道配置数据访问。
  */
 @Mapper
-
 public interface ChannelConfigMapper {
 
     /**

@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 是幂等消费、死信识别与消费审计的依据。
  */
 @Data
-
 public class MqMessageLog {
 
     /**

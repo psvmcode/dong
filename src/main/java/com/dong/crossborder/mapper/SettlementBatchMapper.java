@@ -12,7 +12,6 @@ import java.util.List;
  * SettlementBatchMapper，MyBatis 数据访问接口。
  */
 @Mapper
-
 public interface SettlementBatchMapper {
 
     /**

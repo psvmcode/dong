@@ -7,7 +7,6 @@ import java.time.Duration;
  * 缓存配置项。抖动比例、双删延迟、重建锁等待等都可在此调整。
  */
 @ConfigurationProperties(prefix = "dong.cache")
-
 public class CacheProperties {
 
     /**

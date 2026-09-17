@@ -10,7 +10,6 @@ import java.util.List;
  * 提供更新接口反而会引入被篡改的风险。
  */
 @Mapper
-
 public interface AccountEventMapper {
 
     /**

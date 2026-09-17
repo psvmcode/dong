@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class LockLabServiceImpl implements LockLabService {
 
     /**

@@ -22,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 @EnableConfigurationProperties(CacheProperties.class)
 @RequiredArgsConstructor
-
 public class CacheConfig {
 
     /**

@@ -22,7 +22,6 @@ import java.util.Locale;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class LeaderboardServiceImpl implements LeaderboardService {
 
     /**

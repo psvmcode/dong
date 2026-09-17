@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * TCC 事务状态枚举类型处理器。
  */
 @MappedTypes(TccTransactionStatus.class)
-
 public class TccTransactionStatusTypeHandler extends BaseTypeHandler<TccTransactionStatus> {
 
     /**

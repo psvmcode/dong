@@ -22,7 +22,6 @@ import java.util.Map;
 @Service
 @ConditionalOnProperty(prefix = "dong.mariadb", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-
 public class UserAccountServiceImpl implements UserAccountService {
 
     /**

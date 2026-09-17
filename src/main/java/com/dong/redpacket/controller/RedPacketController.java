@@ -30,7 +30,6 @@ import java.util.List;
 @RequestMapping("/api/red-packet")
 @RequiredArgsConstructor
 @Tag(name = "抢红包")
-
 public class RedPacketController {
 
     /**

@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 因为跨境场景下各币种资金是分开清算的，不能混在一个余额里。
  */
 @Data
-
 public class CrossBorderAccount {
 
     /**

@@ -23,7 +23,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class SeckillStockServiceImpl implements SeckillStockService {
 
     private static final String STOCK = "lab:seckill:stock:";

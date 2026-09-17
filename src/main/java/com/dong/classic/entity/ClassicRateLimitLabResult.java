@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
  * 落库后可以直接对比历史上不同参数下的表现。
  */
 @Data
-
 public class ClassicRateLimitLabResult {
 
     /**

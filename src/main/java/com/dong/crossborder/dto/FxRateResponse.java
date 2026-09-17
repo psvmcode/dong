@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
  * 这个方向最容易搞反，接口层同样保持与库内一致的口径，避免二次换算引入误差。
  */
 @Data
-
 public class FxRateResponse {
 
     /**

@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
  * 这几项一个都不能少。
  */
 @Data
-
 public class RemittanceEventResponse {
 
     /**

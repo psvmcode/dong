@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * 把全部流水按时间排列即可还原每一步之后的余额，这是审计核对的基础。
  */
 @Data
-
 public class LedgerResponse {
 
     /**

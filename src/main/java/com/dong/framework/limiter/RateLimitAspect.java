@@ -29,7 +29,6 @@ import java.time.Duration;
 @Aspect
 @Component
 @RequiredArgsConstructor
-
 public class RateLimitAspect {
 
     private static final ExpressionParser PARSER = new SpelExpressionParser();

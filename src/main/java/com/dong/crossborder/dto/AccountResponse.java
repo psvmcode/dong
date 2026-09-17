@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 只看 balance 会误判可汇额度，这是运营侧最常见的口径误解。
  */
 @Data
-
 public class AccountResponse {
 
     /**

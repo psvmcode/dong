@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * 为负表示渠道比本地少（短款），零差异才是核销的前提。
  */
 @Data
-
 public class ReconDiffResponse {
 
     /**

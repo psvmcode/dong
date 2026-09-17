@@ -16,7 +16,6 @@ import javax.sql.DataSource;
  * 主数据源与 MyBatis 配置类。
  */
 @Configuration
-
 public class PrimaryDataSourceConfig {
 
     public static final String SESSION_FACTORY = "sqlSessionFactory";

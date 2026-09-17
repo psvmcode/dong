@@ -19,7 +19,6 @@ import java.util.regex.Pattern;
  * 改前缀就等于指向一套全新索引：旧索引不会跟过来，历史数据要自己 reindex。
  */
 @Component
-
 public class IndexNameResolver {
 
     /**

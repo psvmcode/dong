@@ -26,7 +26,6 @@ import java.util.List;
 @Service
 @ConditionalOnProperty(prefix = "dong.mongodb", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-
 public class OperationLogServiceImpl implements OperationLogService {
 
     /**

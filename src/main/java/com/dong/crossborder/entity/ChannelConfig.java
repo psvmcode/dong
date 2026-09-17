@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
  * 与其让汇款一直失败，不如把流量切到还能用的渠道。
  */
 @Data
-
 public class ChannelConfig {
 
     /**

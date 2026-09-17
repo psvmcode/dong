@@ -25,7 +25,6 @@ import java.util.Map;
  * 字符串默认会被推断成 text，而 text 字段做 terms 聚合会直接报错。
  */
 @Data
-
 public class ProductDocument {
 
     /**

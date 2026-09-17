@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * 红包类型枚举类型处理器。
  */
 @MappedTypes(RedPacketType.class)
-
 public class RedPacketTypeTypeHandler extends BaseTypeHandler<RedPacketType> {
 
     /**

@@ -12,7 +12,6 @@ import java.util.UUID;
  * 业务耗时超过 leaseTime 时锁会自动释放，此时再 unlock 会抛异常。
  */
 @Slf4j
-
 public class LockHandle implements AutoCloseable {
 
     /**

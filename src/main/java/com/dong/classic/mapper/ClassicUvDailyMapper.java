@@ -10,7 +10,6 @@ import java.util.List;
  * 每日独立访客数据访问。
  */
 @Mapper
-
 public interface ClassicUvDailyMapper {
 
     /**

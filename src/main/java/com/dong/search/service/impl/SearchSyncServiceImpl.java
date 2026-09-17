@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 @Service
 @ConditionalOnProperty(prefix = "dong.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-
 public class SearchSyncServiceImpl implements SearchSyncService {
 
     /**

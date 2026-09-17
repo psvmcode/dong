@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * MqMessageStatusTypeHandler。
  */
 @MappedTypes(MqMessageStatus.class)
-
 public class MqMessageStatusTypeHandler extends BaseTypeHandler<MqMessageStatus> {
 
     /**

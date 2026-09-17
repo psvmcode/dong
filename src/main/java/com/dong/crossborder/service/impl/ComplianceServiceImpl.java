@@ -30,7 +30,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class ComplianceServiceImpl implements ComplianceService {
 
     /**

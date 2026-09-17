@@ -30,7 +30,6 @@ import java.time.Duration;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-
 public class GlobalRateLimitInterceptor implements HandlerInterceptor {
 
     /**

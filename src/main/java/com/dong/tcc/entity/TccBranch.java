@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 恢复任务根据 nextRetryTime 扫描并推进分支状态。
  */
 @Data
-
 public class TccBranch {
 
     /**

@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * 通过 code 上的唯一索引实现短码到原始链接的快速映射。
  */
 @Data
-
 public class ShortLink {
 
     /**

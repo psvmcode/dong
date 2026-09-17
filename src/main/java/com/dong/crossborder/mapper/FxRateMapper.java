@@ -10,7 +10,6 @@ import java.util.List;
  * 汇率牌价数据访问。
  */
 @Mapper
-
 public interface FxRateMapper {
 
     /**

@@ -19,7 +19,6 @@ import java.math.BigDecimal;
  * 小数位限制两位与 decimal(18,2) 对齐，避免落库时静默四舍五入。
  */
 @Data
-
 public class AccountCreateRequest {
 
     /**

@@ -8,7 +8,6 @@ import lombok.Data;
  * 匿名的放行或驳回在监管检查时等同于没有做过审核。
  */
 @Data
-
 public class ReviewDecisionRequest {
 
     /**

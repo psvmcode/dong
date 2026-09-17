@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
  * 重复签到在两边都不会产生第二条记录。
  */
 @Data
-
 public class ClassicSigninRecord {
 
     /**

@@ -9,7 +9,6 @@ import java.util.List;
  * 排行榜持久化数据访问。
  */
 @Mapper
-
 public interface ClassicLeaderboardSnapshotMapper {
 
     /**

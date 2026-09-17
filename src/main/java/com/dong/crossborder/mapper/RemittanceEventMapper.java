@@ -9,7 +9,6 @@ import java.util.List;
  * 汇款单流转日志数据访问。
  */
 @Mapper
-
 public interface RemittanceEventMapper {
 
     /**

@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class ShortLinkServiceImpl implements ShortLinkService {
 
     /**

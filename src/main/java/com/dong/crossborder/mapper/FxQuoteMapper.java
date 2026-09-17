@@ -11,7 +11,6 @@ import java.util.List;
  * FxQuoteMapper，MyBatis 数据访问接口。
  */
 @Mapper
-
 public interface FxQuoteMapper {
 
     /**

@@ -15,7 +15,6 @@ import java.util.List;
  * 另一个代价是不能跳页，只能一页一页往下翻。
  */
 @Data
-
 public class DeepSearchResponse {
 
     /**

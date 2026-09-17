@@ -27,7 +27,6 @@ import java.util.Map;
 @RequestMapping("/api/classic/sign")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-签到")
-
 public class SignInController {
 
     /**

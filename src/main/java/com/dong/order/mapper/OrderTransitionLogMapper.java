@@ -9,7 +9,6 @@ import java.util.List;
  * 订单状态流转日志 Mapper。
  */
 @Mapper
-
 public interface OrderTransitionLogMapper {
 
     /**

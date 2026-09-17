@@ -33,7 +33,6 @@ import java.util.Map;
 @RequestMapping("/api/social")
 @RequiredArgsConstructor
 @Tag(name = "社交关系")
-
 public class SocialController {
 
     /**

@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 是 Redis 预减库存、异步落库与限流等实验的载体。
  */
 @Data
-
 public class SeckillActivity {
 
     /**

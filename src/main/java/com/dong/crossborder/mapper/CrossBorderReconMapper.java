@@ -14,7 +14,6 @@ import java.util.List;
  * CrossBorderReconMapper，MyBatis 数据访问接口。
  */
 @Mapper
-
 public interface CrossBorderReconMapper {
 
     /**

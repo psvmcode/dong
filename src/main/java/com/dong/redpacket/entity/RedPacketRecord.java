@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * 与红包表配合用于展示领取明细和核对总金额。
  */
 @Data
-
 public class RedPacketRecord {
 
     /**

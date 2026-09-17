@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @Component
-
 public class LocalMessageBus implements MessageProducer {
 
     private final Map<String, List<MessageHandler>> handlers = new ConcurrentHashMap<>();

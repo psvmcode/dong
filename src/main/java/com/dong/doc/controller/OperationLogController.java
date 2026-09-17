@@ -31,7 +31,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/doc/operation-log")
 @RequiredArgsConstructor
 @Tag(name = "文档-操作日志")
-
 public class OperationLogController {
 
     // ObjectProvider 是因为 MongoDB 默认关闭，关闭时容器里没有对应 bean

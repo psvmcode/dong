@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 @RequiredArgsConstructor
-
 public class RedisService {
 
     /**

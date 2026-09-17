@@ -10,7 +10,6 @@ import java.util.List;
  * RedPacketMapper，MyBatis 数据访问接口。
  */
 @Mapper
-
 public interface RedPacketMapper {
 
     /**

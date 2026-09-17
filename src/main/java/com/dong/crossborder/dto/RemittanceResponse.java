@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
  * 加上手续费，客户端可以完整复算这笔汇款的成本。
  */
 @Data
-
 public class RemittanceResponse {
 
     /**

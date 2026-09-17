@@ -32,7 +32,6 @@ import java.util.Map;
 @RequestMapping("/api/mq")
 @RequiredArgsConstructor
 @Tag(name = "消息")
-
 public class MqController {
 
     /**

@@ -29,7 +29,6 @@ import java.util.List;
 @RequestMapping("/api/classic/lab-record")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-实验记录")
-
 public class ClassicLabRecordController {
 
     /**

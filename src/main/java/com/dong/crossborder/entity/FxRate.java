@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
  * 出问题时要能回答「这笔汇款成交时用的牌价是谁在什么时候定的」。
  */
 @Data
-
 public class FxRate {
 
     /**

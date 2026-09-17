@@ -10,7 +10,6 @@ import java.util.List;
  * 检查留痕一旦允许修改就失去监管证据的效力。
  */
 @Mapper
-
 public interface ComplianceRecordMapper {
 
     /**

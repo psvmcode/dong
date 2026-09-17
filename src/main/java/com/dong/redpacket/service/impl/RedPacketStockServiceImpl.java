@@ -20,7 +20,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class RedPacketStockServiceImpl implements RedPacketStockService {
 
     private static final String COUNT = "lab:redpacket:count:";

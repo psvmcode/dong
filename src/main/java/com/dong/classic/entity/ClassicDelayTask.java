@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
  * 既能追踪「任务到底有没有被消费」，也能靠重试次数字段做补偿重投。
  */
 @Data
-
 public class ClassicDelayTask {
 
     /**

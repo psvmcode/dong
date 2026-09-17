@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 也是事后审计和争议处理的依据。
  */
 @Data
-
 public class ComplianceRecord {
 
     /**

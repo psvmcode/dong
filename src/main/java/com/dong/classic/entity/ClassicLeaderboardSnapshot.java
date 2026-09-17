@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
  * 也能在不依赖 Redis 的情况下做离线统计与核对。
  */
 @Data
-
 public class ClassicLeaderboardSnapshot {
 
     /**

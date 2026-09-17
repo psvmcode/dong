@@ -33,7 +33,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "跨境支付-风控")
-
 public class CrossBorderRiskController {
 
     /**

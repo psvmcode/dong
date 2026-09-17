@@ -30,7 +30,6 @@ import java.util.List;
 @RequestMapping("/api/classic/rank")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-排行榜")
-
 public class LeaderboardController {
 
     /**

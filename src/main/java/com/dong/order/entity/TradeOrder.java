@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * version 负责并发下的乐观锁，两者分工不同缺一不可。
  */
 @Data
-
 public class TradeOrder {
 
     /**

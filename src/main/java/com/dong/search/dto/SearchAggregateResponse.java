@@ -16,7 +16,6 @@ import java.util.Map;
  * terms 聚合的 docCount 在分片多的时候可能不准，需要靠 shard_size 调精度。
  */
 @Data
-
 public class SearchAggregateResponse {
 
     /**

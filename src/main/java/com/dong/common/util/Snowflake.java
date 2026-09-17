@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
  * 雪花发号器。
  */
 @Component
-
 public class Snowflake {
 
     private static final long MAX_BACKWARD_MS = 5L;

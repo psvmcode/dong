@@ -10,7 +10,6 @@ import java.util.List;
  * 延迟任务数据访问。
  */
 @Mapper
-
 public interface ClassicDelayTaskMapper {
 
     /**

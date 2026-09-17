@@ -20,7 +20,6 @@ import java.util.function.Supplier;
  * </ul>
  */
 @Slf4j
-
 public class MultiLevelCache implements SmartInitializingSingleton {
 
     private static final String REBUILD_LOCK_PREFIX = "lab:cache:rebuild:";

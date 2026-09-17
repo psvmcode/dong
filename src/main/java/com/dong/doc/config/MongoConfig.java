@@ -19,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 @ConditionalOnProperty(prefix = "dong.mongodb", name = "enabled", havingValue = "true")
 @EnableMongoRepositories(basePackages = "com.dong.doc.repository")
-
 public class MongoConfig {
 
     /**

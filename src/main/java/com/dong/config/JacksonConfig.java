@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
  * Jackson 配置类。
  */
 @Configuration
-
 public class JacksonConfig {
 
     /**

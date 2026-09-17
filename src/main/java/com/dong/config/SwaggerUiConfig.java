@@ -16,7 +16,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-
 public class SwaggerUiConfig implements WebMvcConfigurer {
 
     private static final String WEBJAR_VERSION = "5.32.11";

@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 比不上的都记到这里，由运营按差异类型处理。
  */
 @Data
-
 public class ReconDiff {
 
     /**

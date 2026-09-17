@@ -31,7 +31,6 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class SocialServiceImpl implements SocialService {
 
     private static final String FOLLOWING = "lab:social:following:";

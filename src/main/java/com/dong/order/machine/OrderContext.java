@@ -13,7 +13,6 @@ import java.math.BigDecimal;
  * 只能靠 action 有没有被执行过判断。
  */
 @Data
-
 public class OrderContext {
 
     /**

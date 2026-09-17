@@ -24,7 +24,6 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "dong.rocketmq", name = "enabled", havingValue = "true")
-
 public class RocketMqProducer implements MessageProducer {
 
     /**

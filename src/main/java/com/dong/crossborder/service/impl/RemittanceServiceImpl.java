@@ -62,7 +62,6 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class RemittanceServiceImpl implements RemittanceService {
 
     public static final String SETTLEMENT_TOPIC = "cross-border-settlement";

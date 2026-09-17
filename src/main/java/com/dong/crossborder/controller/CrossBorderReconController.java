@@ -36,7 +36,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "跨境支付-对账")
-
 public class CrossBorderReconController {
 
     /**

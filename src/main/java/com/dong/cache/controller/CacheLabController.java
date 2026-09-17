@@ -36,7 +36,6 @@ import java.util.Map;
 @RequestMapping("/api/cache/lab")
 @RequiredArgsConstructor
 @Tag(name = "缓存实验室")
-
 public class CacheLabController {
 
     /**

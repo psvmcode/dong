@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "dong.tcc", name = "recovery-enabled", havingValue = "true", matchIfMissing = true)
-
 public class TccRecoveryTask {
 
     /**

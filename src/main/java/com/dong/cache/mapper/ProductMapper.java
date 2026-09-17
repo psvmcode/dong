@@ -9,7 +9,6 @@ import java.util.List;
  * 商品数据访问接口。
  */
 @Mapper
-
 public interface ProductMapper {
 
     /**

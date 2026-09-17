@@ -22,7 +22,6 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "dong.seckill", name = "timeout-task-enabled", havingValue = "true", matchIfMissing = true)
-
 public class SeckillTimeoutTask {
 
     /**

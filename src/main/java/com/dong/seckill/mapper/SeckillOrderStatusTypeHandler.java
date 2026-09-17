@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * 秒杀订单状态枚举类型处理器。
  */
 @MappedTypes(SeckillOrderStatus.class)
-
 public class SeckillOrderStatusTypeHandler extends BaseTypeHandler<SeckillOrderStatus> {
 
     /**

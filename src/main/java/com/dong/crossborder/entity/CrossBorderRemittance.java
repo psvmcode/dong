@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
  * version 用于乐观锁，避免并发推进状态时互相覆盖。
  */
 @Data
-
 public class CrossBorderRemittance {
 
     /**

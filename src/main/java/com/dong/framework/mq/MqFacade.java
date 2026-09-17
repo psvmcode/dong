@@ -24,7 +24,6 @@ import java.util.Map;
 @Slf4j
 @Primary
 @Component
-
 public class MqFacade implements MessageProducer {
 
     /**

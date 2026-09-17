@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
  * 落库后既能持久保存，也能在 Redis 数据丢失后重新灌回 GEO 集合。
  */
 @Data
-
 public class ClassicGeoPlace {
 
     /**

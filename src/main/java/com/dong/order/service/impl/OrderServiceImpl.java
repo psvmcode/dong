@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class OrderServiceImpl implements OrderService {
 
     private static final String ORDER_NO_PREFIX = "TO";

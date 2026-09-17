@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
  * 锁等待超时的次数必须单独记录——混进丢失更新会让实验结论失真。
  */
 @Data
-
 public class ClassicLockLabResult {
 
     /**

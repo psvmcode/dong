@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * followerId 关注 followeeId，用于实现关注列表与粉丝列表。
  */
 @Data
-
 public class SocialRelation {
 
     /**

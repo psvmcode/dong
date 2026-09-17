@@ -13,7 +13,6 @@ import java.util.Map;
  */
 @Data
 @Document(collection = "operation_log")
-
 public class OperationLogDocument {
 
     /**

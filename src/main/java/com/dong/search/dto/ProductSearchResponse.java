@@ -10,7 +10,6 @@ import java.util.Map;
  * ProductSearchResponse。
  */
 @Data
-
 public class ProductSearchResponse {
 
     /**

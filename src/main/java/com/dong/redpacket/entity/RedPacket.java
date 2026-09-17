@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 剩余金额为零或过期后状态流转到结束。
  */
 @Data
-
 public class RedPacket {
 
     /**

@@ -28,7 +28,6 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class AmlMonitorImpl implements AmlMonitor {
 
     /**

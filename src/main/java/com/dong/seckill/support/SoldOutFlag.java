@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.LongAdder;
  */
 @Slf4j
 @Service
-
 public class SoldOutFlag {
 
     private static final Duration FLAG_TTL = Duration.ofSeconds(10);

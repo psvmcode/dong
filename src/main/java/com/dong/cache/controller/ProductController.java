@@ -37,7 +37,6 @@ import java.util.List;
 @RequestMapping("/api/cache/products")
 @RequiredArgsConstructor
 @Tag(name = "缓存-商品")
-
 public class ProductController {
 
     /**

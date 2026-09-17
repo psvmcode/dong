@@ -10,7 +10,6 @@ import java.util.List;
  * 才能看出这一轮到底发现了什么、又修掉了多少。修复之后想再确认，就重新对账一次。
  */
 @Data
-
 public class ConsistencyReport {
 
     /**

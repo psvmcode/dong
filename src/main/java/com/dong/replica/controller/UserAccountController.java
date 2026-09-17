@@ -32,7 +32,6 @@ import java.util.Map;
 @RequestMapping("/api/replica/accounts")
 @RequiredArgsConstructor
 @Tag(name = "多数据源-账户")
-
 public class UserAccountController {
 
     /**

@@ -10,7 +10,6 @@ import java.util.List;
  * 签到流水数据访问。
  */
 @Mapper
-
 public interface ClassicSigninRecordMapper {
 
     /**

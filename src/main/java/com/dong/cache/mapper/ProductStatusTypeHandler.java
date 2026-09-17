@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * 商品状态枚举与数据库 int 之间的类型转换器。
  */
 @MappedTypes(ProductStatus.class)
-
 public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
 
     /**

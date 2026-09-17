@@ -58,7 +58,6 @@ import java.util.List;
 @RequestMapping("/api/search")
 @RequiredArgsConstructor
 @Tag(name = "搜索")
-
 public class SearchController {
 
     /**
@@ -83,7 +82,7 @@ public class SearchController {
     @GetMapping
     @Operation(summary = "全文检索，支持过滤、排序、多字段高亮与分面聚合")
     public Result<ProductSearchResponse> search(@RequestParam(required = false)
- @Size(max = 256) String keyword,
+                                                @Size(max = 256) String keyword,
                                                 @RequestParam(required = false)
                                                 @Size(max = 128) String category,
                                                 @RequestParam(required = false)
@@ -124,7 +123,7 @@ public class SearchController {
     @GetMapping("/aggregate")
     @Operation(summary = "聚合统计：分类分面、价格统计、价格区间分布、按月趋势")
     public Result<SearchAggregateResponse> aggregate(@RequestParam(required = false)
- @Size(max = 256) String keyword,
+                                                     @Size(max = 256) String keyword,
                                                      @RequestParam(required = false)
                                                      @Size(max = 128) String category,
                                                      @RequestParam(required = false)
@@ -145,7 +144,7 @@ public class SearchController {
     @GetMapping("/suggest")
     @Operation(summary = "搜索框前缀补全，走 completion suggester")
     public Result<List<String>> suggest(@RequestParam
- @NotBlank @Size(max = 128) String prefix,
+                                        @NotBlank @Size(max = 128) String prefix,
                                         @RequestParam(defaultValue = "10")
                                         @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
         return Result.success(requireSearchService().suggest(prefix, size));
@@ -158,7 +157,7 @@ public class SearchController {
     @GetMapping("/nearby")
     @Operation(summary = "按坐标检索附近商品，半径过滤加距离排序")
     public Result<NearbySearchResponse> nearby(@RequestParam
- @DecimalMin("-90") @DecimalMax("90") double lat,
+                                               @DecimalMin("-90") @DecimalMax("90") double lat,
                                                @RequestParam
                                                @DecimalMin("-180") @DecimalMax("180") double lon,
                                                @RequestParam(defaultValue = "10")
@@ -196,7 +195,7 @@ public class SearchController {
     @PostMapping("/sync/{productId}")
     @Operation(summary = "按 id 重同步单个商品，库里有则覆盖文档，没有则删除文档")
     public Result<Void> syncOne(@PathVariable
- @Positive Long productId) {
+                                @Positive Long productId) {
         requireSyncService().syncOne(productId);
         return Result.success();
     }

@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * 这是并发实验能否被量化验证的关键：看日志条数而不是看最终状态。
  */
 @Data
-
 public class OrderTransitionLog {
 
     /**

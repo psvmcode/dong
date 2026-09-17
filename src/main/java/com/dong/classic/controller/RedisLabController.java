@@ -37,7 +37,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "经典场景-Redis")
-
 public class RedisLabController {
 
     /**

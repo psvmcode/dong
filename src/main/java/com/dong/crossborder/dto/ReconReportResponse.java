@@ -12,7 +12,6 @@ import java.util.Map;
  * 含本地与渠道的汇总数、差异明细与处理状态。
  */
 @Data
-
 public class ReconReportResponse {
 
     /**

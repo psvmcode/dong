@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * 这是消息重复投递时不会重复记账的关键。
  */
 @Data
-
 public class AccountLedger {
 
     /**

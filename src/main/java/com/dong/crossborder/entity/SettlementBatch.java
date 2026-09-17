@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * 错过就要等下一个窗口，这是跨境汇款到账时间差异的主要原因之一。
  */
 @Data
-
 public class SettlementBatch {
 
     /**

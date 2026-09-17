@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
  * 之后进来的单子只能等下一批，跨境资金的时效由批次节奏决定。
  */
 @Data
-
 public class SettlementBatchResponse {
 
     /**

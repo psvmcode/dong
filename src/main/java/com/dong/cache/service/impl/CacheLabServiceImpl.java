@@ -17,7 +17,6 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class CacheLabServiceImpl implements CacheLabService {
 
     /**

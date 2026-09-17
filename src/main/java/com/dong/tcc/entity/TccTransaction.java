@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 恢复任务定时扫描并推进超时事务。
  */
 @Data
-
 public class TccTransaction {
 
     /**

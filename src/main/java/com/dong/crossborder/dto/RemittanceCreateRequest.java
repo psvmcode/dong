@@ -22,7 +22,6 @@ import java.math.BigDecimal;
  * 传更多小数会被静默四舍五入，导致扣款金额与单子记录对不上。
  */
 @Data
-
 public class RemittanceCreateRequest {
 
     /**

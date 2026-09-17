@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * expireTime 是锁汇有效期，超过则报价失效必须重新询价。
  */
 @Data
-
 public class FxQuote {
 
     /**

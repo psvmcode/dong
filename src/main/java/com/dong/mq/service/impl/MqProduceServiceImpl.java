@@ -15,7 +15,6 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class MqProduceServiceImpl implements MqProduceService {
 
     /**

@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * 红包状态枚举类型处理器。
  */
 @MappedTypes(RedPacketStatus.class)
-
 public class RedPacketStatusTypeHandler extends BaseTypeHandler<RedPacketStatus> {
 
     /**

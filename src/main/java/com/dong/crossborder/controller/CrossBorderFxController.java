@@ -35,7 +35,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "跨境支付-汇率")
-
 public class CrossBorderFxController {
 
     /**

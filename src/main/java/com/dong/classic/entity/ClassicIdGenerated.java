@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
  * 反而干扰「对比发号器性能」这个实验目的。
  */
 @Data
-
 public class ClassicIdGenerated {
 
     /**

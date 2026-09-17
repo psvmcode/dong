@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(prefix = "dong.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-
 public class SearchConsistencyTask {
 
     /**

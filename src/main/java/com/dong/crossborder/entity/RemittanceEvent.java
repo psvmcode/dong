@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
  * 「为什么这笔钱卡了两天」这类真正需要排查的问题。
  */
 @Data
-
 public class RemittanceEvent {
 
     /**

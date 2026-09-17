@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class SeckillOrderCreatedHandler implements MessageHandler {
 
     private static final String TOPIC = "seckill-order-created";

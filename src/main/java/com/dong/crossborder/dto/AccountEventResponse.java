@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 用于回答「谁在什么时间因为什么冻结或解冻了这个账户」。
  */
 @Data
-
 public class AccountEventResponse {
 
     /**

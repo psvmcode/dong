@@ -15,7 +15,6 @@ import java.util.List;
  * 放在同一个 Mapper 里是因为它们都属于「实验记录」，体量都不大。
  */
 @Mapper
-
 public interface ClassicLabRecordMapper {
 
     /**

@@ -18,7 +18,6 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class TccInventoryParticipant implements TccParticipant {
 
     /**

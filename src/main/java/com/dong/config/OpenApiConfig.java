@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
  * OpenAPI 文档配置类。
  */
 @Configuration
-
 public class OpenApiConfig {
 
     /**

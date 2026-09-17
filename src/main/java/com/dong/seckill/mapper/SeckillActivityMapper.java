@@ -9,7 +9,6 @@ import java.util.List;
  * SeckillActivityMapper，MyBatis 数据访问接口。
  */
 @Mapper
-
 public interface SeckillActivityMapper {
 
     /**

@@ -16,7 +16,6 @@ import java.util.function.Consumer;
  * 注意事件必须带来源节点并做过滤，否则自己发的消息又触发自己清理一遍。
  */
 @Slf4j
-
 public class CacheEventBus {
 
     @Getter

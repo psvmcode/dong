@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * 秒杀活动状态枚举类型处理器。
  */
 @MappedTypes(SeckillActivityStatus.class)
-
 public class SeckillActivityStatusTypeHandler extends BaseTypeHandler<SeckillActivityStatus> {
 
     /**

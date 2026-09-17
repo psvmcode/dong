@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * 点赞数通过 Redis 异步自增，定时任务刷回数据库。
  */
 @Data
-
 public class SocialFeed {
 
     /**

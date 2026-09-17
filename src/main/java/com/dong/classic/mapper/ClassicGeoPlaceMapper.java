@@ -9,7 +9,6 @@ import java.util.List;
  * 地理位置数据访问。
  */
 @Mapper
-
 public interface ClassicGeoPlaceMapper {
 
     /**

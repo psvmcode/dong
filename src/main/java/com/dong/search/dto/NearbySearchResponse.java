@@ -14,7 +14,6 @@ import java.util.List;
  * 这类文档在 ES 里相当于没有 location，不会出现在任何距离查询的结果里。
  */
 @Data
-
 public class NearbySearchResponse {
 
     /**

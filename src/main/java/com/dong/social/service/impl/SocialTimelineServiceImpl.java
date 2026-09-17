@@ -19,7 +19,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class SocialTimelineServiceImpl implements SocialTimelineService {
 
     private static final String TIMELINE = "lab:social:timeline:";

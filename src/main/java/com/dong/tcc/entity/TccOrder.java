@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  * 订单状态与全局事务状态联动，用于验证最终一致性。
  */
 @Data
-
 public class TccOrder {
 
     /**

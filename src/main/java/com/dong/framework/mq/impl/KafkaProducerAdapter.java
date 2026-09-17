@@ -23,7 +23,6 @@ import java.time.Duration;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "dong.kafka", name = "enabled", havingValue = "true")
-
 public class KafkaProducerAdapter implements MessageProducer {
 
     // Kafka 无原生延迟消息，用这个头记录生效时间戳，消费端据此暂存

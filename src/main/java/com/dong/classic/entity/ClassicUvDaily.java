@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
  * 落库后才能回答「上个月每天的 UV 分别是多少」。
  */
 @Data
-
 public class ClassicUvDaily {
 
     /**

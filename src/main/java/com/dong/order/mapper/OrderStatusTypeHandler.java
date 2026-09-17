@@ -13,7 +13,6 @@ import java.sql.SQLException;
  * 订单状态枚举类型处理器。
  */
 @MappedTypes(OrderStatus.class)
-
 public class OrderStatusTypeHandler extends BaseTypeHandler<OrderStatus> {
 
     /**

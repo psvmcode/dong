@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class MqConsumeServiceImpl implements MqConsumeService {
 
     private static final int MAX_RETRY = 3;

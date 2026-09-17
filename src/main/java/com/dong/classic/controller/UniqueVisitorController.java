@@ -26,7 +26,6 @@ import java.time.LocalDate;
 @RequestMapping("/api/classic/uv")
 @RequiredArgsConstructor
 @Tag(name = "经典场景-独立访客")
-
 public class UniqueVisitorController {
 
     /**

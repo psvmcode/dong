@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class DemoOrderMessageHandler implements MessageHandler {
 
     public static final String TOPIC = "demo-order-event";

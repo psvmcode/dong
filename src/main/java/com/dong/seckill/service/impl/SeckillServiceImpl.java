@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-
 public class SeckillServiceImpl implements SeckillService {
 
     private static final String ORDER_NO_PREFIX = "SK";

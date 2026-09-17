@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Configuration
 @EnableAsync
-
 public class ExecutorConfig {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2, factory("delayed-task"));

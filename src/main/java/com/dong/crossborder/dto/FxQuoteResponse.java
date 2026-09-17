@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * 客户端不再自行判断有效期，避免客户端时钟偏差导致拿过期报价去成交。
  */
 @Data
-
 public class FxQuoteResponse {
 
     /**

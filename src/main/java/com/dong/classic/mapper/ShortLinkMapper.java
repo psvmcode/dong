@@ -7,7 +7,6 @@ import org.apache.ibatis.annotations.Param;
  * 短链接数据访问接口。
  */
 @Mapper
-
 public interface ShortLinkMapper {
 
     /**

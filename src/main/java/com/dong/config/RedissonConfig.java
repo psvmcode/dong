@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
  * Redisson 配置类。
  */
 @Configuration
-
 public class RedissonConfig {
 
     /**

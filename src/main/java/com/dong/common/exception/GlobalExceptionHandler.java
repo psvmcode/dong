@@ -25,7 +25,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @Slf4j
 @RestControllerAdvice(basePackages = "com.dong")
-
 public class GlobalExceptionHandler {
 
     /**

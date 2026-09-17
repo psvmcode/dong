@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 缓存击穿与 Redis 分布式锁等场景。
  */
 @Data
-
 public class Product {
 
     /**

@@ -43,7 +43,6 @@ import java.util.Map;
 @RequestMapping("/api/seckill")
 @RequiredArgsConstructor
 @Tag(name = "秒杀")
-
 public class SeckillController {
 
     /**

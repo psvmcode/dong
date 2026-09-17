@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  * 每条记录谁检查的、结论是什么、命中了什么，监管检查时按单号逐条出示。
  */
 @Data
-
 public class ComplianceRecordResponse {
 
     /**

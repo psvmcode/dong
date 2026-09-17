@@ -66,7 +66,6 @@ import java.util.Objects;
 @Service
 @ConditionalOnProperty(prefix = "dong.elasticsearch", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-
 public class SearchServiceImpl implements SearchService {
 
     /**

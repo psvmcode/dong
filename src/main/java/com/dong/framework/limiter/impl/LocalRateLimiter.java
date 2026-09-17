@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>只实现了令牌桶与固定窗口两种，滑动窗口与漏桶需要 Redisson 实现。
  */
 @Component
-
 public class LocalRateLimiter implements RateLimiter {
 
     // 空闲 key 十分钟后清理，避免长期不访问的 key 白占内存

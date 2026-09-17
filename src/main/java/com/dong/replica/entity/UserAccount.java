@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * 写走主库、读走从库，验证主从延迟与读写路由策略。
  */
 @Data
-
 public class UserAccount {
 
     /**

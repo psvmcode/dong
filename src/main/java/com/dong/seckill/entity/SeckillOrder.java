@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
  * 订单生成依赖 Redis 预减库存结果，后续进入支付超时处理。
  */
 @Data
-
 public class SeckillOrder {
 
     /**

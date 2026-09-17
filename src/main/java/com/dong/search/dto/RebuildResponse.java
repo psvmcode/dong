@@ -9,7 +9,6 @@ import lombok.Data;
  * 只返回一个成功状态码看不出这种半吊子状态。
  */
 @Data
-
 public class RebuildResponse {
 
     /**
