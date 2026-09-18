@@ -53,6 +53,11 @@ public class Product {
     private ProductStatus status;
 
     /**
+     * 商品详情。大文本，是索引里 description 字段的来源，参与全文检索与高亮。
+     */
+    private String description;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

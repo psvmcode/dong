@@ -194,10 +194,8 @@ public class SearchSyncServiceImpl implements SearchSyncService {
     }
 
     /**
-     * 比对库与索引里的同一条数据。
-     *
-     * <p>description 不参与比对：它是派生字段，由 name 和 category 拼出来，库里没有对应列，
-     * 而所有写入都走同一个 toDocument，这两个字段一致它必然一致。
+     * 比对库与索引里的同一条数据。所有写入都走同一个 toDocument，
+     * 所以两边只要字段对得上就说明没有漂移。
      */
     private boolean sameContent(Product product, ProductDocument document) {
         if (!Objects.equals(product.getName(), document.getName())) {
@@ -213,6 +211,9 @@ public class SearchSyncServiceImpl implements SearchSyncService {
             return false;
         }
         if (!Objects.equals(statusName(product), document.getStatus())) {
+            return false;
+        }
+        if (!Objects.equals(resolveDescription(product), document.getDescription())) {
             return false;
         }
         return Objects.equals(product.getCreateTime(), document.getCreateTime());
@@ -243,7 +244,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         document.setId(String.valueOf(product.getId()));
         document.setName(product.getName());
         document.setCategory(product.getCategory());
-        document.setDescription(product.getName() + " " + product.getCategory());
+        document.setDescription(resolveDescription(product));
         document.setPrice(product.getPrice());
         document.setStock(product.getStock());
         document.setStatus(statusName(product));
@@ -251,6 +252,20 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         document.setLocation(toLocation(product));
         document.setCreateTime(product.getCreateTime());
         return document;
+    }
+
+    /**
+     * 详情文本。库里填了详情就用库里的，没填再退回「名称 + 分类」的拼接：
+     * 索引里这一列不能为空，否则检索与高亮会整段落空。
+     *
+     * <p>对账比对详情时也必须走这个方法，否则库里是 null、索引里是拼接值，
+     * 会被误判成内容不一致。
+     */
+    private String resolveDescription(Product product) {
+        if (product.getDescription() != null && !product.getDescription().isBlank()) {
+            return product.getDescription();
+        }
+        return product.getName() + " " + product.getCategory();
     }
 
     /**

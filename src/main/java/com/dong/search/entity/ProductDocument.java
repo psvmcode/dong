@@ -11,9 +11,8 @@ import java.util.Map;
  *
  * <p>它和数据库实体不是一回事，两边刻意不对称：
  * <ul>
- *   <li>{@code description} 是派生字段，由 name 和 category 拼出来，库里没有对应列。
- *       拼出来的原因是检索要跨字段命中：用户输入「外设 键盘」时，
- *       只有 name 字段能命中「键盘」，而 category 单独成字段又便于聚合，拼一份是最省事的做法。</li>
+ *   <li>{@code description} 来自库里的 description 大文本列，是全文检索与高亮的主力字段；
+ *       库里没填内容时，同步逻辑会退回用「name + category」拼一个，保证这一列不为空。</li>
  *   <li>{@code suggest} 是 completion 类型的补全字段，库里也不存在，
  *       内容由 name 派生（见同步服务的转换逻辑）。补全和检索用的数据结构不同，
  *       completion 走的是内存里的 FST，不是倒排索引，所以必须单独存一份。</li>

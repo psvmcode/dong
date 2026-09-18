@@ -1,13 +1,14 @@
 package com.dong.cache.dto;
 
-import jakarta.validation.constraints.Digits;
 import com.dong.cache.entity.Product;
 import com.dong.cache.enums.ProductStatus;
-import jakarta.validation.constraints.DecimalMin;
+import com.dong.common.constant.Constants;
 import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -59,6 +60,13 @@ public class ProductSaveRequest {
     private Double latitude;
 
     /**
+     * 商品详情。可选的大文本，是索引里 description 字段的来源，
+     * 参与全文检索与高亮，所以内容写得越充实，检索能命中的词就越多。
+     */
+    @Size(max = Constants.MAX_TEXT_LENGTH)
+    private String description;
+
+    /**
      * 转换为商品实体。
      *
      * @return 商品实体
@@ -71,6 +79,7 @@ public class ProductSaveRequest {
         product.setStock(stock == null ? 0 : stock);
         product.setLongitude(longitude);
         product.setLatitude(latitude);
+        product.setDescription(description);
         product.setStatus(ProductStatus.ON_SALE);
         return product;
     }
@@ -181,6 +190,24 @@ public class ProductSaveRequest {
      */
     public void setLatitude(Double latitude) {
         this.latitude = latitude;
+    }
+
+    /**
+     * 获取商品详情。
+     *
+     * @return 商品详情
+     */
+    public String getDescription() {
+        return description;
+    }
+
+    /**
+     * 设置商品详情。
+     *
+     * @param description 商品详情
+     */
+    public void setDescription(String description) {
+        this.description = description;
     }
 
 }

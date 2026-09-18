@@ -11,6 +11,7 @@ create table if not exists product
     stock       int             not null default 0                       comment '库存数量',
     longitude   double          default null                             comment '门店经度，地理检索场景用，为空表示不参与距离计算',
     latitude    double          default null                             comment '门店纬度，地理检索场景用，为空表示不参与距离计算',
+    description text                                                     comment '商品详情，大文本，同步进 ES 供全文检索与高亮',
     status      tinyint         not null default 1                       comment '状态：1 在售 2 已下架',
     create_time datetime        not null default current_timestamp       comment '创建时间',
     update_time datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
