@@ -195,6 +195,29 @@ public class SearchServiceImpl implements SearchService {
     }
 
     /**
+     * deleteExcept。
+     */
+    @Override
+    public long deleteExcept(Iterable<String> keepIds) {
+        List<String> ids = new ArrayList<>();
+        keepIds.forEach(ids::add);
+        try {
+            var response = elasticsearchClient.deleteByQuery(request -> request
+                    .index(indexName())
+                    .refresh(true)
+                    .query(query -> query.bool(bool -> bool.mustNot(mustNot -> mustNot
+                            .ids(idsQuery -> idsQuery.values(ids))))));
+            long deleted = response.deleted() == null ? 0L : response.deleted();
+            if (deleted > 0) {
+                log.info("deleted {} documents outside the keep list", deleted);
+            }
+            return deleted;
+        } catch (Exception ex) {
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "delete except failed", ex);
+        }
+    }
+
+    /**
      * refresh。
      */
     @Override

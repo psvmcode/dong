@@ -38,9 +38,11 @@ import java.util.stream.Collectors;
 public class SearchSyncServiceImpl implements SearchSyncService {
 
     /**
-     * 一轮对账能处理的条数上限。超过说明该改成分页或离线对账，而不是把数据截断了事。
+     * 一轮对账能处理的条数上限。对账是一次全量比对：库里全量拉出来，索引里全量拉出来，
+     * 两边都在内存里按 id 配对，所以这个上限本质上是内存上限，不是能力上限。
+     * 超过说明该改成分页对账或离线任务，而不是把数据截断了事。
      */
-    private static final int MAX_RECONCILE_SIZE = Constants.MAX_QUERY_LIMIT;
+    private static final int MAX_RECONCILE_SIZE = Constants.MAX_BATCH_SIZE;
 
     /**
      * productMapper，商品数据访问层。
@@ -171,29 +173,24 @@ public class SearchSyncServiceImpl implements SearchSyncService {
     /**
      * 清理索引里数据库已经不存在的文档。
      *
-     * <p>与对账不同，这里没有比对动作，删掉的只是「库里查不到 id」的文档，
-     * 漏清理最多留下幽灵文档，不会删错正常数据，所以条数超限时跳过清理并告警就够了。
+     * <p>与对账不同，这里不需要两边比对，只要「库里没有的 id 一律删」，
+     * 所以交给 ES 的 delete_by_query 去做，不受对账那条内存上限的约束：
+     * 一旦这里也被上限卡住，索引越脏就越清理不动，等于把唯一的自救通道堵死了。
      *
      * @param products 数据库全量商品
      * @return 清理掉的文档数
      */
     private int removeOrphans(List<Product> products) {
-        if (searchService.count() > MAX_RECONCILE_SIZE) {
-            log.warn("skip orphan cleanup: index holds more than {} documents, use offline reconciliation",
-                    MAX_RECONCILE_SIZE);
+        if (products.isEmpty()) {
+            // 库里一条都没有时不去动索引：这种状态八成是数据源出了问题，
+            // 照着「保留名单为空」执行会把整个索引清空，代价远大于留下几份幽灵文档
+            log.warn("database returns no product, skip orphan cleanup to avoid wiping the index");
             return 0;
         }
         Set<String> dbIds = products.stream()
                 .map(product -> String.valueOf(product.getId()))
                 .collect(Collectors.toSet());
-        List<String> orphanIds = searchService.listAll(MAX_RECONCILE_SIZE).keySet().stream()
-                .filter(id -> !dbIds.contains(id))
-                .toList();
-        if (orphanIds.isEmpty()) {
-            return 0;
-        }
-        searchService.bulkDelete(orphanIds);
-        return orphanIds.size();
+        return (int) searchService.deleteExcept(dbIds);
     }
 
     /**

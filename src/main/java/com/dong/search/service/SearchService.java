@@ -56,6 +56,18 @@ public interface SearchService {
     void bulkDelete(Iterable<String> ids);
 
     /**
+     * 删掉不在指定 id 名单里的文档，也就是清理孤儿。
+     *
+     * <p>走 delete_by_query 而不是「把索引里的 id 全捞回来再逐条删」：
+     * 后者要求先把全量 id 装进内存，索引一大就先被内存卡住，
+     * 结果是越堆积越清理不动——孤儿文档恰恰是最容易把索引撑大的时候。
+     *
+     * @param keepIds 要保留的文档 id，也就是数据库里还存在的商品
+     * @return 删掉的文档数
+     */
+    long deleteExcept(Iterable<String> keepIds);
+
+    /**
      * 强制刷新索引，让刚写入的文档立刻能被搜到。
      *
      * <p>只给运维类动作收尾（全量重建、对账修复），业务写入路径不要调：
