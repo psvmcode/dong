@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+
 /**
  * 创建订单请求。订单一经创建就停在待支付，后续只能靠事件推进。
  */

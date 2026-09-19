@@ -15,15 +15,10 @@ import java.util.List;
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "dong.rocketmq", name = "enabled", havingValue = "true")
-@RocketMQMessageListener(
-        topic = "demo-order-event",
-        consumerGroup = "dong-consumer",
-        messageModel = MessageModel.CLUSTERING
-)
+@RocketMQMessageListener(topic = "demo-order-event", consumerGroup = "dong-consumer", messageModel = MessageModel.CLUSTERING)
 /**
  * RocketMqListener。
- */
-public class RocketMqListener implements RocketMQListener<MessageExt> {
+ */ public class RocketMqListener implements RocketMQListener<MessageExt> {
 
     /**
      * handlers。
@@ -42,9 +37,7 @@ public class RocketMqListener implements RocketMQListener<MessageExt> {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         String topic = message.getTopic();
         String key = message.getKeys() == null ? String.valueOf(message.getMsgId()) : message.getKeys();
-        handlers.stream()
-                .filter(handler -> handler.topic().equals(topic))
-                .forEach(handler -> handler.handle(key, body));
+        handlers.stream().filter(handler -> handler.topic().equals(topic)).forEach(handler -> handler.handle(key, body));
         log.info("rocketmq message received key={} topic={}", key, topic);
     }
 

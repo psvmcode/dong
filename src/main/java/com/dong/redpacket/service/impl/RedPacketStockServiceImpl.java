@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * 红包库存实现。待发队列里存的是"序号:金额"，
  * 弹出即得到一份确定金额的份额，数据库侧再用序号做一次条件更新占位。
@@ -142,8 +143,7 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
     @Override
     public void prepare(String packetNo, List<RedPacketItem> items, long totalAmount) {
         rebuild(packetNo, items, List.of());
-        log.info("red packet stock prepared packetNo={} count={} total={} ttl={}",
-                packetNo, items.size(), totalAmount, stockTtl);
+        log.info("red packet stock prepared packetNo={} count={} total={} ttl={}", packetNo, items.size(), totalAmount, stockTtl);
     }
 
     /**
@@ -188,8 +188,7 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
         try {
             redisService.execute(RESTORE, keysOf(packetNo), seq + ":" + amount, amount, userId);
         } catch (DataAccessException ex) {
-            log.warn("failed to restore red packet stock packetNo={} seq={} reason={}",
-                    packetNo, seq, ex.getMessage());
+            log.warn("failed to restore red packet stock packetNo={} seq={} reason={}", packetNo, seq, ex.getMessage());
         }
     }
 

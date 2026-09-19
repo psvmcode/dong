@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+
 /**
  * 订单履约状态机。COLA 状态机是无状态的：它只回答「从某个状态收到某个事件该去哪」，
  * 自己不持有当前状态，所以整个实例可以被所有线程共享。
@@ -36,73 +37,28 @@ public class OrderStateMachine {
      */
     public OrderStateMachine() {
         StateMachineBuilder<OrderStatus, OrderEvent, OrderContext> builder = StateMachineBuilderFactory.create();
-        builder.setFailCallback((OrderStatus from, OrderEvent event, OrderContext ctx) ->
-                log.info("order transition rejected orderNo={} from={} event={}", ctx.getOrderNo(), from, event));
-        builder.externalTransition()
-                .from(OrderStatus.WAIT_PAY)
-                .to(OrderStatus.WAIT_SHIP)
-                .on(OrderEvent.PAY)
-                .when((OrderContext ctx) -> ctx.getPayNo() != null && !ctx.getPayNo().isBlank())
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
-        builder.externalTransition()
-                .from(OrderStatus.WAIT_PAY)
-                .to(OrderStatus.CANCELLED)
-                .on(OrderEvent.CANCEL)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
-        builder.externalTransition()
-                .from(OrderStatus.WAIT_PAY)
-                .to(OrderStatus.CANCELLED)
-                .on(OrderEvent.TIMEOUT)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.setFailCallback((OrderStatus from, OrderEvent event, OrderContext ctx) -> log.info("order transition rejected orderNo={} from={} event={}", ctx.getOrderNo(), from, event));
+        builder.externalTransition().from(OrderStatus.WAIT_PAY).to(OrderStatus.WAIT_SHIP).on(OrderEvent.PAY).when((OrderContext ctx) -> ctx.getPayNo() != null && !ctx.getPayNo().isBlank()).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.WAIT_PAY).to(OrderStatus.CANCELLED).on(OrderEvent.CANCEL).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.WAIT_PAY).to(OrderStatus.CANCELLED).on(OrderEvent.TIMEOUT).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
         // 多个来源归并到同一目标，省掉两段重复的迁移定义
-        builder.externalTransitions()
-                .fromAmong(OrderStatus.WAIT_SHIP, OrderStatus.WAIT_RECEIVE)
-                .to(OrderStatus.REFUNDING)
-                .on(OrderEvent.APPLY_REFUND)
-                .when(this::refundAmountValid)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> {
-                    ctx.setRefundFrom(from);
-                    accept(ctx, to);
-                });
-        builder.externalTransition()
-                .from(OrderStatus.WAIT_SHIP)
-                .to(OrderStatus.WAIT_RECEIVE)
-                .on(OrderEvent.SHIP)
-                .when((OrderContext ctx) -> ctx.getTrackingNo() != null && !ctx.getTrackingNo().isBlank())
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
-        builder.externalTransition()
-                .from(OrderStatus.WAIT_RECEIVE)
-                .to(OrderStatus.FINISHED)
-                .on(OrderEvent.RECEIVE)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
-        builder.externalTransition()
-                .from(OrderStatus.REFUNDING)
-                .to(OrderStatus.REFUNDED)
-                .on(OrderEvent.REFUND_SUCCESS)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransitions().fromAmong(OrderStatus.WAIT_SHIP, OrderStatus.WAIT_RECEIVE).to(OrderStatus.REFUNDING).on(OrderEvent.APPLY_REFUND).when(this::refundAmountValid).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> {
+            ctx.setRefundFrom(from);
+            accept(ctx, to);
+        });
+        builder.externalTransition().from(OrderStatus.WAIT_SHIP).to(OrderStatus.WAIT_RECEIVE).on(OrderEvent.SHIP).when((OrderContext ctx) -> ctx.getTrackingNo() != null && !ctx.getTrackingNo().isBlank()).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.WAIT_RECEIVE).to(OrderStatus.FINISHED).on(OrderEvent.RECEIVE).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.REFUNDING).to(OrderStatus.REFUNDED).on(OrderEvent.REFUND_SUCCESS).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
         // 同一个事件配两条迁移，靠守卫分流：退款失败要退回发起退款前的那个状态，
         // 而不是固定退回某一个。COLA 要求这种情况下每条迁移都必须带 when，否则装配期就报错
-        builder.externalTransition()
-                .from(OrderStatus.REFUNDING)
-                .to(OrderStatus.WAIT_SHIP)
-                .on(OrderEvent.REFUND_FAIL)
-                .when((OrderContext ctx) -> ctx.getRefundFrom() == OrderStatus.WAIT_SHIP)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
-        builder.externalTransition()
-                .from(OrderStatus.REFUNDING)
-                .to(OrderStatus.WAIT_RECEIVE)
-                .on(OrderEvent.REFUND_FAIL)
-                .when((OrderContext ctx) -> ctx.getRefundFrom() == OrderStatus.WAIT_RECEIVE)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.REFUNDING).to(OrderStatus.WAIT_SHIP).on(OrderEvent.REFUND_FAIL).when((OrderContext ctx) -> ctx.getRefundFrom() == OrderStatus.WAIT_SHIP).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.REFUNDING).to(OrderStatus.WAIT_RECEIVE).on(OrderEvent.REFUND_FAIL).when((OrderContext ctx) -> ctx.getRefundFrom() == OrderStatus.WAIT_RECEIVE).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
         // 内部迁移：催单不改变状态，只执行动作。within 已经把源和目标都置成同一状态，
         // 所以链路上没有 to 环节，直接接 on
-        builder.internalTransition()
-                .within(OrderStatus.WAIT_SHIP)
-                .on(OrderEvent.URGE)
-                .perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> {
-                    ctx.setUrge(true);
-                    accept(ctx, to);
-                });
+        builder.internalTransition().within(OrderStatus.WAIT_SHIP).on(OrderEvent.URGE).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> {
+            ctx.setUrge(true);
+            accept(ctx, to);
+        });
         this.stateMachine = builder.build(MACHINE_ID);
     }
 
@@ -110,8 +66,8 @@ public class OrderStateMachine {
      * 触发一次状态迁移。结果从上下文读：accepted 为 true 才是真推进了，
      * target 是目标状态。
      *
-     * @param from 当前状态
-     * @param event 触发的事件
+     * @param from    当前状态
+     * @param event   触发的事件
      * @param context 状态机上下文
      */
     public void fire(OrderStatus from, OrderEvent event, OrderContext context) {
@@ -122,7 +78,7 @@ public class OrderStateMachine {
      * 判断当前状态是否定义了该事件的迁移。只校验有没有这条路，不校验守卫，
      * 这样可以区分「压根没这条迁移」和「有迁移但守卫没过」两种拒绝原因。
      *
-     * @param from 当前状态
+     * @param from  当前状态
      * @param event 触发的事件
      * @return true 表示存在该迁移定义
      */
@@ -159,7 +115,7 @@ public class OrderStateMachine {
      * 这是区分「被接受」与「被拒绝」的唯一可靠依据。
      *
      * @param context 状态机上下文
-     * @param target 目标状态
+     * @param target  目标状态
      */
     private void accept(OrderContext context, OrderStatus target) {
         context.setTarget(target);

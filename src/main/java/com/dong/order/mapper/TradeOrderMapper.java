@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * 订单 Mapper。状态推进一律带期望状态与版本号，
  * 返回值是受影响行数，0 就说明有人抢先改过了。
@@ -33,7 +34,7 @@ public interface TradeOrderMapper {
      * 乐观锁推进状态，期望状态与版本号同时匹配才更新。
      * 业务字段全都走动态 SQL，只有非空的才写，避免用旧值覆盖新值。
      *
-     * @param order 待写入的订单，status 为目标状态，version 为读到的旧版本号
+     * @param order    待写入的订单，status 为目标状态，version 为读到的旧版本号
      * @param expected 期望的当前状态
      * @return 受影响行数，0 表示被并发抢先
      */
@@ -44,7 +45,7 @@ public interface TradeOrderMapper {
      * 后到的更新会直接覆盖先到的，用来量化「不做防护会发生什么」。
      *
      * @param orderNo 订单号
-     * @param status 目标状态
+     * @param status  目标状态
      * @return 受影响行数
      */
     int updateStatusUnlocked(@Param("orderNo") String orderNo, @Param("status") OrderStatus status);

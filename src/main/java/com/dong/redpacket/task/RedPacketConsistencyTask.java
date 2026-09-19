@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+
 /**
  * 红包库存对账。定时把"库里的未领取份额"和"Redis 里的剩余"对齐，
  * 覆盖三种自救场景：Redis 整体不可用期间走数据库降级留下的偏差、
@@ -25,8 +26,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "dong.redpacket", name = "consistency-task-enabled",
-        havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "dong.redpacket", name = "consistency-task-enabled", havingValue = "true", matchIfMissing = true)
 public class RedPacketConsistencyTask {
 
     /**
@@ -80,8 +80,7 @@ public class RedPacketConsistencyTask {
         }
         if (packet.getRemainCount() != pendingCount || packet.getRemainAmount() != pendingAmount) {
             redPacketMapper.updateRemain(packetNo, pendingAmount, pendingCount);
-            log.warn("red packet remain corrected to unclaimed shares packetNo={} count={} amount={}",
-                    packetNo, pendingCount, pendingAmount);
+            log.warn("red packet remain corrected to unclaimed shares packetNo={} count={} amount={}", packetNo, pendingCount, pendingAmount);
         }
         RemainSnapshot snapshot = readRemain(packetNo);
         if (snapshot == null) {
@@ -91,8 +90,7 @@ public class RedPacketConsistencyTask {
             return;
         }
         redPacketService.rebuild(packetNo);
-        log.info("red packet stock inconsistent and rebuilt packetNo={} db={}/{} redis={}/{}",
-                packetNo, pendingCount, pendingAmount, snapshot.count(), snapshot.amount());
+        log.info("red packet stock inconsistent and rebuilt packetNo={} db={}/{} redis={}/{}", packetNo, pendingCount, pendingAmount, snapshot.count(), snapshot.amount());
     }
 
     /**
@@ -103,11 +101,9 @@ public class RedPacketConsistencyTask {
             if (!redPacketStockService.prepared(packetNo)) {
                 return null;
             }
-            return new RemainSnapshot(redPacketStockService.remainCount(packetNo),
-                    redPacketStockService.remainAmount(packetNo));
+            return new RemainSnapshot(redPacketStockService.remainCount(packetNo), redPacketStockService.remainAmount(packetNo));
         } catch (Exception ex) {
-            log.warn("skip red packet reconciliation, redis unavailable packetNo={} reason={}",
-                    packetNo, ex.getMessage());
+            log.warn("skip red packet reconciliation, redis unavailable packetNo={} reason={}", packetNo, ex.getMessage());
             return null;
         }
     }

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
+
 /**
  * {@code @RateLimited} 注解切面。在方法执行前尝试获取配额，
  * 拿不到就抛业务异常，由全局异常处理器转成 429 对应的错误码。
@@ -52,14 +53,10 @@ public class RateLimitAspect {
     public Object around(ProceedingJoinPoint joinPoint, RateLimited rateLimited) throws Throwable {
         Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
         String key = resolveKey(rateLimited.key(), method, joinPoint.getArgs());
-        RateLimitRule rule = new RateLimitRule(rateLimited.limit(),
-                Duration.ofNanos(rateLimited.unit().toNanos(rateLimited.window())),
-                rateLimited.algorithm());
+        RateLimitRule rule = new RateLimitRule(rateLimited.limit(), Duration.ofNanos(rateLimited.unit().toNanos(rateLimited.window())), rateLimited.algorithm());
         boolean allowed = rateLimitManager.tryAcquire(key, rule, rateLimited.distributed());
         if (!allowed) {
-            String detail = rateLimited.message().isBlank()
-                    ? "rate limit exceeded on key " + key
-                    : rateLimited.message();
+            String detail = rateLimited.message().isBlank() ? "rate limit exceeded on key " + key : rateLimited.message();
             log.info("rate limit rejected key={} rule={}", key, rule);
             throw new BusinessException(Constants.CODE_TOO_MANY_REQUESTS, detail);
         }

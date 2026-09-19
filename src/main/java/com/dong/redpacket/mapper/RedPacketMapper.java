@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * RedPacketMapper，MyBatis 数据访问接口。
  */
@@ -30,9 +31,7 @@ public interface RedPacketMapper {
     /**
      * 扣减红包剩余金额与剩余个数。
      */
-    int decreaseRemain(@Param("packetNo") String packetNo,
-                       @Param("amount") long amount,
-                       @Param("count") int count);
+    int decreaseRemain(@Param("packetNo") String packetNo, @Param("amount") long amount, @Param("count") int count);
 
     /**
      * 查询红包领取记录。
@@ -62,8 +61,6 @@ public interface RedPacketMapper {
     /**
      * 按未领取份额回写剩余金额与份数，对账发现偏差时用它纠正。
      */
-    int updateRemain(@Param("packetNo") String packetNo,
-                     @Param("remainAmount") long remainAmount,
-                     @Param("remainCount") int remainCount);
+    int updateRemain(@Param("packetNo") String packetNo, @Param("remainAmount") long remainAmount, @Param("remainCount") int remainCount);
 
 }

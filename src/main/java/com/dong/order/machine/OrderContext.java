@@ -4,6 +4,7 @@ import com.dong.order.enums.OrderStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
+
 /**
  * 状态机上下文。COLA 是无状态状态机，当前状态和业务参数靠它传进去，
  * 迁移结果也靠它带出来：accepted 表示是否被接受，target 是目标状态。

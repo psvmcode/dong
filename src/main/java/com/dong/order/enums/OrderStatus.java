@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 订单履约状态。七个状态覆盖正常履约、取消、退款三条链路，
  * 状态机的职责就是保证订单只能沿着预设链路推进，跳步和倒退都在框架层被拦掉。

@@ -1,4 +1,5 @@
 package com.dong.order.dto;
+
 /**
  * 并发实验响应。看 successCount 与 attemptLogCount 的差值就能判断防护是否生效：
  * 有防护时两者应当分别是 1 和 threads，无防护时会一起变成 threads。

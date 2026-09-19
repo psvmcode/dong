@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * 本地消息总线。在 JVM 内完成投递，不需要任何中间件，
  * 因此默认配置下也能跑通全部消息流程。
@@ -83,8 +84,7 @@ public class LocalMessageBus implements MessageProducer {
     @Override
     public void sendOrdered(String topic, String key, Object payload, String shardingKey) {
         int shard = Math.floorMod(shardingKey == null ? 0 : shardingKey.hashCode(), 4);
-        orderedExecutors.computeIfAbsent(shard, index -> Executors.newSingleThreadExecutor(factory("local-bus-order-" + index)))
-                .submit(() -> dispatch(topic, key, payload));
+        orderedExecutors.computeIfAbsent(shard, index -> Executors.newSingleThreadExecutor(factory("local-bus-order-" + index))).submit(() -> dispatch(topic, key, payload));
     }
 
     /**

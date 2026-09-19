@@ -72,23 +72,21 @@ public class CacheStats {
      */
     public CacheStatsSnapshot snapshot() {
         long total = l1Hit.sum() + l2Hit.sum() + miss.sum();
-        return new CacheStatsSnapshot(l1Hit.sum(), l2Hit.sum(), miss.sum(),
-                penetrationBlocked.sum(), rebuild.sum(),
-                total == 0 ? 0.0 : (l1Hit.sum() + l2Hit.sum()) * 100.0 / total);
+        return new CacheStatsSnapshot(l1Hit.sum(), l2Hit.sum(), miss.sum(), penetrationBlocked.sum(), rebuild.sum(), total == 0 ? 0.0 : (l1Hit.sum() + l2Hit.sum()) * 100.0 / total);
     }
 
     /**
      * 缓存统计快照记录。
      *
-     * @param l1Hit           L1 命中数
-     * @param l2Hit           L2 命中数
-     * @param miss            未命中数
+     * @param l1Hit              L1 命中数
+     * @param l2Hit              L2 命中数
+     * @param miss               未命中数
      * @param penetrationBlocked 穿透拦截数
-     * @param rebuild         回源重建数
-     * @param hitRatioPercent 命中率百分比
+     * @param rebuild            回源重建数
+     * @param hitRatioPercent    命中率百分比
      */
-    public record CacheStatsSnapshot(long l1Hit, long l2Hit, long miss,
-                                     long penetrationBlocked, long rebuild, double hitRatioPercent) {
+    public record CacheStatsSnapshot(long l1Hit, long l2Hit, long miss, long penetrationBlocked, long rebuild,
+                                     double hitRatioPercent) {
     }
 
 }

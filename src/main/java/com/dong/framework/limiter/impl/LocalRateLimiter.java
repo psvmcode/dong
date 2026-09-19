@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * 本地限流器。状态存在进程内的 Caffeine 里，因此只在单节点内有效，
  * 多实例部署时每个节点各自计数，实际放放量是单节点配额乘以节点数。
@@ -25,10 +26,7 @@ public class LocalRateLimiter implements RateLimiter {
 
     private static final long MAX_TRACKED_KEYS = 100_000L;
 
-    private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
-            .expireAfterAccess(IDLE_EVICTION)
-            .maximumSize(MAX_TRACKED_KEYS)
-            .build();
+    private final Cache<String, Bucket> buckets = Caffeine.newBuilder().expireAfterAccess(IDLE_EVICTION).maximumSize(MAX_TRACKED_KEYS).build();
 
     /**
      * 尝试获取配额。本地只支持令牌桶与固定窗口。
@@ -43,8 +41,8 @@ public class LocalRateLimiter implements RateLimiter {
         return switch (rule.algorithm()) {
             case TOKEN_BUCKET -> acquireTokenBucket(key, rule, permits);
             case FIXED_WINDOW -> acquireFixedWindow(key, rule);
-            default -> throw new IllegalArgumentException(
-                    "local limiter does not support " + rule.algorithm() + ", use the redisson limiter");
+            default ->
+                    throw new IllegalArgumentException("local limiter does not support " + rule.algorithm() + ", use the redisson limiter");
         };
     }
 

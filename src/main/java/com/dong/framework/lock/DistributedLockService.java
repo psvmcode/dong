@@ -26,9 +26,7 @@ public interface DistributedLockService {
     default <T> T execute(String key, Duration leaseTime, Duration waitTime, Supplier<T> supplier) {
         try (LockHandle handle = tryLock(key, leaseTime, waitTime)) {
             if (!handle.isAcquired()) {
-                throw new com.dong.common.exception.BusinessException(
-                        com.dong.common.constant.Constants.CODE_OPERATION_CONFLICT,
-                        "failed to acquire lock " + key);
+                throw new com.dong.common.exception.BusinessException(com.dong.common.constant.Constants.CODE_OPERATION_CONFLICT, "failed to acquire lock " + key);
             }
             return supplier.get();
         }

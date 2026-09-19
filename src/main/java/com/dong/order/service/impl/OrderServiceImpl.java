@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * 订单履约实现。状态机只负责回答「这一步能不能走」，
  * 真正落库时还要再过一次数据库的乐观锁，两次校验缺一不可：
@@ -194,8 +195,7 @@ public class OrderServiceImpl implements OrderService {
         response.setFinalVersion(order.getVersion());
         response.setAttemptLogCount(logMapper.countByOrderNo(orderNo) - baseline);
         response.setElapsedMs(System.currentTimeMillis() - startAt);
-        log.info("order benchmark finished orderNo={} mode={} threads={} success={} blocked={}",
-                orderNo, response.getMode(), size, success.get(), blocked.get());
+        log.info("order benchmark finished orderNo={} mode={} threads={} success={} blocked={}", orderNo, response.getMode(), size, success.get(), blocked.get());
         return response;
     }
 
@@ -250,9 +250,7 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus from = order.getStatus();
         OrderStatus target = context.getTarget();
         TradeOrder patch = buildPatch(order, event, context, from);
-        int updated = guarded
-                ? orderMapper.updateStatus(patch, from)
-                : orderMapper.updateStatusUnlocked(order.getOrderNo(), target);
+        int updated = guarded ? orderMapper.updateStatus(patch, from) : orderMapper.updateStatusUnlocked(order.getOrderNo(), target);
         if (updated <= 0) {
             reject(order, event, from, "并发冲突，已有其他操作抢先推进", context.getOperator());
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, Constants.MESSAGE_OPERATION_CONFLICT);
@@ -340,8 +338,7 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 写一条流转日志，成功与失败都记。
      */
-    private void writeLog(String orderNo, OrderStatus from, OrderStatus to, OrderEvent event, boolean accepted,
-                          String reason, String operator) {
+    private void writeLog(String orderNo, OrderStatus from, OrderStatus to, OrderEvent event, boolean accepted, String reason, String operator) {
         OrderTransitionLog item = new OrderTransitionLog();
         item.setOrderNo(orderNo);
         item.setFromStatus(from == null ? 0 : from.getCode());
@@ -357,8 +354,7 @@ public class OrderServiceImpl implements OrderService {
      * 记录一次被拒绝的推进。日志照写，否则事后无从核对被拦了多少次。
      */
     private void reject(TradeOrder order, OrderEvent event, OrderStatus from, String reason, String operator) {
-        log.info("order transition rejected orderNo={} event={} from={} reason={}",
-                order.getOrderNo(), event, from, reason);
+        log.info("order transition rejected orderNo={} event={} from={} reason={}", order.getOrderNo(), event, from, reason);
         writeLog(order.getOrderNo(), from, from, event, false, reason, operator);
     }
 

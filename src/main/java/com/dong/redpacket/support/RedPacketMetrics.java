@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
+
 /**
  * 抢红包的运行时计数器。降级、重建、补偿这些动作平时不可见，
  * 没有计数就只能等用户投诉，有了计数才能判断一次故障到底造成了多大范围的降级。

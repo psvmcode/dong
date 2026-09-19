@@ -3,6 +3,7 @@ package com.dong.order.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 订单状态流转日志。成功与失败都记录，包括被守卫拦下和并发冲突，
  * 这是并发实验能否被量化验证的关键：看日志条数而不是看最终状态。

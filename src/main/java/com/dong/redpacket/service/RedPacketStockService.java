@@ -4,6 +4,7 @@ import com.dong.redpacket.dto.GrabReservation;
 import com.dong.redpacket.entity.RedPacketItem;
 
 import java.util.List;
+
 /**
  * 红包库存。Redis 里的待发队列只是数据库份额表的一份加速副本，
  * 丢了可以从库里原样重建，因此这里的每个方法都要说清"副本缺失"时是什么语义。

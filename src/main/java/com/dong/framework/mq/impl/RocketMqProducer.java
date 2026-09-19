@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+
 /**
  * RocketMQ 发送实现。
  *
@@ -29,12 +30,7 @@ public class RocketMqProducer implements MessageProducer {
     /**
      * RocketMQ 固定的十八个延迟等级，不能自定义。
      */
-    private static final List<Duration> DELAY_LEVELS = List.of(
-            Duration.ofSeconds(1), Duration.ofSeconds(5), Duration.ofSeconds(10), Duration.ofSeconds(30),
-            Duration.ofMinutes(1), Duration.ofMinutes(2), Duration.ofMinutes(3), Duration.ofMinutes(4),
-            Duration.ofMinutes(5), Duration.ofMinutes(6), Duration.ofMinutes(7), Duration.ofMinutes(8),
-            Duration.ofMinutes(9), Duration.ofMinutes(10), Duration.ofMinutes(20), Duration.ofMinutes(30),
-            Duration.ofHours(1), Duration.ofHours(2));
+    private static final List<Duration> DELAY_LEVELS = List.of(Duration.ofSeconds(1), Duration.ofSeconds(5), Duration.ofSeconds(10), Duration.ofSeconds(30), Duration.ofMinutes(1), Duration.ofMinutes(2), Duration.ofMinutes(3), Duration.ofMinutes(4), Duration.ofMinutes(5), Duration.ofMinutes(6), Duration.ofMinutes(7), Duration.ofMinutes(8), Duration.ofMinutes(9), Duration.ofMinutes(10), Duration.ofMinutes(20), Duration.ofMinutes(30), Duration.ofHours(1), Duration.ofHours(2));
 
     /**
      * RocketMQ 模板。
@@ -71,9 +67,9 @@ public class RocketMqProducer implements MessageProducer {
      * 顺序发送。用原生 send 保留业务 keys，
      * 相同 shardingKey 的消息由选择器固定投递到同一队列。
      *
-     * @param topic      主题
-     * @param key        业务键
-     * @param payload    消息体
+     * @param topic       主题
+     * @param key         业务键
+     * @param payload     消息体
      * @param shardingKey 分片键
      */
     @Override
@@ -135,10 +131,7 @@ public class RocketMqProducer implements MessageProducer {
     private static final class ShardingSelector implements org.apache.rocketmq.client.producer.MessageQueueSelector {
 
         @Override
-        public org.apache.rocketmq.common.message.MessageQueue select(
-                java.util.List<org.apache.rocketmq.common.message.MessageQueue> queues,
-                org.apache.rocketmq.common.message.Message message,
-                Object argument) {
+        public org.apache.rocketmq.common.message.MessageQueue select(java.util.List<org.apache.rocketmq.common.message.MessageQueue> queues, org.apache.rocketmq.common.message.Message message, Object argument) {
             int index = Math.floorMod(String.valueOf(argument).hashCode(), queues.size());
             return queues.get(index);
         }

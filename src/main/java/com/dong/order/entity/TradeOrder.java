@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
 /**
  * 交易订单。状态机驱动的核心载体，status 只能由状态机改写，
  * version 负责并发下的乐观锁，两者分工不同缺一不可。

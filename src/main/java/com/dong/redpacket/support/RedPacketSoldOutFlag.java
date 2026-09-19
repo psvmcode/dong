@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.LongAdder;
+
 /**
  * 本地抢完标记。红包抢完后在本进程缓存一份标记，
  * 后续请求不必再访问 Redis，这是并发量上来后最廉价的一级卸载。
@@ -20,10 +21,7 @@ public class RedPacketSoldOutFlag {
 
     private static final Duration FLAG_TTL = Duration.ofSeconds(10);
 
-    private final Cache<String, Boolean> flags = Caffeine.newBuilder()
-            .expireAfterWrite(FLAG_TTL)
-            .maximumSize(10_000)
-            .build();
+    private final Cache<String, Boolean> flags = Caffeine.newBuilder().expireAfterWrite(FLAG_TTL).maximumSize(10_000).build();
 
     private final LongAdder shortCircuited = new LongAdder();
 

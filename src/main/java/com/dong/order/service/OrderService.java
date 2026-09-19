@@ -7,6 +7,7 @@ import com.dong.order.dto.OrderResponse;
 import com.dong.order.dto.OrderTransitionLogResponse;
 
 import java.util.List;
+
 /**
  * 订单履约服务。所有状态变更都必须走 fire，业务代码不允许直接改状态字段。
  */
@@ -67,7 +68,7 @@ public interface OrderService {
      * 统计到底有几次真的推进成功。
      *
      * @param threads 并发线程数
-     * @param mode 实验模式，cas 带乐观锁，none 不带
+     * @param mode    实验模式，cas 带乐观锁，none 不带
      * @return 实验结果
      */
     OrderBenchmarkResponse benchmark(int threads, String mode);

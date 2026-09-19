@@ -20,15 +20,10 @@ import java.util.List;
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "dong.rocketmq", name = "enabled", havingValue = "true")
-@RocketMQMessageListener(
-        topic = "cross-border-settlement",
-        consumerGroup = "dong-crossborder-consumer",
-        messageModel = MessageModel.CLUSTERING
-)
+@RocketMQMessageListener(topic = "cross-border-settlement", consumerGroup = "dong-crossborder-consumer", messageModel = MessageModel.CLUSTERING)
 /**
  * CrossBorderSettlementListener。
- */
-public class CrossBorderSettlementListener implements RocketMQListener<MessageExt> {
+ */ public class CrossBorderSettlementListener implements RocketMQListener<MessageExt> {
 
     /**
      * handlers。
@@ -47,9 +42,7 @@ public class CrossBorderSettlementListener implements RocketMQListener<MessageEx
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         String topic = message.getTopic();
         String key = message.getKeys() == null ? String.valueOf(message.getMsgId()) : message.getKeys();
-        handlers.stream()
-                .filter(handler -> handler.topic().equals(topic))
-                .forEach(handler -> handler.handle(key, body));
+        handlers.stream().filter(handler -> handler.topic().equals(topic)).forEach(handler -> handler.handle(key, body));
         log.info("cross border settlement message received key={} topic={}", key, topic);
     }
 

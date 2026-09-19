@@ -29,8 +29,7 @@ public class RedPacketAllocator {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "count must be positive");
         }
         if (totalAmount < (long) count * MIN_AMOUNT) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "total amount must leave at least one cent for each grabber");
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "total amount must leave at least one cent for each grabber");
         }
 
         long remain = totalAmount;

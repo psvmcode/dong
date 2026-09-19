@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 
 import java.util.UUID;
+
 /**
  * 锁句柄。实现 AutoCloseable 以支持 try-with-resources，
  * 这样锁一定会被释放，不会因异常分支泄漏。

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Set;
+
 /**
  * 分布式限流器，四种算法全部用 Lua 脚本在 Redis 上实现，计数全局共享。
  *
@@ -179,24 +180,19 @@ public class LuaRateLimiter implements RateLimiter {
     @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
         long windowMs = Math.max(1L, rule.window().toMillis());
-        String base = KEY_PREFIX + rule.algorithm().name().toLowerCase() + ":" + key
-                + ":" + rule.limit() + ":" + windowMs;
+        String base = KEY_PREFIX + rule.algorithm().name().toLowerCase() + ":" + key + ":" + rule.limit() + ":" + windowMs;
         switch (rule.algorithm()) {
             case FIXED_WINDOW -> {
-                return allowed(redisService.execute(FIXED_WINDOW, List.of(base),
-                        rule.limit(), windowMs, permits), rule);
+                return allowed(redisService.execute(FIXED_WINDOW, List.of(base), rule.limit(), windowMs, permits), rule);
             }
             case SLIDING_WINDOW -> {
-                return allowed(redisService.execute(SLIDING_WINDOW, List.of(base, base + ":seq"),
-                        rule.limit(), windowMs, permits), rule);
+                return allowed(redisService.execute(SLIDING_WINDOW, List.of(base, base + ":seq"), rule.limit(), windowMs, permits), rule);
             }
             case TOKEN_BUCKET -> {
-                return allowed(redisService.execute(TOKEN_BUCKET, List.of(base),
-                        rule.limit(), windowMs, permits), rule);
+                return allowed(redisService.execute(TOKEN_BUCKET, List.of(base), rule.limit(), windowMs, permits), rule);
             }
             case LEAKY_BUCKET -> {
-                return allowed(redisService.execute(LEAKY_BUCKET, List.of(base),
-                        rule.limit(), windowMs, permits), rule);
+                return allowed(redisService.execute(LEAKY_BUCKET, List.of(base), rule.limit(), windowMs, permits), rule);
             }
             default -> throw new IllegalArgumentException("unsupported algorithm " + rule.algorithm());
         }
@@ -228,8 +224,7 @@ public class LuaRateLimiter implements RateLimiter {
      */
     private boolean allowed(Long result, RateLimitRule rule) {
         if (result == null) {
-            log.warn("rate limit script returned nothing for algorithm {}, rejecting the request",
-                    rule.algorithm());
+            log.warn("rate limit script returned nothing for algorithm {}, rejecting the request", rule.algorithm());
             return false;
         }
         return result > 0L;

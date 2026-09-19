@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+
 /**
  * 分布式锁实现，基于 Redisson 的 RLock。
  *
@@ -41,9 +42,7 @@ public class DistributedLockServiceImpl implements DistributedLockService {
             acquired = lock.tryLock(waitTime.toMillis(), leaseTime.toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new com.dong.common.exception.BusinessException(
-                    com.dong.common.constant.Constants.CODE_OPERATION_CONFLICT,
-                    "interrupted while waiting for lock " + key);
+            throw new com.dong.common.exception.BusinessException(com.dong.common.constant.Constants.CODE_OPERATION_CONFLICT, "interrupted while waiting for lock " + key);
         }
 
         if (!acquired) {

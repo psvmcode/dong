@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 /**
  * 消息门面。业务代码只依赖 MessageProducer 接口，
  * 由它按 dong.mq.active 把请求路由到本地总线、RocketMQ 或 Kafka，
@@ -49,15 +50,12 @@ public class MqFacade implements MessageProducer {
     /**
      * 构造消息门面。
      *
-     * @param localMessageBus        本地消息总线
-     * @param rocketMqProducer       RocketMQ 生产者提供者
-     * @param kafkaProducerAdapter   Kafka 生产者适配器提供者
-     * @param active                   激活的消息中间件类型
+     * @param localMessageBus      本地消息总线
+     * @param rocketMqProducer     RocketMQ 生产者提供者
+     * @param kafkaProducerAdapter Kafka 生产者适配器提供者
+     * @param active               激活的消息中间件类型
      */
-    public MqFacade(LocalMessageBus localMessageBus,
-                    ObjectProvider<RocketMqProducer> rocketMqProducer,
-                    ObjectProvider<KafkaProducerAdapter> kafkaProducerAdapter,
-                    @Value("${dong.mq.active:local}") String active) {
+    public MqFacade(LocalMessageBus localMessageBus, ObjectProvider<RocketMqProducer> rocketMqProducer, ObjectProvider<KafkaProducerAdapter> kafkaProducerAdapter, @Value("${dong.mq.active:local}") String active) {
         this.localMessageBus = localMessageBus;
         this.rocketMqProducer = rocketMqProducer;
         this.kafkaProducerAdapter = kafkaProducerAdapter;
@@ -145,8 +143,7 @@ public class MqFacade implements MessageProducer {
      */
     private MessageProducer require(MessageProducer producer, String name) {
         if (producer == null) {
-            throw new IllegalStateException(
-                    "dong.mq.active=" + name + " but dong." + name + ".enabled is false, check application.yml");
+            throw new IllegalStateException("dong.mq.active=" + name + " but dong." + name + ".enabled is false, check application.yml");
         }
         return producer;
     }

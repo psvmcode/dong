@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 第二数据源账户实现。数据源与事务管理器都与主库独立，
  * 用于演示多数据源配置与本地事务边界。
@@ -37,8 +38,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     public Long create(Long userId, String username, long balance) {
         UserAccount existing = userAccountMapper.selectByUserId(userId);
         if (existing != null) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "account " + userId + " already exists on the replica instance");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account " + userId + " already exists on the replica instance");
         }
 
         UserAccount account = new UserAccount();

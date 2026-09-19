@@ -4,6 +4,7 @@ import com.dong.mq.enums.MqMessageStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * MQ 消息消费日志。记录每条消息的消费状态与重试次数，
  * 是幂等消费、死信识别与消费审计的依据。

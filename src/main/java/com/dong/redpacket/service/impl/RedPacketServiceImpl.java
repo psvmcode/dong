@@ -118,15 +118,12 @@ public class RedPacketServiceImpl implements RedPacketService {
     @Transactional(rollbackFor = Exception.class)
     public String send(RedPacketSendRequest request) {
         if (request.getTotalCount() > MAX_TOTAL_COUNT) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "total count must not exceed " + MAX_TOTAL_COUNT);
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "total count must not exceed " + MAX_TOTAL_COUNT);
         }
         String packetNo = PACKET_NO_PREFIX + snowflake.nextId();
         RedPacket redPacket = request.toEntity(packetNo);
         redPacketMapper.insert(redPacket);
-        List<Long> amounts = redPacket.getPacketType() == RedPacketType.FIXED
-                ? RedPacketAllocator.allocateFixed(request.getTotalAmount(), request.getTotalCount())
-                : RedPacketAllocator.allocate(request.getTotalAmount(), request.getTotalCount());
+        List<Long> amounts = redPacket.getPacketType() == RedPacketType.FIXED ? RedPacketAllocator.allocateFixed(request.getTotalAmount(), request.getTotalCount()) : RedPacketAllocator.allocate(request.getTotalAmount(), request.getTotalCount());
         List<RedPacketItem> items = new ArrayList<>(amounts.size());
         for (int seq = 0; seq < amounts.size(); seq++) {
             items.add(RedPacketItem.pending(packetNo, seq, amounts.get(seq)));
@@ -135,11 +132,9 @@ public class RedPacketServiceImpl implements RedPacketService {
         try {
             redPacketStockService.prepare(packetNo, items, request.getTotalAmount());
         } catch (Exception ex) {
-            log.warn("red packet stock prepare failed, it will be rebuilt on first grab packetNo={} reason={}",
-                    packetNo, ex.getMessage());
+            log.warn("red packet stock prepare failed, it will be rebuilt on first grab packetNo={} reason={}", packetNo, ex.getMessage());
         }
-        log.info("red packet sent packetNo={} total={} count={}", packetNo,
-                request.getTotalAmount(), request.getTotalCount());
+        log.info("red packet sent packetNo={} total={} count={}", packetNo, request.getTotalAmount(), request.getTotalCount());
         return packetNo;
     }
 
@@ -188,8 +183,7 @@ public class RedPacketServiceImpl implements RedPacketService {
             redPacketMapper.updateStatus(packetNo, RedPacketStatus.FINISHED.getCode());
             soldOutFlag.mark(packetNo);
         }
-        log.info("red packet grabbed packetNo={} user={} amount={} seq={} degraded={}",
-                packetNo, userId, reservation.amount(), reservation.seq(), reservation.itemClaimed());
+        log.info("red packet grabbed packetNo={} user={} amount={} seq={} degraded={}", packetNo, userId, reservation.amount(), reservation.seq(), reservation.itemClaimed());
         return GrabResultResponse.success(reservation.amount());
     }
 
@@ -226,8 +220,7 @@ public class RedPacketServiceImpl implements RedPacketService {
                 }
             }
         } catch (Exception ex) {
-            log.warn("read red packet remain count from redis failed packetNo={} reason={}",
-                    packetNo, ex.getMessage());
+            log.warn("read red packet remain count from redis failed packetNo={} reason={}", packetNo, ex.getMessage());
         }
         return findByPacketNo(packetNo).getRemainCount();
     }
@@ -245,8 +238,7 @@ public class RedPacketServiceImpl implements RedPacketService {
                 }
             }
         } catch (Exception ex) {
-            log.warn("read red packet remain amount from redis failed packetNo={} reason={}",
-                    packetNo, ex.getMessage());
+            log.warn("read red packet remain amount from redis failed packetNo={} reason={}", packetNo, ex.getMessage());
         }
         return findByPacketNo(packetNo).getRemainAmount();
     }
@@ -257,17 +249,15 @@ public class RedPacketServiceImpl implements RedPacketService {
     @Override
     public boolean rebuild(String packetNo) {
         try {
-            Boolean rebuilt = distributedLockService.execute(REBUILD_LOCK + packetNo,
-                    Duration.ofSeconds(10), Duration.ofSeconds(3), () -> {
-                        List<RedPacketItem> pending = redPacketItemMapper.selectUnclaimed(packetNo);
-                        List<Long> claimedUsers = redPacketMapper.selectClaimedUserIds(packetNo);
-                        redPacketStockService.rebuild(packetNo, pending, claimedUsers);
-                        soldOutFlag.clear(packetNo);
-                        metrics.stockRebuilt();
-                        log.info("red packet stock rebuilt packetNo={} pending={} claimed={}",
-                                packetNo, pending.size(), claimedUsers.size());
-                        return Boolean.TRUE;
-                    });
+            Boolean rebuilt = distributedLockService.execute(REBUILD_LOCK + packetNo, Duration.ofSeconds(10), Duration.ofSeconds(3), () -> {
+                List<RedPacketItem> pending = redPacketItemMapper.selectUnclaimed(packetNo);
+                List<Long> claimedUsers = redPacketMapper.selectClaimedUserIds(packetNo);
+                redPacketStockService.rebuild(packetNo, pending, claimedUsers);
+                soldOutFlag.clear(packetNo);
+                metrics.stockRebuilt();
+                log.info("red packet stock rebuilt packetNo={} pending={} claimed={}", packetNo, pending.size(), claimedUsers.size());
+                return Boolean.TRUE;
+            });
             return Boolean.TRUE.equals(rebuilt);
         } catch (Exception ex) {
             log.warn("red packet stock rebuild skipped packetNo={} reason={}", packetNo, ex.getMessage());
@@ -382,8 +372,7 @@ public class RedPacketServiceImpl implements RedPacketService {
         }
         redPacketStockService.restore(packetNo, userId, reservation.amount(), reservation.seq());
         metrics.stockRestored();
-        log.warn("red packet reservation rolled back packetNo={} user={} seq={}",
-                packetNo, userId, reservation.seq());
+        log.warn("red packet reservation rolled back packetNo={} user={} seq={}", packetNo, userId, reservation.seq());
     }
 
     /**

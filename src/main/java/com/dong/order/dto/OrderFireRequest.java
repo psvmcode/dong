@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
+
 /**
  * 触发订单事件请求。事件名传枚举字面量，其余字段按需携带，
  * 缺了对应字段会被守卫拦下而不是报错，这正是守卫存在的意义。
@@ -34,8 +35,8 @@ public class OrderFireRequest {
     /**
      * 退款金额，申请退款事件必填。
      */
-        @Digits(integer = 16, fraction = 2)
-private BigDecimal refundAmount;
+    @Digits(integer = 16, fraction = 2)
+    private BigDecimal refundAmount;
 
     /**
      * 拒绝原因，取消或退款失败时填写。

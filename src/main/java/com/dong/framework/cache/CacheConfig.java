@@ -15,6 +15,7 @@ import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.nio.charset.StandardCharsets;
+
 /**
  * 缓存装配。L1 与 L2 都按开关决定是否注册，
  * 因此多级缓存拿到的某一层可能是 null，调用处必须判空。
@@ -79,19 +80,15 @@ public class CacheConfig {
     /**
      * 注册多级缓存。
      *
-     * @param eventBus            缓存事件总线
+     * @param eventBus               缓存事件总线
      * @param distributedLockService 分布式锁服务
-     * @param delayedTaskRunner   延迟任务执行器
-     * @param properties          缓存配置
-     * @param stats               缓存统计组件
+     * @param delayedTaskRunner      延迟任务执行器
+     * @param properties             缓存配置
+     * @param stats                  缓存统计组件
      * @return 多级缓存
      */
     @Bean
-    public MultiLevelCache multiLevelCache(CacheEventBus eventBus,
-                                           com.dong.framework.lock.DistributedLockService distributedLockService,
-                                           ExecutorConfig.DelayedTaskRunner delayedTaskRunner,
-                                           CacheProperties properties,
-                                           CacheStats stats) {
+    public MultiLevelCache multiLevelCache(CacheEventBus eventBus, com.dong.framework.lock.DistributedLockService distributedLockService, ExecutorConfig.DelayedTaskRunner delayedTaskRunner, CacheProperties properties, CacheStats stats) {
         CaffeineCacheStore l1 = beanIfPresent(CaffeineCacheStore.class);
         RedisCacheStore l2 = beanIfPresent(RedisCacheStore.class);
         return new MultiLevelCache(l1, l2, eventBus, distributedLockService, delayedTaskRunner, properties, stats);
@@ -106,8 +103,7 @@ public class CacheConfig {
      */
     @Bean
     @ConditionalOnProperty(prefix = "dong.cache", name = "l1-enabled", havingValue = "true", matchIfMissing = true)
-    public RedisMessageListenerContainer cacheInvalidationContainer(RedisConnectionFactory connectionFactory,
-                                                                    CacheEventBus eventBus) {
+    public RedisMessageListenerContainer cacheInvalidationContainer(RedisConnectionFactory connectionFactory, CacheEventBus eventBus) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener((message, pattern) -> {

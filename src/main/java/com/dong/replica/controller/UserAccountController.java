@@ -45,10 +45,7 @@ public class UserAccountController {
      */
     @PostMapping
     @Operation(summary = "创建账户，写入第二数据源")
-    public Result<Long> create(@RequestParam Long userId,
-                               @RequestParam
-                               @NotBlank @Size(max = 128) String username,
-                               @RequestParam(defaultValue = "0") long balance) {
+    public Result<Long> create(@RequestParam Long userId, @RequestParam @NotBlank @Size(max = 128) String username, @RequestParam(defaultValue = "0") long balance) {
         return Result.success(requireService().create(userId, username, balance));
     }
 
@@ -76,9 +73,7 @@ public class UserAccountController {
      */
     @PostMapping("/transfer")
     @Operation(summary = "两个账户之间转账，在单个本地事务内完成")
-    public Result<Long> transfer(@RequestParam Long fromUserId,
-                                 @RequestParam Long toUserId,
-                                 @RequestParam long amount) {
+    public Result<Long> transfer(@RequestParam Long fromUserId, @RequestParam Long toUserId, @RequestParam long amount) {
         return Result.success(requireService().transfer(fromUserId, toUserId, amount));
     }
 

@@ -122,9 +122,7 @@ public class RedisCacheStore implements CacheStore {
      */
     @Override
     public long estimatedSize() {
-        Long size = redisService.template().execute(
-                (org.springframework.data.redis.core.RedisCallback<Long>)
-                        connection -> connection.serverCommands().dbSize());
+        Long size = redisService.template().execute((org.springframework.data.redis.core.RedisCallback<Long>) connection -> connection.serverCommands().dbSize());
         return size == null ? 0L : size;
     }
 

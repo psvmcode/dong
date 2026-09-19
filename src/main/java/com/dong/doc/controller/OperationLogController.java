@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 /**
  * 操作日志。用 MongoDB 存储，因为日志字段会随业务不断演进，
  * 无 schema 的特性避免了每次加字段都要改表结构。
@@ -54,7 +55,7 @@ public class OperationLogController {
     @GetMapping
     @Operation(summary = "按业务类型分页查询操作日志")
     public Result<PageResult<OperationLogDocument>> findByPage(@RequestParam(required = false)
- @Size(max = 128) String bizType,
+                                                               @Size(max = 128) String bizType,
                                                                @RequestParam(defaultValue = "1")
                                                                @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
                                                                @RequestParam(defaultValue = "20")

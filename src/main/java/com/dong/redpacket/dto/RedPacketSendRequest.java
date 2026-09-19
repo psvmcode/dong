@@ -47,9 +47,7 @@ public class RedPacketSendRequest {
         redPacket.setTotalCount(totalCount);
         redPacket.setRemainAmount(totalAmount);
         redPacket.setRemainCount(totalCount);
-        redPacket.setPacketType(packetType == null
-                ? RedPacketType.RANDOM
-                : RedPacketType.of(packetType));
+        redPacket.setPacketType(packetType == null ? RedPacketType.RANDOM : RedPacketType.of(packetType));
         redPacket.setStatus(RedPacketStatus.CREATED);
         return redPacket;
     }

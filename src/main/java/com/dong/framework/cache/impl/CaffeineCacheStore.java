@@ -32,11 +32,7 @@ public class CaffeineCacheStore implements CacheStore {
      * @param maxSize 最大条目数
      */
     public CaffeineCacheStore(long maxSize) {
-        this.cache = Caffeine.newBuilder()
-                .maximumSize(maxSize)
-                .expireAfter(new EntryExpiry())
-                .recordStats()
-                .build();
+        this.cache = Caffeine.newBuilder().maximumSize(maxSize).expireAfter(new EntryExpiry()).recordStats().build();
     }
 
     /**
@@ -158,10 +154,10 @@ public class CaffeineCacheStore implements CacheStore {
     /**
      * 本地缓存统计快照记录。
      *
-     * @param hitCount    命中数
-     * @param missCount   未命中数
+     * @param hitCount      命中数
+     * @param missCount     未命中数
      * @param evictionCount 驱逐数
-     * @param size        估算大小
+     * @param size          估算大小
      */
     public record CacheStatsSnapshot(long hitCount, long missCount, long evictionCount, long size) {
     }

@@ -15,13 +15,12 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
 
-@Configuration
-@ConditionalOnProperty(prefix = "dong.mariadb", name = "enabled", havingValue = "true")
-@MapperScan(basePackages = "com.dong.replica.mapper",
-        sqlSessionFactoryRef = "replicaSqlSessionFactory")
 /**
  * MariaDbConfig，配置类。
  */
+@Configuration
+@ConditionalOnProperty(prefix = "dong.mariadb", name = "enabled", havingValue = "true")
+@MapperScan(basePackages = "com.dong.replica.mapper", sqlSessionFactoryRef = "replicaSqlSessionFactory")
 public class MariaDbConfig {
 
     /**
@@ -69,12 +68,10 @@ public class MariaDbConfig {
      * replicaSqlSessionFactory。
      */
     @Bean(name = "replicaSqlSessionFactory")
-    public SqlSessionFactory replicaSqlSessionFactory(@Qualifier("replicaDataSource") DataSource dataSource)
-            throws Exception {
+    public SqlSessionFactory replicaSqlSessionFactory(@Qualifier("replicaDataSource") DataSource dataSource) throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
-        factoryBean.setMapperLocations(
-                new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/replica/*.xml"));
+        factoryBean.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/replica/*.xml"));
         org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
         configuration.setMapUnderscoreToCamelCase(true);
         factoryBean.setConfiguration(configuration);
@@ -85,8 +82,7 @@ public class MariaDbConfig {
      * replicaTransactionManager。
      */
     @Bean(name = "replicaTransactionManager")
-    public DataSourceTransactionManager replicaTransactionManager(
-            @Qualifier("replicaDataSource") DataSource dataSource) {
+    public DataSourceTransactionManager replicaTransactionManager(@Qualifier("replicaDataSource") DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 

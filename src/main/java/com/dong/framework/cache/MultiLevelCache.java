@@ -9,6 +9,7 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
+
 /**
  * 多级缓存，读取顺序为 L1 本地缓存、L2 分布式缓存、回源数据库。
  *
@@ -65,21 +66,15 @@ public class MultiLevelCache implements SmartInitializingSingleton {
     /**
      * 构造多级缓存。
      *
-     * @param l1                    L1 本地缓存
-     * @param l2                    L2 Redis 缓存
-     * @param eventBus              缓存失效事件总线
+     * @param l1                     L1 本地缓存
+     * @param l2                     L2 Redis 缓存
+     * @param eventBus               缓存失效事件总线
      * @param distributedLockService 分布式锁服务
-     * @param delayedTaskRunner     延迟任务执行器
-     * @param properties            缓存配置
-     * @param stats                 缓存统计组件
+     * @param delayedTaskRunner      延迟任务执行器
+     * @param properties             缓存配置
+     * @param stats                  缓存统计组件
      */
-    public MultiLevelCache(CacheStore l1,
-                           CacheStore l2,
-                           CacheEventBus eventBus,
-                           DistributedLockService distributedLockService,
-                           ExecutorConfig.DelayedTaskRunner delayedTaskRunner,
-                           CacheProperties properties,
-                           CacheStats stats) {
+    public MultiLevelCache(CacheStore l1, CacheStore l2, CacheEventBus eventBus, DistributedLockService distributedLockService, ExecutorConfig.DelayedTaskRunner delayedTaskRunner, CacheProperties properties, CacheStats stats) {
         this.l1 = l1;
         this.l2 = l2;
         this.eventBus = eventBus;
@@ -186,8 +181,7 @@ public class MultiLevelCache implements SmartInitializingSingleton {
      * 拿到锁后再查一次 L2，是因为等待期间可能已有线程把数据写好了，没必要重复回源。
      */
     private <T> T rebuildUnderLock(String key, Class<T> type, Supplier<T> loader) {
-        try (LockHandle handle = distributedLockService.tryLock(REBUILD_LOCK_PREFIX + key,
-                properties.getRebuildLease(), properties.getRebuildWait())) {
+        try (LockHandle handle = distributedLockService.tryLock(REBUILD_LOCK_PREFIX + key, properties.getRebuildLease(), properties.getRebuildWait())) {
             if (l2 != null && l2.lookup(key, type) instanceof CacheLookup.Hit<T> hit) {
                 stats.recordL2Hit();
                 return hit.value();

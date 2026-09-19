@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+
 /**
  * 抢红包的单用户限流。挡的是"一个人用脚本刷"，与全局按 IP 限流互补：
  * 换 IP 能绕过全局限流，但绕不过按用户 id 的这个桶。
@@ -57,8 +58,7 @@ public class GrabRateLimiter {
         if (!enabled) {
             return;
         }
-        RateLimitRule rule = new RateLimitRule(limitPerMinute, Duration.ofMinutes(1),
-                RateLimitAlgorithm.SLIDING_WINDOW);
+        RateLimitRule rule = new RateLimitRule(limitPerMinute, Duration.ofMinutes(1), RateLimitAlgorithm.SLIDING_WINDOW);
         boolean allowed;
         try {
             allowed = rateLimitManager.tryAcquire(PREFIX + userId, rule, true);
@@ -69,8 +69,7 @@ public class GrabRateLimiter {
         }
         if (!allowed) {
             metrics.rateLimitRejected();
-            throw new BusinessException(Constants.CODE_TOO_MANY_REQUESTS,
-                    "grab too frequently, at most " + limitPerMinute + " times per minute");
+            throw new BusinessException(Constants.CODE_TOO_MANY_REQUESTS, "grab too frequently, at most " + limitPerMinute + " times per minute");
         }
     }
 

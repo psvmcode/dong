@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
 /**
  * 订单履约状态机。状态只能由事件推进，接口层提供不了直接改状态的入口，
  * 这是刻意的设计：绕过状态机的口子一旦开了一个，规则迟早会被绕过。
@@ -61,8 +62,7 @@ public class OrderController {
      */
     @PostMapping("/{orderNo}/events")
     @Operation(summary = "触发订单事件推进状态")
-    public Result<OrderResponse> fire(@PathVariable
- @NotBlank @Size(max = 128) String orderNo, @Valid @RequestBody OrderFireRequest request) {
+    public Result<OrderResponse> fire(@PathVariable @NotBlank @Size(max = 128) String orderNo, @Valid @RequestBody OrderFireRequest request) {
         return Result.success(orderService.fire(orderNo, request));
     }
 
@@ -71,8 +71,7 @@ public class OrderController {
      */
     @GetMapping("/{orderNo}")
     @Operation(summary = "查询订单详情")
-    public Result<OrderResponse> detail(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<OrderResponse> detail(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.detail(orderNo));
     }
 
@@ -81,8 +80,7 @@ public class OrderController {
      */
     @GetMapping("/{orderNo}/available-events")
     @Operation(summary = "查询当前状态可触发的事件")
-    public Result<List<String>> availableEvents(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<List<String>> availableEvents(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.availableEvents(orderNo));
     }
 
@@ -91,8 +89,7 @@ public class OrderController {
      */
     @GetMapping("/{orderNo}/logs")
     @Operation(summary = "查询订单状态流转日志")
-    public Result<List<OrderTransitionLogResponse>> logs(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<List<OrderTransitionLogResponse>> logs(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.logs(orderNo));
     }
 
@@ -101,8 +98,7 @@ public class OrderController {
      */
     @GetMapping
     @Operation(summary = "查询最近创建的订单")
-    public Result<List<OrderResponse>> recent(@RequestParam(defaultValue = "20")
- @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
+    public Result<List<OrderResponse>> recent(@RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(orderService.recent(limit));
     }
 
@@ -111,10 +107,7 @@ public class OrderController {
      */
     @PostMapping("/benchmark")
     @Operation(summary = "并发推进对比实验，cas 带乐观锁，none 不带")
-    public Result<OrderBenchmarkResponse> benchmark(@RequestParam(defaultValue = "16")
- @Min(1) @Max(Constants.MAX_THREADS) int threads,
-                                                    @RequestParam(defaultValue = "cas")
-                                                    @NotBlank @Size(max = 32) String mode) {
+    public Result<OrderBenchmarkResponse> benchmark(@RequestParam(defaultValue = "16") @Min(1) @Max(Constants.MAX_THREADS) int threads, @RequestParam(defaultValue = "cas") @NotBlank @Size(max = 32) String mode) {
         return Result.success(orderService.benchmark(threads, mode));
     }
 
@@ -132,8 +125,7 @@ public class OrderController {
      */
     @DeleteMapping("/{orderNo}")
     @Operation(summary = "删除订单及其流转日志")
-    public Result<Void> remove(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<Void> remove(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         orderService.remove(orderNo);
         return Result.success();
     }

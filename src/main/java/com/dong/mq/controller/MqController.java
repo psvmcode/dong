@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 消息实验入口。业务代码只依赖 MessageProducer 接口，
  * 具体走本地总线、RocketMQ 还是 Kafka 由 MqFacade 按配置路由，切换不需要改代码。
@@ -49,12 +50,7 @@ public class MqController {
      */
     @PostMapping("/send")
     @Operation(summary = "发送普通消息")
-    public Result<Void> send(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC)
- @NotBlank @Size(max = 128) String topic,
-                             @RequestParam
- @NotBlank @Size(max = 128) String key,
-                             @RequestParam(defaultValue = "{}")
-                             @NotBlank @Size(max = 4096) String payload) {
+    public Result<Void> send(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) @NotBlank @Size(max = 128) String topic, @RequestParam @NotBlank @Size(max = 128) String key, @RequestParam(defaultValue = "{}") @NotBlank @Size(max = 4096) String payload) {
         mqProduceService.send(topic, key, payload);
         return Result.success();
     }
@@ -66,12 +62,7 @@ public class MqController {
      */
     @PostMapping("/send-delayed")
     @Operation(summary = "发送延迟消息，三种传输实现机制不同")
-    public Result<Void> sendDelayed(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC)
- @NotBlank @Size(max = 128) String topic,
-                                    @RequestParam
- @NotBlank @Size(max = 128) String key,
-                                    @RequestParam(defaultValue = "10")
-                                    @Min(0) @Max(Constants.MAX_DELAY_SECONDS) long delaySeconds) {
+    public Result<Void> sendDelayed(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) @NotBlank @Size(max = 128) String topic, @RequestParam @NotBlank @Size(max = 128) String key, @RequestParam(defaultValue = "10") @Min(0) @Max(Constants.MAX_DELAY_SECONDS) long delaySeconds) {
         mqProduceService.sendDelayed(topic, key, "{\"delayed\":true}", Duration.ofSeconds(delaySeconds));
         return Result.success();
     }
@@ -82,12 +73,7 @@ public class MqController {
      */
     @PostMapping("/send-ordered")
     @Operation(summary = "发送顺序消息，相同分片的消息按序消费")
-    public Result<Void> sendOrdered(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC)
- @NotBlank @Size(max = 128) String topic,
-                                    @RequestParam
- @NotBlank @Size(max = 128) String key,
-                                    @RequestParam
- @NotBlank @Size(max = 128) String shardingKey) {
+    public Result<Void> sendOrdered(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) @NotBlank @Size(max = 128) String topic, @RequestParam @NotBlank @Size(max = 128) String key, @RequestParam @NotBlank @Size(max = 128) String shardingKey) {
         mqProduceService.sendOrdered(topic, key, "{\"seq\":" + System.currentTimeMillis() % 1000 + "}", shardingKey);
         return Result.success();
     }
@@ -97,12 +83,7 @@ public class MqController {
      */
     @PostMapping("/send-batch")
     @Operation(summary = "批量发送消息")
-    public Result<Void> sendBatch(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC)
- @NotBlank @Size(max = 128) String topic,
-                                  @RequestParam(defaultValue = "batch")
-                                  @NotBlank @Size(max = 128) String keyPrefix,
-                                  @RequestParam(defaultValue = "10")
-                                  @Min(1) @Max(Constants.MAX_BATCH_SIZE) int count) {
+    public Result<Void> sendBatch(@RequestParam(defaultValue = DemoOrderMessageHandler.TOPIC) @NotBlank @Size(max = 128) String topic, @RequestParam(defaultValue = "batch") @NotBlank @Size(max = 128) String keyPrefix, @RequestParam(defaultValue = "10") @Min(1) @Max(Constants.MAX_BATCH_SIZE) int count) {
         mqProduceService.sendBatch(topic, keyPrefix, count);
         return Result.success();
     }
@@ -121,8 +102,7 @@ public class MqController {
      */
     @GetMapping("/logs")
     @Operation(summary = "查看消息投递日志")
-    public Result<List<MqMessageLog>> logs(@RequestParam(defaultValue = "20")
- @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
+    public Result<List<MqMessageLog>> logs(@RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(mqConsumeService.recent(limit));
     }
 

@@ -11,8 +11,8 @@ public interface RateLimiter {
     /**
      * 尝试获取 permits 个配额。
      *
-     * @param key    业务键
-     * @param rule   限流规则
+     * @param key     业务键
+     * @param rule    限流规则
      * @param permits 请求配额
      * @return 是否放行
      */

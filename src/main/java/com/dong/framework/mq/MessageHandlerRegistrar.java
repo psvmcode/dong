@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+
 /**
  * 把容器中所有 MessageHandler 注册到本地总线。
  *

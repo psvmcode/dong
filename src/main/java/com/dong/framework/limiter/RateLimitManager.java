@@ -5,6 +5,7 @@ import com.dong.framework.limiter.impl.LuaRateLimiter;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
 /**
  * 限流入口。根据 distributed 选择分布式或本地实现，
  * 并在调用前校验算法是否被该实现支持。
@@ -35,8 +36,7 @@ public class RateLimitManager {
     public boolean tryAcquire(String key, RateLimitRule rule, boolean distributed) {
         RateLimiter limiter = distributed ? luaRateLimiter : localRateLimiter;
         if (!limiter.supportedAlgorithms().contains(rule.algorithm())) {
-            throw new IllegalArgumentException(
-                    limiter.name() + " limiter does not support " + rule.algorithm());
+            throw new IllegalArgumentException(limiter.name() + " limiter does not support " + rule.algorithm());
         }
         return limiter.tryAcquire(key, rule);
     }

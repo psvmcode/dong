@@ -12,6 +12,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+
 /**
  * Kafka 发送适配器。
  *
@@ -93,9 +94,7 @@ public class KafkaProducerAdapter implements MessageProducer {
      */
     private void send(String topic, String key, Object payload, String shardingKey, long notBefore) {
         String body = payload instanceof String text ? text : JsonUtils.toJson(payload);
-        MessageBuilder<String> builder = MessageBuilder.withPayload(body)
-                .setHeader(KafkaHeaders.TOPIC, topic)
-                .setHeader(KafkaHeaders.KEY, key);
+        MessageBuilder<String> builder = MessageBuilder.withPayload(body).setHeader(KafkaHeaders.TOPIC, topic).setHeader(KafkaHeaders.KEY, key);
         if (shardingKey != null) {
             builder.setHeader(KafkaHeaders.PARTITION, partitionOf(shardingKey, partitionCount(topic)));
         }

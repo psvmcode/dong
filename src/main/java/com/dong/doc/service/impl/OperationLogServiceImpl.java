@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
 /**
  * 操作日志实现。基于 MongoDB，
  * 适合字段会随业务演进、结构不固定的日志数据。
@@ -67,8 +68,7 @@ public class OperationLogServiceImpl implements OperationLogService {
         }
 
         long total = mongoTemplate.count(query, OperationLogDocument.class);
-        List<OperationLogDocument> list = mongoTemplate.find(query.with(Pageable.ofSize(request.getPageSize())
-                .withPage(request.getPageNum() - 1)), OperationLogDocument.class);
+        List<OperationLogDocument> list = mongoTemplate.find(query.with(Pageable.ofSize(request.getPageSize()).withPage(request.getPageNum() - 1)), OperationLogDocument.class);
         return PageResult.of(list, total, request);
     }
 

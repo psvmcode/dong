@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 import java.util.concurrent.TimeUnit;
+
 /**
  * MongoDB 配置类。
  */
