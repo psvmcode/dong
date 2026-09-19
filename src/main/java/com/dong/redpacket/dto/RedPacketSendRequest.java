@@ -50,7 +50,7 @@ public class RedPacketSendRequest {
         redPacket.setPacketType(packetType == null
                 ? RedPacketType.RANDOM
                 : RedPacketType.of(packetType));
-        redPacket.setStatus(RedPacketStatus.DISTRIBUTING);
+        redPacket.setStatus(RedPacketStatus.CREATED);
         return redPacket;
     }
 

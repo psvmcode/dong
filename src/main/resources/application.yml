@@ -180,3 +180,16 @@ dong:
   seckill:
     timeout-task-enabled: true
     payment-timeout-minutes: 15
+
+  redpacket:
+    # 单用户每分钟最多抢多少次，挡的是脚本刷，与全局按 IP 限流互补
+    grab-limit-enabled: true
+    grab-limit-per-minute: 60
+    # 库存副本的过期时间，到期后靠库里的份额重建
+    stock-ttl: 24h
+    # Redis 整体不可用时是否降级到数据库，关掉则直接返回 1005
+    db-fallback-enabled: true
+    # 定时对账：把库里的未领取份额与 Redis 剩余对齐
+    consistency-task-enabled: true
+    consistency-interval-ms: 300000
+    consistency-scan-limit: 50

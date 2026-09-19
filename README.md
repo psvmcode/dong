@@ -57,7 +57,7 @@
 | 多级缓存 | `/api/cache` | Caffeine + Redis | 穿透、击穿、雪崩、双写一致性 | 穿透防护 444ms → 102ms |
 | Redis 经典 | `/api/classic` | Redis + Redisson | 排行榜、UV、签到、短链、GEO、延迟队列、发号器、限流、分布式锁 | 加锁零丢失，代价 65 倍耗时 |
 | 秒杀 | `/api/seckill` | Redis Lua + MQ | 预扣库存、异步下单、售罄短路 | 10 库存 20 人抢，零超卖 |
-| 抢红包 | `/api/red-packet` | Redis List | 二倍均值法、预分配 | 金额精确守恒，分毫不差 |
+| 抢红包 | `/api/red-packet` | Redis List + MySQL 份额表 | 二倍均值预分配、单用户限流、副本重建、数据库降级 | 金额精确守恒，Redis 全丢也能恢复 |
 | 微博模型 | `/api/social` | Redis Set / ZSet | 关注关系、共同关注、推拉两种时间线 | 两种模式结果一致 |
 | 搜索 | `/api/search` | Elasticsearch + IK | 中文分词、高亮、分面聚合 | 中文命中并高亮 |
 | 分布式事务 | `/api/tcc` | MySQL | Try/Confirm/Cancel + 幂等、空回滚、悬挂 | 失败分支零残留 |
@@ -412,7 +412,23 @@ mysql -uroot -p -e "select count(*), sum(quantity) from dong_lab.seckill_order"
 
 **算法**：二倍均值法。每次在 `[1, 2 × 均值 - 1]` 区间随机取值，保证每人期望相等且有惊喜，同时预留剩余人数的最低金额，避免最后一人拿到 0。
 
-**架构**：发红包时就把金额算好推入 Redis List，抢的时候只是一次 `RPOP`。全程没有锁、没有事务、没有读改写，再多人同时点也不会竞争。
+**架构**：发红包时就把金额按份算好，既落库成 `red_packet_item` 份额表，也推入 Redis List。
+抢的时候只是一次 `RPOP` 弹出"序号:金额"，库里再用 `status = 0` 条件占位。
+全程没有锁、没有读改写，再多人同时点也不会竞争。
+
+**五道防线**：
+
+| 防线 | 作用 | 挡的是什么 |
+|---|---|---|
+| 单用户限流 | 滑动窗口，每分钟 60 次 | 脚本刷接口；Redis 故障时放行，不把中间件故障放大成业务不可用 |
+| 本地抢完标记 | 10 秒短路 | 抢完之后仍然打 Redis 的无效流量 |
+| Redis Lua 脚本 | 去重 + 弹出 + 扣减一次完成 | 并发下同一份被两人拿到、重复抢 |
+| 份额表 `status = 0` 占位 | 数据库乐观锁 | 副本与库存不一致时的超发 |
+| 扣减带充足条件 | `remain_count >= 1 and remain_amount >= 金额` | 剩余金额被扣成负数 |
+
+**Redis 只是副本**：队列丢失（TTL 到期、预热失败、计数与队列不一致）时，脚本返回"未预热"，
+服务先从份额表重建再抢；Redis 整体不可用时降级到数据库，靠份额表随机起点 + `status = 0` 占位，
+性能差一点但一样不会超发。落库失败会把预扣的份额原样还回去，避免这一份凭空消失。
 
 **验证金额守恒**：
 
@@ -431,6 +447,20 @@ curl "http://127.0.0.1:8090/api/red-packet/records?packetNo=$PN"
 ```
 
 实测：10 人抢完，金额合计恰好 10000 分，分毫不差；第 11、12 人正确被拒。
+
+**验证副本丢失后能恢复**：手动清掉 Redis 库存键再抢，服务会自动从份额表重建，金额仍然精确守恒。
+
+```bash
+redis-cli --no-auth-warning -a "$LAB_REDIS_PASSWORD" -h "$LAB_PUBLIC_HOST" -n 0 \
+  eval "return redis.call('del', unpack(KEYS))" 4 \
+  "lab:redpacket:count:$PN" "lab:redpacket:amount:$PN" "lab:redpacket:list:$PN" "lab:redpacket:users:$PN"
+
+curl -X POST "http://127.0.0.1:8090/api/red-packet/rebuild?packetNo=$PN"
+curl "http://127.0.0.1:8090/api/red-packet/runtime"
+```
+
+`runtime` 返回限流拒绝数、限流降级数、Redis 不可用次数、数据库降级次数、库存重建与归还次数、脏份额丢弃数，
+可用于判断一次故障到底造成了多大范围的降级。
 
 ### 5.5 微博模型（social）
 

@@ -42,19 +42,23 @@
                 #{packetType}, #{status})
     </insert>
 
-    <!-- 推进红包状态 -->
+    <!-- 推进红包状态，已处于目标状态就不再写库 -->
     <update id="updateStatus">
         update red_packet
         set status = #{status}
         where packet_no = #{packetNo}
+          and status &lt;&gt; #{status}
     </update>
 
-    <!-- 扣减剩余金额与份数，带充足条件防负数 -->
+    <!-- 扣减剩余金额与份数。充足条件写在 where 里是防超发的关键：
+         并发下若库存已不足，更新影响行数为 0，由调用方判定为抢完而不是扣成负数 -->
     <update id="decreaseRemain">
         update red_packet
         set remain_amount = remain_amount - #{amount},
             remain_count  = remain_count - #{count}
         where packet_no = #{packetNo}
+          and remain_count &gt;= #{count}
+          and remain_amount &gt;= #{amount}
     </update>
 
     <!-- 查领取记录 -->
@@ -78,6 +82,31 @@
         from red_packet_record
         where packet_no = #{packetNo}
           and user_id = #{userId}
+    </select>
+
+    <!-- 已领取用户 id，重建 Redis 去重集合时使用 -->
+    <select id="selectClaimedUserIds" resultType="java.lang.Long">
+        select user_id
+        from red_packet_record
+        where packet_no = #{packetNo}
+    </select>
+
+    <!-- 按未领取份额回写剩余，以份额表为准 -->
+    <update id="updateRemain">
+        update red_packet
+        set remain_amount = #{remainAmount},
+            remain_count  = #{remainCount}
+        where packet_no = #{packetNo}
+    </update>
+
+    <!-- 未结束的红包，对账任务按主键顺序扫描 -->
+    <select id="selectUnfinished" resultMap="redPacketMap">
+        select id, packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count, packet_type, status,
+               create_time, update_time
+        from red_packet
+        where status in (0, 1)
+        order by id asc
+        limit #{limit}
     </select>
 
 </mapper>

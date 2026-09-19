@@ -234,6 +234,25 @@ create table if not exists red_packet_record
   default charset = utf8mb4
   comment = '抢红包记录。可用于核对发放金额是否精确守恒';
 
+create table if not exists red_packet_item
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    packet_no   varchar(32)     not null                                 comment '所属红包编号',
+    seq         int             not null                                 comment '分配序号，决定从 Redis 队列弹出的顺序',
+    amount      bigint          not null default 0                       comment '预分配金额，单位分',
+    status      tinyint         not null default 0                       comment '状态：0 未领取 1 已领取',
+    user_id     bigint unsigned null                                     comment '领取用户 id，未领取时为空',
+    grab_time   datetime        null                                     comment '领取时间',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    update_time datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_packet_seq (packet_no, seq)                                comment '同一红包内序号唯一，重复预热只会命中同一份',
+    key idx_packet_status (packet_no, status)                                comment '按红包扫未领取份额，Redis 库存丢失时靠它重建',
+    key idx_packet_user (packet_no, user_id)                                 comment '按用户查是否领过，Redis 不可用时的去重依据'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '红包预分配份额。金额在发红包时算好并落库，Redis 队列只是它的加速副本';
+
 create table if not exists social_relation
 (
     id          bigint unsigned not null auto_increment                  comment '主键',

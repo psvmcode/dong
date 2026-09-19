@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 /**
- * 抢红包。核心设计是发红包时就把金额算好并放进 Redis List，
- * 抢的时候只是一次原子弹出，全程没有锁也没有事务，再多人同时点也不会竞争。
+ * 抢红包。金额在发红包时按份算好并落库，Redis 队列只是这份数据的副本：
+ * 抢的时候一次原子弹出，副本丢了能从库里原样重建，Redis 整体不可用还能降级到数据库。
  */
 @RestController
 @Validated
@@ -87,6 +87,25 @@ public class RedPacketController {
         return Result.success(java.util.Map.of(
                 "remainCount", redPacketService.remainCount(packetNo),
                 "remainAmount", redPacketService.remainAmount(packetNo)));
+    }
+
+    /**
+     * 手动从数据库重建 Redis 库存。
+     */
+    @PostMapping("/rebuild")
+    @Operation(summary = "从数据库重建红包库存，用于模拟副本丢失后的恢复")
+    public Result<Boolean> rebuild(@RequestParam
+ @NotBlank @Size(max = 128) String packetNo) {
+        return Result.success(redPacketService.rebuild(packetNo));
+    }
+
+    /**
+     * 查看运行时状态，含限流拒绝数、降级次数与重建次数。
+     */
+    @GetMapping("/runtime")
+    @Operation(summary = "查看抢红包运行时状态")
+    public Result<java.util.Map<String, Object>> runtime() {
+        return Result.success(redPacketService.runtime());
     }
 
 }

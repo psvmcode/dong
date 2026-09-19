@@ -49,4 +49,21 @@ public interface RedPacketMapper {
      */
     int countRecord(@Param("packetNo") String packetNo, @Param("userId") Long userId);
 
+    /**
+     * 查询已领取用户 id，重建库存时用它恢复去重集合。
+     */
+    List<Long> selectClaimedUserIds(@Param("packetNo") String packetNo);
+
+    /**
+     * 查询尚未结束的红包，对账任务用它找需要处理的对象。
+     */
+    List<RedPacket> selectUnfinished(@Param("limit") int limit);
+
+    /**
+     * 按未领取份额回写剩余金额与份数，对账发现偏差时用它纠正。
+     */
+    int updateRemain(@Param("packetNo") String packetNo,
+                     @Param("remainAmount") long remainAmount,
+                     @Param("remainCount") int remainCount);
+
 }

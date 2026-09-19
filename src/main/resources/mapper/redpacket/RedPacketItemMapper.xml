@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.redpacket.mapper.RedPacketItemMapper">
+
+    <resultMap id="itemMap" type="com.dong.redpacket.entity.RedPacketItem">
+        <id column="id" property="id"/>
+        <result column="packet_no" property="packetNo"/>
+        <result column="seq" property="seq"/>
+        <result column="amount" property="amount"/>
+        <result column="status" property="status" javaType="com.dong.redpacket.enums.RedPacketItemStatus"/>
+        <result column="user_id" property="userId"/>
+        <result column="grab_time" property="grabTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 批量写入预分配份额 -->
+    <insert id="batchInsert">
+        insert into red_packet_item (packet_no, seq, amount, status)
+        values
+        <foreach collection="items" item="item" separator=",">
+            (#{item.packetNo}, #{item.seq}, #{item.amount}, #{item.status})
+        </foreach>
+    </insert>
+
+    <!-- 查未领取份额，用于重建 Redis 库存 -->
+    <select id="selectUnclaimed" resultMap="itemMap">
+        select id, packet_no, seq, amount, status, user_id, grab_time, create_time, update_time
+        from red_packet_item
+        where packet_no = #{packetNo}
+          and status = 0
+        order by seq asc
+    </select>
+
+    <!-- 从指定序号起找第一份未领取的，随机起点可把并发请求打散到不同份额上 -->
+    <select id="selectClaimCandidate" resultMap="itemMap">
+        select id, packet_no, seq, amount, status, user_id, grab_time, create_time, update_time
+        from red_packet_item
+        where packet_no = #{packetNo}
+          and status = 0
+          and seq &gt;= #{seqFrom}
+        order by seq asc
+        limit 1
+    </select>
+
+    <!-- 占位领取，status = 0 是并发下唯一的获胜条件 -->
+    <update id="claim">
+        update red_packet_item
+        set status    = 1,
+            user_id   = #{userId},
+            grab_time = now()
+        where packet_no = #{packetNo}
+          and seq = #{seq}
+          and status = 0
+    </update>
+
+    <!-- 退回已占位的份额，只退自己占的那一份 -->
+    <update id="release">
+        update red_packet_item
+        set status    = 0,
+            user_id   = null,
+            grab_time = null
+        where packet_no = #{packetNo}
+          and seq = #{seq}
+          and status = 1
+          and user_id = #{userId}
+    </update>
+
+    <!-- 未领取份数 -->
+    <select id="countUnclaimed" resultType="java.lang.Integer">
+        select count(1)
+        from red_packet_item
+        where packet_no = #{packetNo}
+          and status = 0
+    </select>
+
+    <!-- 未领取金额总和，无记录时返回 0 而不是 null -->
+    <select id="sumUnclaimed" resultType="java.lang.Long">
+        select coalesce(sum(amount), 0)
+        from red_packet_item
+        where packet_no = #{packetNo}
+          and status = 0
+    </select>
+
+    <!-- 该用户是否已领过 -->
+    <select id="countClaimedByUser" resultType="java.lang.Integer">
+        select count(1)
+        from red_packet_item
+        where packet_no = #{packetNo}
+          and user_id = #{userId}
+    </select>
+
+</mapper>
