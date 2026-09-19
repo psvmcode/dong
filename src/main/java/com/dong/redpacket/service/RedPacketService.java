@@ -7,6 +7,7 @@ import com.dong.redpacket.entity.RedPacketRecord;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 抢红包。金额在发红包时按份算好并落库，Redis 队列只是这份数据的加速副本：
  * 抢的时候一次原子弹出，副本丢了能从库里原样重建，Redis 整体不可用还能降级到数据库。

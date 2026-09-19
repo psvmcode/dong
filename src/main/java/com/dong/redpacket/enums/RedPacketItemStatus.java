@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 红包份额状态。份额一旦被领取就不可再分配，
  * 这个状态是防超发的最后一道防线，先于它生效的是 Redis 队列的原子弹出。

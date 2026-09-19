@@ -1,6 +1,7 @@
 package com.dong.redpacket.dto;
 
 import com.dong.redpacket.enums.GrabStatus;
+
 /**
  * 库存预扣结果。
  *

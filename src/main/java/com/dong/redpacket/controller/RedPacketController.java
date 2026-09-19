@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
 /**
  * 抢红包。金额在发红包时按份算好并落库，Redis 队列只是这份数据的副本：
  * 抢的时候一次原子弹出，副本丢了能从库里原样重建，Redis 整体不可用还能降级到数据库。
@@ -53,7 +54,7 @@ public class RedPacketController {
     @PostMapping("/grab")
     @Operation(summary = "抢红包，从预分配列表中原子弹出一份")
     public Result<GrabResultResponse> grab(@RequestParam
- @NotBlank @Size(max = 128) String packetNo, @RequestParam Long userId) {
+                                           @NotBlank @Size(max = 128) String packetNo, @RequestParam Long userId) {
         return Result.success(redPacketService.grab(packetNo, userId));
     }
 
@@ -63,7 +64,7 @@ public class RedPacketController {
     @GetMapping
     @Operation(summary = "查询红包详情")
     public Result<RedPacketResponse> detail(@RequestParam
- @NotBlank @Size(max = 128) String packetNo) {
+                                            @NotBlank @Size(max = 128) String packetNo) {
         return Result.success(RedPacketResponse.from(redPacketService.findByPacketNo(packetNo)));
     }
 
@@ -73,7 +74,7 @@ public class RedPacketController {
     @GetMapping("/records")
     @Operation(summary = "查询红包领取记录")
     public Result<List<RedPacketRecord>> records(@RequestParam
- @NotBlank @Size(max = 128) String packetNo) {
+                                                 @NotBlank @Size(max = 128) String packetNo) {
         return Result.success(redPacketService.records(packetNo));
     }
 
@@ -83,7 +84,7 @@ public class RedPacketController {
     @GetMapping("/remain")
     @Operation(summary = "查询红包剩余份数与剩余金额")
     public Result<java.util.Map<String, Object>> remain(@RequestParam
- @NotBlank @Size(max = 128) String packetNo) {
+                                                        @NotBlank @Size(max = 128) String packetNo) {
         return Result.success(java.util.Map.of(
                 "remainCount", redPacketService.remainCount(packetNo),
                 "remainAmount", redPacketService.remainAmount(packetNo)));
@@ -95,7 +96,7 @@ public class RedPacketController {
     @PostMapping("/rebuild")
     @Operation(summary = "从数据库重建红包库存，用于模拟副本丢失后的恢复")
     public Result<Boolean> rebuild(@RequestParam
- @NotBlank @Size(max = 128) String packetNo) {
+                                   @NotBlank @Size(max = 128) String packetNo) {
         return Result.success(redPacketService.rebuild(packetNo));
     }
 

@@ -4,6 +4,7 @@ import com.dong.redpacket.enums.RedPacketItemStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 红包预分配份额。发红包时就把每一份的金额算好并按序号落库，
  * 因此即使 Redis 里的待发队列全部丢失，也能原样重建，金额仍然精确守恒。

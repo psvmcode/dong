@@ -48,6 +48,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 /**
  * 商品检索实现。所有读写都打在别名上，真实索引由索引治理服务在后面换，
  * 这里完全不用关心数据是落在 v1 还是 v2。

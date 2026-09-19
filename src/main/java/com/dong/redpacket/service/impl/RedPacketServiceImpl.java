@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * 抢红包实现。五道防线依次生效：
  * 单用户限流挡住脚本刷，
