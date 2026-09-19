@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 /**
  * 渠道配置实现。
  */
@@ -56,8 +57,7 @@ public class ChannelConfigServiceImpl implements ChannelConfigService {
      * 更新渠道参数。
      */
     @Override
-    public void update(int channel, Long etaMinutes, BigDecimal perTxLimit, BigDecimal fixedFee,
-                       BigDecimal rateFee, Integer enabled) {
+    public void update(int channel, Long etaMinutes, BigDecimal perTxLimit, BigDecimal fixedFee, BigDecimal rateFee, Integer enabled) {
         byChannel(channel);
         ChannelConfig config = new ChannelConfig();
         config.setChannel(channel);

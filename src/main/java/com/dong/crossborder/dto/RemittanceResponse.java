@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
 /**
  * 汇款单响应。返回给调用方的是脱敏后的视图：
  * 只带账号编号不带账户内部 id，金额三件套（源金额、汇率、目标金额）

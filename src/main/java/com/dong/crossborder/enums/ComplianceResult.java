@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 合规检查结果。MANUAL_REVIEW 是真实系统里常见的一态：
  * 规则判不出来时挂起等人工处理，既不自动放行也不自动拒绝。

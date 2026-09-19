@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
+
 /**
  * 清算消息消费者。收到扣款成功的消息后给收款方入账。
  *
@@ -114,8 +115,7 @@ public class CrossBorderSettlementHandler implements MessageHandler {
             log.info("duplicate settlement message ignored remittanceNo={}", remittanceNo);
             return true;
         }
-        if (remittance.getStatus() != RemittanceStatus.FUNDS_DEBITED
-                && remittance.getStatus() != RemittanceStatus.SETTLING) {
+        if (remittance.getStatus() != RemittanceStatus.FUNDS_DEBITED && remittance.getStatus() != RemittanceStatus.SETTLING) {
             skipped.increment();
             log.warn("skip settlement remittanceNo={} currentStatus={}", remittanceNo, remittance.getStatus());
             return true;
@@ -138,8 +138,7 @@ public class CrossBorderSettlementHandler implements MessageHandler {
      */
     private void assignBatch(CrossBorderRemittance remittance) {
         try {
-            SettlementChannel channel = remittance.getChannel() == null
-                    ? SettlementChannel.SWIFT : remittance.getChannel();
+            SettlementChannel channel = remittance.getChannel() == null ? SettlementChannel.SWIFT : remittance.getChannel();
             SettlementBatch batch = batchMapper.selectOpenByChannelAndCurrency(channel, remittance.getTargetCurrency());
             if (batch == null) {
                 batch = new SettlementBatch();
@@ -151,12 +150,10 @@ public class CrossBorderSettlementHandler implements MessageHandler {
                 batch.setStatus(SettlementStatus.OPEN);
                 batch.setCutoffTime(LocalDateTime.now().plusMinutes(DEFAULT_CUTOFF_MINUTES));
                 batchMapper.insert(batch);
-                log.info("settlement batch auto created batchNo={} channel={} currency={}",
-                        batch.getBatchNo(), channel, remittance.getTargetCurrency());
+                log.info("settlement batch auto created batchNo={} channel={} currency={}", batch.getBatchNo(), channel, remittance.getTargetCurrency());
             }
             remittanceMapper.updateBatchNo(remittance.getRemittanceNo(), batch.getBatchNo());
-            batchMapper.updateTotal(batch.getBatchNo(), batch.getTotalCount() + 1,
-                    batch.getTotalAmount().add(remittance.getTargetAmount()));
+            batchMapper.updateTotal(batch.getBatchNo(), batch.getTotalCount() + 1, batch.getTotalAmount().add(remittance.getTargetAmount()));
             remittance.setBatchNo(batch.getBatchNo());
         } catch (Exception ex) {
             log.warn("assign batch failed remittanceNo={}", remittance.getRemittanceNo(), ex);

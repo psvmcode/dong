@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+
 /**
  * 账务操作实现。这里的事务能生效，是因为调用方注入的是本 bean 的代理。
  */
@@ -60,8 +61,7 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
     public void debitAndPersist(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit) {
         int deducted = accountMapper.deduct(payer.getId(), totalDebit, 0);
         if (deducted <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "insufficient balance in account " + payer.getAccountNo());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "insufficient balance in account " + payer.getAccountNo());
         }
         remittance.setStatus(RemittanceStatus.FUNDS_DEBITED);
         remittanceMapper.insert(remittance);
@@ -78,14 +78,11 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
     public void debitExisting(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal totalDebit) {
         int deducted = accountMapper.deduct(payer.getId(), totalDebit, 0);
         if (deducted <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "insufficient balance in account " + payer.getAccountNo());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "insufficient balance in account " + payer.getAccountNo());
         }
-        int advanced = remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.FUNDS_DEBITED,
-                RemittanceStatus.QUOTE_LOCKED, remittance.getVersion());
+        int advanced = remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.FUNDS_DEBITED, RemittanceStatus.QUOTE_LOCKED, remittance.getVersion());
         if (advanced <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittance.getRemittanceNo() + " is not in quote locked status");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittance.getRemittanceNo() + " is not in quote locked status");
         }
         recordLedger(remittance, payer.getId(), LedgerDirection.DEBIT, totalDebit, payer.getCurrency());
     }
@@ -105,11 +102,9 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
             return false;
         }
         if (current.getStatus() != RemittanceStatus.FUNDS_DEBITED) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittance.getRemittanceNo() + " is not debited, status " + current.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittance.getRemittanceNo() + " is not debited, status " + current.getStatus());
         }
-        return remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.SETTLING,
-                RemittanceStatus.FUNDS_DEBITED, current.getVersion()) > 0;
+        return remittanceMapper.updateStatus(remittance.getRemittanceNo(), RemittanceStatus.SETTLING, RemittanceStatus.FUNDS_DEBITED, current.getVersion()) > 0;
     }
 
     /**
@@ -135,35 +130,26 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
             return false;
         }
         if (current.getStatus() != RemittanceStatus.SETTLING) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittance.getRemittanceNo() + " is not settling, status " + current.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittance.getRemittanceNo() + " is not settling, status " + current.getStatus());
         }
         CrossBorderAccount payee = accountMapper.selectById(current.getPayeeAccountId());
-        if (payee == null || payee.getStatus() == null
-                || payee.getStatus() != AccountStatus.ACTIVE.getCode()) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "payee account " + (payee == null ? current.getPayeeAccountId() : payee.getAccountNo())
-                            + " is not active, credit refused");
+        if (payee == null || payee.getStatus() == null || payee.getStatus() != AccountStatus.ACTIVE.getCode()) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "payee account " + (payee == null ? current.getPayeeAccountId() : payee.getAccountNo()) + " is not active, credit refused");
         }
         accountMapper.credit(current.getPayeeAccountId(), current.getTargetAmount());
-        recordLedger(current, current.getPayeeAccountId(), LedgerDirection.CREDIT,
-                current.getTargetAmount(), current.getTargetCurrency());
-        int advanced = remittanceMapper.updateStatus(current.getRemittanceNo(), RemittanceStatus.SETTLED,
-                RemittanceStatus.SETTLING, current.getVersion());
+        recordLedger(current, current.getPayeeAccountId(), LedgerDirection.CREDIT, current.getTargetAmount(), current.getTargetCurrency());
+        int advanced = remittanceMapper.updateStatus(current.getRemittanceNo(), RemittanceStatus.SETTLED, RemittanceStatus.SETTLING, current.getVersion());
         if (advanced <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittance.getRemittanceNo() + " settled by another request");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittance.getRemittanceNo() + " settled by another request");
         }
-        eventService.record(current.getRemittanceNo(), RemittanceStatus.SETTLING,
-                RemittanceStatus.SETTLED, "settle", "system");
+        eventService.record(current.getRemittanceNo(), RemittanceStatus.SETTLING, RemittanceStatus.SETTLED, "settle", "system");
         return true;
     }
 
     /**
      * 记流水。balanceAfter 用事务内重新读取的余额，保证流水能还原当时的账务快照。
      */
-    private void recordLedger(CrossBorderRemittance remittance, Long accountId, LedgerDirection direction,
-                              BigDecimal amount, String currency) {
+    private void recordLedger(CrossBorderRemittance remittance, Long accountId, LedgerDirection direction, BigDecimal amount, String currency) {
         CrossBorderAccount after = accountMapper.selectById(accountId);
         AccountLedger ledger = new AccountLedger();
         ledger.setLedgerNo("LG" + snowflake.nextId());

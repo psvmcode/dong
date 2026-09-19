@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 渠道路由实现。对每个可用渠道计算总成本并叠加时效权重后择优。
  *
@@ -68,9 +69,7 @@ public class ChannelRouterImpl implements ChannelRouter {
                 continue;
             }
             BigDecimal fee = fxQuoteService.fee(sourceAmount, channel);
-            BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes())
-                    .multiply(weight)
-                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes()).multiply(weight).setScale(2, RoundingMode.HALF_UP);
             BigDecimal score = fee.add(etaCost);
             reasons.add(channel + " fee=" + fee + " etaCost=" + etaCost + " score=" + score);
             if (bestScore == null || score.compareTo(bestScore) < 0) {
@@ -97,20 +96,10 @@ public class ChannelRouterImpl implements ChannelRouter {
         for (ChannelConfig config : channelConfigMapper.selectAll()) {
             SettlementChannel channel = SettlementChannel.of(config.getChannel());
             // 停用渠道展示出来但标记为不合格，便于运营看到熔断状态
-            boolean qualified = config.getEnabled() == 1
-                    && sourceAmount.compareTo(config.getPerTxLimit()) <= 0;
+            boolean qualified = config.getEnabled() == 1 && sourceAmount.compareTo(config.getPerTxLimit()) <= 0;
             BigDecimal fee = fxQuoteService.fee(sourceAmount, channel);
-            BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes())
-                    .multiply(weight)
-                    .setScale(2, RoundingMode.HALF_UP);
-            scores.put(channel.name(), Map.of(
-                    "qualified", qualified,
-                    "enabled", config.getEnabled() == 1,
-                    "fee", fee,
-                    "etaMinutes", config.getEtaMinutes(),
-                    "etaCost", etaCost,
-                    "score", fee.add(etaCost),
-                    "perTxLimit", config.getPerTxLimit()));
+            BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes()).multiply(weight).setScale(2, RoundingMode.HALF_UP);
+            scores.put(channel.name(), Map.of("qualified", qualified, "enabled", config.getEnabled() == 1, "fee", fee, "etaMinutes", config.getEtaMinutes(), "etaCost", etaCost, "score", fee.add(etaCost), "perTxLimit", config.getPerTxLimit()));
         }
         return scores;
     }

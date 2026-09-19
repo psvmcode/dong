@@ -4,6 +4,7 @@ import com.dong.crossborder.entity.RemittanceEvent;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 汇款单流转日志响应。
  *

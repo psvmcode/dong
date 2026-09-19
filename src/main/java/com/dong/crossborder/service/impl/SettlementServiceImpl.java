@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
 /**
  * SettlementServiceImpl，Settlement 业务服务实现。
  */
@@ -99,11 +100,9 @@ public class SettlementServiceImpl implements SettlementService {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "batch " + batchNo + " not found");
         }
         if (batch.getStatus() != SettlementStatus.OPEN) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "batch " + batchNo + " is not open, current status " + batch.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "batch " + batchNo + " is not open, current status " + batch.getStatus());
         }
-        List<CrossBorderRemittance> candidates =
-                remittanceMapper.selectByStatus(RemittanceStatus.FUNDS_DEBITED, limit);
+        List<CrossBorderRemittance> candidates = remittanceMapper.selectByStatus(RemittanceStatus.FUNDS_DEBITED, limit);
         int count = 0;
         BigDecimal total = BigDecimal.ZERO;
         for (CrossBorderRemittance candidate : candidates) {

@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
 /**
  * SettlementBatchMapper，MyBatis 数据访问接口。
  */
@@ -33,8 +34,7 @@ public interface SettlementBatchMapper {
      * 查询某渠道某币种当前打开的批次。实时清算的汇款单入账时自动归入，
      * 保证每笔已结算的单子都有批次归属，否则按批次对账会漏掉它们。
      */
-    SettlementBatch selectOpenByChannelAndCurrency(@Param("channel") SettlementChannel channel,
-                                                   @Param("currency") String currency);
+    SettlementBatch selectOpenByChannelAndCurrency(@Param("channel") SettlementChannel channel, @Param("currency") String currency);
 
     /**
      * 插入记录，返回影响行数。
@@ -49,9 +49,7 @@ public interface SettlementBatchMapper {
     /**
      * 更新批次总金额与总笔数。
      */
-    int updateTotal(@Param("batchNo") String batchNo,
-                    @Param("totalCount") int totalCount,
-                    @Param("totalAmount") java.math.BigDecimal totalAmount);
+    int updateTotal(@Param("batchNo") String batchNo, @Param("totalCount") int totalCount, @Param("totalAmount") java.math.BigDecimal totalAmount);
 
     /**
      * 关闭到期的批次，由定时任务按清算截止时间触发。

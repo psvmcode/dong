@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 清算渠道。不同渠道的时效、成本和覆盖范围差异很大：
  * SWIFT 覆盖面最广但要经过代理行，到账慢且费用高，还可能被中间行扣费；

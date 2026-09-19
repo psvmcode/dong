@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
 /**
  * 汇率报价。bid 是银行买入价、ask 是银行卖出价，客户换汇用 ask，
  * 两者之间的点差就是银行的收益来源。

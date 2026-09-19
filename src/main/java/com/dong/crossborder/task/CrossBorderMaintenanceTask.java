@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
+
 /**
  * 跨境支付维护任务。这五个兜底动作缺一不可：
  * 汇率过期保证过期报价不再可被锁定；
@@ -178,15 +179,11 @@ public class CrossBorderMaintenanceTask {
             int retried = remittance.getRetryCount() == null ? 0 : remittance.getRetryCount();
             if (retried >= MAX_COMPENSATION_RETRIES) {
                 abandonedRemittance.increment();
-                log.error("compensation abandoned after {} retries remittanceNo={} status={}, "
-                                + "manual retry available at POST /api/crossborder/remittance/{}/retry",
-                        retried, remittance.getRemittanceNo(), remittance.getStatus(),
-                        remittance.getRemittanceNo());
+                log.error("compensation abandoned after {} retries remittanceNo={} status={}, " + "manual retry available at POST /api/crossborder/remittance/{}/retry", retried, remittance.getRemittanceNo(), remittance.getStatus(), remittance.getRemittanceNo());
                 continue;
             }
             try {
-                mqFacade.sendOrdered("cross-border-settlement", remittance.getRemittanceNo(),
-                        JsonUtils.toJson(payload), String.valueOf(remittance.getPayeeAccountId()));
+                mqFacade.sendOrdered("cross-border-settlement", remittance.getRemittanceNo(), JsonUtils.toJson(payload), String.valueOf(remittance.getPayeeAccountId()));
                 remittanceMapper.increaseRetryCount(remittance.getRemittanceNo());
                 compensatedMessages.increment();
             } catch (Exception ex) {
@@ -218,8 +215,7 @@ public class CrossBorderMaintenanceTask {
                 reconciled++;
                 if (report.getDiffCount() > 0) {
                     unmatchedBatches.increment();
-                    log.error("reconciliation diff found batchNo={} diffCount={} unhandled={}",
-                            batch.getBatchNo(), report.getDiffCount(), report.getUnhandledCount());
+                    log.error("reconciliation diff found batchNo={} diffCount={} unhandled={}", batch.getBatchNo(), report.getDiffCount(), report.getUnhandledCount());
                 }
             } catch (Exception ex) {
                 log.error("daily reconcile failed batchNo={}", batch.getBatchNo(), ex);

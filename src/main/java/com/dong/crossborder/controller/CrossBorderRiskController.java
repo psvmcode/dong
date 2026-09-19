@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 风控与路由。智能渠道路由回答"这笔汇款走哪个渠道最划算"，
  * AML 监控回答"这个付款人的行为模式是否可疑"，
@@ -60,15 +61,9 @@ public class CrossBorderRiskController {
      */
     @GetMapping("/route")
     @Operation(summary = "渠道路由试算，返回各渠道评分与推荐渠道")
-    public Result<Map<String, Object>> route(@RequestParam @DecimalMin("0.01")
-                                             @Digits(integer = 16, fraction = 2) BigDecimal amount,
-                                             @RequestParam(defaultValue = "false") boolean urgent) {
+    public Result<Map<String, Object>> route(@RequestParam @DecimalMin("0.01") @Digits(integer = 16, fraction = 2) BigDecimal amount, @RequestParam(defaultValue = "false") boolean urgent) {
         ChannelRouter.RouteDecision decision = channelRouter.route(amount, urgent);
-        return Result.success(Map.of(
-                "recommended", decision.channel(),
-                "estimatedFee", decision.estimatedFee(),
-                "reasons", decision.reasons(),
-                "scores", channelRouter.scoreAll(amount, urgent)));
+        return Result.success(Map.of("recommended", decision.channel(), "estimatedFee", decision.estimatedFee(), "reasons", decision.reasons(), "scores", channelRouter.scoreAll(amount, urgent)));
     }
 
     /**

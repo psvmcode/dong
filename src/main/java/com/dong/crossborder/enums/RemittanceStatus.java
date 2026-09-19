@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 汇款单状态机。跨境汇款的状态推进是单向的，只能从前向后，
  * 失败后统一走退款而不是回退，因为资金已经划出，回退会产生在途资金。
@@ -99,8 +100,7 @@ public enum RemittanceStatus {
      * @return true 表示已到达终态
      */
     public boolean isFinal() {
-        return this == SETTLED || this == REFUNDED || this == COMPLIANCE_REJECTED || this == FAILED
-                || this == RETURNED;
+        return this == SETTLED || this == REFUNDED || this == COMPLIANCE_REJECTED || this == FAILED || this == RETURNED;
     }
 
     /**

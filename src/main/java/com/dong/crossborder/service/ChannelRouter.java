@@ -33,8 +33,7 @@ public interface ChannelRouter {
     /**
      * 路由决策，包含选中渠道与各渠道的评分明细，便于排查为什么走了这个渠道。
      */
-    record RouteDecision(SettlementChannel channel, BigDecimal estimatedFee,
-                         java.util.List<String> reasons) {
+    record RouteDecision(SettlementChannel channel, BigDecimal estimatedFee, java.util.List<String> reasons) {
     }
 
 }

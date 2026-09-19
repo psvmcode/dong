@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 对账核销。每日对账把渠道回单与本地流水逐笔比对，
  * 差异记入差异表，运营按差异类型逐笔处理。
@@ -52,10 +53,7 @@ public class CrossBorderReconController {
      */
     @PostMapping("/{batchNo}")
     @Operation(summary = "执行一轮对账，返回对账报告，可注入渠道差错率")
-    public Result<ReconReportResponse> reconcile(@PathVariable
- @NotBlank @Size(max = 128) String batchNo,
-                                                 @RequestParam(defaultValue = "0.0")
-                                                 @DecimalMin("0") @DecimalMax("1") double errorRate) {
+    public Result<ReconReportResponse> reconcile(@PathVariable @NotBlank @Size(max = 128) String batchNo, @RequestParam(defaultValue = "0.0") @DecimalMin("0") @DecimalMax("1") double errorRate) {
         return Result.success(reconciliationService.reconcile(batchNo, errorRate));
     }
 
@@ -64,10 +62,7 @@ public class CrossBorderReconController {
      */
     @GetMapping("/{batchNo}/channel-statement")
     @Operation(summary = "模拟渠道回单，可注入差错率")
-    public Result<List<Map<String, Object>>> channelStatement(@PathVariable
- @NotBlank @Size(max = 128) String batchNo,
-                                                               @RequestParam(defaultValue = "0.0")
-                                                               @DecimalMin("0") @DecimalMax("1") double errorRate) {
+    public Result<List<Map<String, Object>>> channelStatement(@PathVariable @NotBlank @Size(max = 128) String batchNo, @RequestParam(defaultValue = "0.0") @DecimalMin("0") @DecimalMax("1") double errorRate) {
         return Result.success(reconciliationService.generateChannelStatement(batchNo, errorRate));
     }
 
@@ -76,8 +71,7 @@ public class CrossBorderReconController {
      */
     @GetMapping("/{batchNo}/report")
     @Operation(summary = "查询对账报告")
-    public Result<ReconReportResponse> report(@PathVariable
- @NotBlank @Size(max = 128) String batchNo) {
+    public Result<ReconReportResponse> report(@PathVariable @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(reconciliationService.report(batchNo));
     }
 
@@ -87,11 +81,7 @@ public class CrossBorderReconController {
      */
     @PostMapping("/diff/{id}")
     @Operation(summary = "处理单笔对账差异")
-    public Result<Map<String, Object>> handleDiff(@PathVariable
- @Positive Long id,
-                                                   @RequestParam ReconDiffType diffType,
-                                                   @RequestParam(defaultValue = "review")
-                                                   @NotBlank @Size(max = 128) String decision) {
+    public Result<Map<String, Object>> handleDiff(@PathVariable @Positive Long id, @RequestParam ReconDiffType diffType, @RequestParam(defaultValue = "review") @NotBlank @Size(max = 128) String decision) {
         return Result.success(reconciliationService.handleDiff(id, diffType, decision));
     }
 
@@ -100,10 +90,7 @@ public class CrossBorderReconController {
      */
     @PostMapping("/{batchNo}/handle-all")
     @Operation(summary = "批量处理某批次全部未处理差异")
-    public Result<Integer> handleAll(@PathVariable
- @NotBlank @Size(max = 128) String batchNo,
-                                     @RequestParam(defaultValue = "batch review")
-                                     @NotBlank @Size(max = 128) String decision) {
+    public Result<Integer> handleAll(@PathVariable @NotBlank @Size(max = 128) String batchNo, @RequestParam(defaultValue = "batch review") @NotBlank @Size(max = 128) String decision) {
         return Result.success(reconciliationService.handleAllUnhandled(batchNo, decision));
     }
 

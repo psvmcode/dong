@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+
 /**
  * 发起汇款请求。idempotentKey 由调用方生成并保证同一笔业务只用一个值，
  * 这样网络超时重试时不会重复汇款。

@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
 /**
  * FxQuoteMapper，MyBatis 数据访问接口。
  */
@@ -21,9 +22,7 @@ public interface FxQuoteMapper {
     /**
      * 按 PairAndStatus 查询记录。
      */
-    List<FxQuote> selectByPairAndStatus(@Param("currencyPair") String currencyPair,
-                                        @Param("status") FxQuoteStatus status,
-                                        @Param("limit") int limit);
+    List<FxQuote> selectByPairAndStatus(@Param("currencyPair") String currencyPair, @Param("status") FxQuoteStatus status, @Param("limit") int limit);
 
     /**
      * 插入记录，返回影响行数。
@@ -34,9 +33,7 @@ public interface FxQuoteMapper {
      * 锁定报价。带上状态条件形成乐观锁，并发锁定同一个报价时只有一个能成功。
      * 有效期用数据库时间比对，避免应用时钟漂移导致过期报价仍被锁定。
      */
-    int lock(@Param("quoteNo") String quoteNo,
-             @Param("remittanceNo") String remittanceNo,
-             @Param("lockedRate") java.math.BigDecimal lockedRate);
+    int lock(@Param("quoteNo") String quoteNo, @Param("remittanceNo") String remittanceNo, @Param("lockedRate") java.math.BigDecimal lockedRate);
 
     /**
      * 更新状态，返回影响行数。

@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 清算批次状态。真实跨境清算按批次走，因为渠道有清算窗口和起息时间，
  * 逐笔实时清算既不经济也不符合渠道规则。

@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 汇率报价实现。
  *
@@ -92,10 +93,8 @@ public class FxQuoteServiceImpl implements FxQuoteService {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "source and target currency must differ");
         }
         BigDecimal mid = midRate(sourceCurrency, targetCurrency);
-        BigDecimal ask = mid.multiply(BigDecimal.ONE.add(SPREAD.divide(new BigDecimal("2"), 8, RoundingMode.HALF_UP)))
-                .setScale(8, RoundingMode.HALF_UP);
-        BigDecimal bid = mid.multiply(BigDecimal.ONE.subtract(SPREAD.divide(new BigDecimal("2"), 8, RoundingMode.HALF_UP)))
-                .setScale(8, RoundingMode.HALF_UP);
+        BigDecimal ask = mid.multiply(BigDecimal.ONE.add(SPREAD.divide(new BigDecimal("2"), 8, RoundingMode.HALF_UP))).setScale(8, RoundingMode.HALF_UP);
+        BigDecimal bid = mid.multiply(BigDecimal.ONE.subtract(SPREAD.divide(new BigDecimal("2"), 8, RoundingMode.HALF_UP))).setScale(8, RoundingMode.HALF_UP);
         FxQuote quote = new FxQuote();
         quote.setQuoteNo("FQ" + snowflake.nextId());
         quote.setCurrencyPair(sourceCurrency + "/" + targetCurrency);
@@ -132,16 +131,14 @@ public class FxQuoteServiceImpl implements FxQuoteService {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "quote " + quoteNo + " not found");
         }
         if (quote.getStatus() != FxQuoteStatus.AVAILABLE) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "quote " + quoteNo + " is not available, current status " + quote.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "quote " + quoteNo + " is not available, current status " + quote.getStatus());
         }
         if (quote.getExpireTime().isBefore(LocalDateTime.now())) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "quote " + quoteNo + " already expired");
         }
         int updated = fxQuoteMapper.lock(quoteNo, remittanceNo, quote.getAskRate());
         if (updated <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "quote " + quoteNo + " was taken by another request");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "quote " + quoteNo + " was taken by another request");
         }
         return quote.getAskRate();
     }
@@ -164,23 +161,18 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     @Override
     public BigDecimal currentRate(String sourceCurrency, String targetCurrency) {
         String cacheKey = RATE_CACHE_PREFIX + sourceCurrency + ":" + targetCurrency;
-        return redisService.get(cacheKey)
-                .map(BigDecimal::new)
-                .orElseGet(() -> {
-                    try (var handle = distributedLockService.tryLock(
-                            cacheKey + ":lock", Duration.ofSeconds(5), Duration.ofSeconds(2))) {
-                        if (handle.isAcquired()) {
-                            return redisService.get(cacheKey)
-                                    .map(BigDecimal::new)
-                                    .orElseGet(() -> {
-                                        BigDecimal rate = midRate(sourceCurrency, targetCurrency);
-                                        redisService.set(cacheKey, rate.toPlainString(), RATE_CACHE_TTL);
-                                        return rate;
-                                    });
-                        }
-                        return midRate(sourceCurrency, targetCurrency);
-                    }
-                });
+        return redisService.get(cacheKey).map(BigDecimal::new).orElseGet(() -> {
+            try (var handle = distributedLockService.tryLock(cacheKey + ":lock", Duration.ofSeconds(5), Duration.ofSeconds(2))) {
+                if (handle.isAcquired()) {
+                    return redisService.get(cacheKey).map(BigDecimal::new).orElseGet(() -> {
+                        BigDecimal rate = midRate(sourceCurrency, targetCurrency);
+                        redisService.set(cacheKey, rate.toPlainString(), RATE_CACHE_TTL);
+                        return rate;
+                    });
+                }
+                return midRate(sourceCurrency, targetCurrency);
+            }
+        });
     }
 
     /**
@@ -193,14 +185,11 @@ public class FxQuoteServiceImpl implements FxQuoteService {
         if (channel == null) {
             channel = SettlementChannel.SWIFT;
         }
-        com.dong.crossborder.entity.ChannelConfig config =
-                channelConfigMapper.selectByChannel(channel.getCode());
+        com.dong.crossborder.entity.ChannelConfig config = channelConfigMapper.selectByChannel(channel.getCode());
         if (config == null) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "channel not configured " + channel);
         }
-        return config.getFixedFee()
-                .add(sourceAmount.multiply(config.getRateFee()))
-                .setScale(2, RoundingMode.HALF_UP);
+        return config.getFixedFee().add(sourceAmount.multiply(config.getRateFee())).setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
@@ -216,9 +205,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     @Override
     public List<FxQuoteResponse> available(String currencyPair) {
-        return fxQuoteMapper.selectByPairAndStatus(currencyPair, FxQuoteStatus.AVAILABLE, 20).stream()
-                .map(FxQuoteResponse::from)
-                .toList();
+        return fxQuoteMapper.selectByPairAndStatus(currencyPair, FxQuoteStatus.AVAILABLE, 20).stream().map(FxQuoteResponse::from).toList();
     }
 
     /**
@@ -234,9 +221,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     @Override
     public List<com.dong.crossborder.dto.FxRateResponse> allRates() {
-        return fxRateMapper.selectAll().stream()
-                .map(com.dong.crossborder.dto.FxRateResponse::from)
-                .toList();
+        return fxRateMapper.selectAll().stream().map(com.dong.crossborder.dto.FxRateResponse::from).toList();
     }
 
     /**
@@ -256,9 +241,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     @Override
     public java.util.Set<String> supportedCurrencies() {
-        return fxRateMapper.selectAll().stream()
-                .map(com.dong.crossborder.entity.FxRate::getCurrency)
-                .collect(java.util.stream.Collectors.toSet());
+        return fxRateMapper.selectAll().stream().map(com.dong.crossborder.entity.FxRate::getCurrency).collect(java.util.stream.Collectors.toSet());
     }
 
     /**

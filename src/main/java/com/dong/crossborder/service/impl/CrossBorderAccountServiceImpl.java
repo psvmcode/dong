@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 /**
  * 跨境账户实现。账户本身只有状态字段，冻结/解冻的历史
  * 全部落在事件表里：状态回答「现在能不能用」，事件回答「怎么变成这样的」。
@@ -63,8 +64,7 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     @Override
     public Long create(AccountCreateRequest request) {
         if (!fxQuoteService.supportedCurrencies().contains(request.getCurrency())) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "unsupported currency " + request.getCurrency());
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "unsupported currency " + request.getCurrency());
         }
         CrossBorderAccount account = new CrossBorderAccount();
         account.setAccountNo("CB" + snowflake.nextId());
@@ -123,11 +123,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     @Transactional(rollbackFor = Exception.class)
     public AccountResponse freeze(String accountNo, String reason, String operator) {
         CrossBorderAccount account = requireAccount(accountNo);
-        int updated = accountMapper.updateStatus(account.getId(), AccountStatus.FROZEN.getCode(),
-                AccountStatus.ACTIVE.getCode());
+        int updated = accountMapper.updateStatus(account.getId(), AccountStatus.FROZEN.getCode(), AccountStatus.ACTIVE.getCode());
         if (updated <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "account " + accountNo + " is not active, freeze skipped");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account " + accountNo + " is not active, freeze skipped");
         }
         recordEvent(accountNo, AccountEventType.FREEZE, reason, operator);
         log.warn("cross border account frozen accountNo={} operator={} reason={}", accountNo, operator, reason);
@@ -142,11 +140,9 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     @Transactional(rollbackFor = Exception.class)
     public AccountResponse unfreeze(String accountNo, String reason, String operator) {
         CrossBorderAccount account = requireAccount(accountNo);
-        int updated = accountMapper.updateStatus(account.getId(), AccountStatus.ACTIVE.getCode(),
-                AccountStatus.FROZEN.getCode());
+        int updated = accountMapper.updateStatus(account.getId(), AccountStatus.ACTIVE.getCode(), AccountStatus.FROZEN.getCode());
         if (updated <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "account " + accountNo + " is not frozen, unfreeze skipped");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account " + accountNo + " is not frozen, unfreeze skipped");
         }
         recordEvent(accountNo, AccountEventType.UNFREEZE, reason, operator);
         log.info("cross border account unfrozen accountNo={} operator={}", accountNo, operator);
@@ -159,9 +155,7 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     @Override
     public List<AccountEventResponse> events(String accountNo) {
         requireAccount(accountNo);
-        return eventMapper.selectByAccountNo(accountNo).stream()
-                .map(AccountEventResponse::from)
-                .toList();
+        return eventMapper.selectByAccountNo(accountNo).stream().map(AccountEventResponse::from).toList();
     }
 
     /**

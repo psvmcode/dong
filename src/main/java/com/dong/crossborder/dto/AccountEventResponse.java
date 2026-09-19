@@ -4,6 +4,7 @@ import com.dong.crossborder.entity.AccountEvent;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 账户事件响应。返回给运营与审计人员，
  * 用于回答「谁在什么时间因为什么冻结或解冻了这个账户」。

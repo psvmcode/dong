@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * 对账服务实现。
  *
@@ -74,8 +75,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         }
         List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED);
         if (batch.getStatus() == SettlementStatus.CLOSED) {
-            boolean allSettled = localItems.stream()
-                    .allMatch(item -> item.getStatus() == RemittanceStatus.SETTLED);
+            boolean allSettled = localItems.stream().allMatch(item -> item.getStatus() == RemittanceStatus.SETTLED);
             if (allSettled && !localItems.isEmpty()) {
                 batchMapper.updateStatus(batchNo, SettlementStatus.SETTLED);
                 batch = batchMapper.selectByBatchNo(batchNo);
@@ -92,29 +92,25 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         for (CrossBorderRemittance local : localItems) {
             Map<String, Object> channel = channelByNo.get(local.getRemittanceNo());
             if (channel == null) {
-                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.MISSING_IN_CHANNEL,
-                        local.getTargetAmount(), BigDecimal.ZERO));
+                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.MISSING_IN_CHANNEL, local.getTargetAmount(), BigDecimal.ZERO));
                 continue;
             }
             BigDecimal channelAmount = new BigDecimal(String.valueOf(channel.get("amount")));
             if (local.getTargetAmount().compareTo(channelAmount) == 0) {
                 matched++;
             } else {
-                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.AMOUNT_MISMATCH,
-                        local.getTargetAmount(), channelAmount));
+                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.AMOUNT_MISMATCH, local.getTargetAmount(), channelAmount));
             }
             channelByNo.remove(local.getRemittanceNo());
         }
         for (Map<String, Object> extra : channelByNo.values()) {
             BigDecimal channelAmount = new BigDecimal(String.valueOf(extra.get("amount")));
-            diffs.add(buildDiff(batchNo, String.valueOf(extra.get("remittanceNo")), ReconDiffType.MISSING_IN_LOCAL,
-                    BigDecimal.ZERO, channelAmount));
+            diffs.add(buildDiff(batchNo, String.valueOf(extra.get("remittanceNo")), ReconDiffType.MISSING_IN_LOCAL, BigDecimal.ZERO, channelAmount));
         }
         if (!diffs.isEmpty()) {
             reconDiffMapper.batchInsert(diffs);
         }
-        log.info("reconciliation finished batchNo={} errorRate={} local={} channel={} matched={} diffs={}",
-                batchNo, simulatedErrorRate, localItems.size(), channelStatement.size(), matched, diffs.size());
+        log.info("reconciliation finished batchNo={} errorRate={} local={} channel={} matched={} diffs={}", batchNo, simulatedErrorRate, localItems.size(), channelStatement.size(), matched, diffs.size());
         return buildReport(batch, localItems, channelStatement, matched, diffs);
     }
 
@@ -166,10 +162,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         }
         List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED);
         List<ReconDiff> diffs = reconDiffMapper.selectByBatchNo(batchNo);
-        int matched = localItems.size() - (int) diffs.stream()
-                .filter(d -> d.getDiffType() == ReconDiffType.MISSING_IN_CHANNEL
-                        || d.getDiffType() == ReconDiffType.AMOUNT_MISMATCH)
-                .count();
+        int matched = localItems.size() - (int) diffs.stream().filter(d -> d.getDiffType() == ReconDiffType.MISSING_IN_CHANNEL || d.getDiffType() == ReconDiffType.AMOUNT_MISMATCH).count();
         return buildReport(batch, localItems, List.of(), matched, diffs);
     }
 
@@ -223,8 +216,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
     /**
      * buildDiff。
      */
-    private ReconDiff buildDiff(String batchNo, String remittanceNo, ReconDiffType type,
-                                BigDecimal localAmount, BigDecimal channelAmount) {
+    private ReconDiff buildDiff(String batchNo, String remittanceNo, ReconDiffType type, BigDecimal localAmount, BigDecimal channelAmount) {
         ReconDiff diff = new ReconDiff();
         diff.setBatchNo(batchNo);
         diff.setRemittanceNo(remittanceNo);
@@ -238,21 +230,16 @@ public class ReconciliationServiceImpl implements ReconciliationService {
     /**
      * buildReport。
      */
-    private ReconReportResponse buildReport(SettlementBatch batch, List<CrossBorderRemittance> localItems,
-                                            List<Map<String, Object>> channelStatement,
-                                            int matched, List<ReconDiff> diffs) {
+    private ReconReportResponse buildReport(SettlementBatch batch, List<CrossBorderRemittance> localItems, List<Map<String, Object>> channelStatement, int matched, List<ReconDiff> diffs) {
         ReconReportResponse report = new ReconReportResponse();
         report.setBatchNo(batch.getBatchNo());
         report.setChannel(batch.getChannel());
         report.setCurrency(batch.getCurrency());
         report.setReconTime(LocalDateTime.now());
         report.setLocalCount(localItems.size());
-        report.setLocalTotal(localItems.stream().map(CrossBorderRemittance::getTargetAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        report.setLocalTotal(localItems.stream().map(CrossBorderRemittance::getTargetAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
         report.setChannelCount(channelStatement.size());
-        report.setChannelTotal(channelStatement.isEmpty() ? BigDecimal.ZERO
-                : channelStatement.stream().map(i -> new BigDecimal(String.valueOf(i.get("amount"))))
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        report.setChannelTotal(channelStatement.isEmpty() ? BigDecimal.ZERO : channelStatement.stream().map(i -> new BigDecimal(String.valueOf(i.get("amount")))).reduce(BigDecimal.ZERO, BigDecimal::add));
         report.setMatchedCount(matched);
         report.setDiffCount(diffs.size());
         report.setUnhandledCount((int) diffs.stream().filter(d -> d.getHandleStatus() == 0).count());
@@ -260,9 +247,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         Map<String, Object> byType = new LinkedHashMap<>();
         for (ReconDiffType type : ReconDiffType.values()) {
             List<ReconDiff> of = diffs.stream().filter(d -> d.getDiffType() == type).toList();
-            byType.put(type.name(), Map.of("count", of.size(),
-                    "totalLocal", of.stream().map(ReconDiff::getLocalAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
-                    "totalChannel", of.stream().map(ReconDiff::getChannelAmount).reduce(BigDecimal.ZERO, BigDecimal::add)));
+            byType.put(type.name(), Map.of("count", of.size(), "totalLocal", of.stream().map(ReconDiff::getLocalAmount).reduce(BigDecimal.ZERO, BigDecimal::add), "totalChannel", of.stream().map(ReconDiff::getChannelAmount).reduce(BigDecimal.ZERO, BigDecimal::add)));
         }
         report.setDiffByType(byType);
         report.setDiffs(diffs.stream().map(ReconDiffResponse::from).toList());

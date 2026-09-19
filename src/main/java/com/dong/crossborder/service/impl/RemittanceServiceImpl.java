@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.LongAdder;
+
 /**
  * 跨境汇款实现。
  *
@@ -193,16 +194,13 @@ public class RemittanceServiceImpl implements RemittanceService {
         CrossBorderRemittance existing = remittanceMapper.selectByIdempotentKey(request.getIdempotentKey());
         if (existing != null) {
             idempotentHit.increment();
-            log.info("idempotent replay hit key={} remittanceNo={}",
-                    request.getIdempotentKey(), existing.getRemittanceNo());
+            log.info("idempotent replay hit key={} remittanceNo={}", request.getIdempotentKey(), existing.getRemittanceNo());
             return toResponse(existing);
         }
 
-        try (LockHandle handle = distributedLockService.tryLock(LOCK_PREFIX + request.getIdempotentKey(),
-                Duration.ofSeconds(10), Duration.ofSeconds(5))) {
+        try (LockHandle handle = distributedLockService.tryLock(LOCK_PREFIX + request.getIdempotentKey(), Duration.ofSeconds(10), Duration.ofSeconds(5))) {
             if (!handle.isAcquired()) {
-                throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                        "another request with the same idempotent key is in progress");
+                throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "another request with the same idempotent key is in progress");
             }
             CrossBorderRemittance again = remittanceMapper.selectByIdempotentKey(request.getIdempotentKey());
             if (again != null) {
@@ -224,8 +222,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         CrossBorderAccount payer = requireAccount(request.getPayerAccountNo());
         CrossBorderAccount payee = requireAccount(request.getPayeeAccountNo());
         if (payer.getCurrency().equals(payee.getCurrency())) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "cross border remittance requires different currencies");
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "cross border remittance requires different currencies");
         }
 
         SettlementChannel channel = resolveChannel(request);
@@ -241,12 +238,9 @@ public class RemittanceServiceImpl implements RemittanceService {
             remittanceMapper.insert(remittance);
             // 单子已经落库，被拒绝的这次尝试也要留痕，
             // 否则事后只能看到状态是「拒绝」，看不到是哪一道检查拦下的
-            eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED,
-                    RemittanceStatus.COMPLIANCE_REJECTED, "compliance", "system");
-            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.COMPLIANCE_REJECTED,
-                    "compliance", "rejected by compliance check", "system");
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance rejected by compliance check");
+            eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED, RemittanceStatus.COMPLIANCE_REJECTED, "compliance", "system");
+            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.COMPLIANCE_REJECTED, "compliance", "rejected by compliance check", "system");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance rejected by compliance check");
         }
         if (verdict == ComplianceResult.MANUAL_REVIEW) {
             // 挂起期间日限额占用保留：单子还活着，额度就该被占着。
@@ -256,10 +250,8 @@ public class RemittanceServiceImpl implements RemittanceService {
             remittance.setComplianceStatus(verdict.getCode());
             remittance.setFailReason("pending manual review");
             remittanceMapper.insert(remittance);
-            eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED,
-                    RemittanceStatus.PENDING_REVIEW, "compliance", "system");
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance suspended for manual review");
+            eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED, RemittanceStatus.PENDING_REVIEW, "compliance", "system");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance suspended for manual review");
         }
 
         // 拆分交易检测放在常规合规之后：单独看每笔都合规，要看行为模式才能发现
@@ -267,8 +259,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         structuring.ifPresent(detail -> log.warn("aml structuring signal remittanceNo={} {}", remittance.getRemittanceNo(), detail));
         BigDecimal rate = fxQuoteService.lock(remittance.getQuoteNo(), remittance.getRemittanceNo());
         BigDecimal fee = fxQuoteService.fee(request.getSourceAmount(), channel);
-        BigDecimal targetAmount = request.getSourceAmount().multiply(rate)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal targetAmount = request.getSourceAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
         remittance.setExchangeRate(rate);
         remittance.setFeeAmount(fee);
         remittance.setTargetAmount(targetAmount);
@@ -279,14 +270,12 @@ public class RemittanceServiceImpl implements RemittanceService {
         } catch (RuntimeException ex) {
             complianceService.releaseDailyLimit(payer.getId(), request.getSourceAmount());
             // 扣款失败时单子没有落库，流转日志只能按单号记一笔被拒绝的尝试
-            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.QUOTE_LOCKED,
-                    "debit", ex.getMessage(), "system");
+            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.QUOTE_LOCKED, "debit", ex.getMessage(), "system");
             throw ex;
         }
         fxQuoteService.markUsed(remittance.getQuoteNo());
         created.increment();
-        eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED,
-                RemittanceStatus.FUNDS_DEBITED, "create", "system");
+        eventService.record(remittance.getRemittanceNo(), RemittanceStatus.CREATED, RemittanceStatus.FUNDS_DEBITED, "create", "system");
         sendSettlementMessage(remittance);
         return toResponse(remittance);
     }
@@ -299,11 +288,9 @@ public class RemittanceServiceImpl implements RemittanceService {
         idempotentHit.increment();
         CrossBorderRemittance persisted = remittanceMapper.selectByIdempotentKey(idempotentKey);
         if (persisted == null) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance for idempotent key " + idempotentKey + " is being created");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance for idempotent key " + idempotentKey + " is being created");
         }
-        log.info("idempotent key conflict resolved by returning existing order key={} remittanceNo={}",
-                idempotentKey, persisted.getRemittanceNo());
+        log.info("idempotent key conflict resolved by returning existing order key={} remittanceNo={}", idempotentKey, persisted.getRemittanceNo());
         return toResponse(persisted);
     }
 
@@ -323,8 +310,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         String body = JsonUtils.toJson(payload);
         Runnable task = () -> {
             try {
-                mqFacade.sendOrdered(SETTLEMENT_TOPIC, remittance.getRemittanceNo(), body,
-                        String.valueOf(remittance.getPayeeAccountId()));
+                mqFacade.sendOrdered(SETTLEMENT_TOPIC, remittance.getRemittanceNo(), body, String.valueOf(remittance.getPayeeAccountId()));
                 messageSent.increment();
             } catch (Exception ex) {
                 messageFailed.increment();
@@ -332,13 +318,12 @@ public class RemittanceServiceImpl implements RemittanceService {
             }
         };
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(
-                    new org.springframework.transaction.support.TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            task.run();
-                        }
-                    });
+            TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
         } else {
             task.run();
         }
@@ -351,8 +336,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     public RemittanceResponse findByRemittanceNo(String remittanceNo) {
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null) {
-            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND,
-                    "remittance " + remittanceNo + " not found");
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "remittance " + remittanceNo + " not found");
         }
         return toResponse(remittance);
     }
@@ -364,8 +348,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     public RemittanceResponse findByIdempotentKey(String idempotentKey) {
         CrossBorderRemittance remittance = remittanceMapper.selectByIdempotentKey(idempotentKey);
         if (remittance == null) {
-            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND,
-                    "no remittance for idempotent key " + idempotentKey);
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "no remittance for idempotent key " + idempotentKey);
         }
         return toResponse(remittance);
     }
@@ -376,8 +359,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     @Override
     public PageResult<RemittanceResponse> findByPage(RemittanceStatus status, int pageNum, int pageSize) {
         PageRequest pageRequest = PageRequest.of(pageNum, pageSize);
-        List<CrossBorderRemittance> list = remittanceMapper.selectPage(status,
-                pageRequest.getOffset(), pageRequest.getPageSize());
+        List<CrossBorderRemittance> list = remittanceMapper.selectPage(status, pageRequest.getOffset(), pageRequest.getPageSize());
         long total = remittanceMapper.countByStatus(status);
         return PageResult.of(toResponses(list), total, pageRequest);
     }
@@ -407,11 +389,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         for (CrossBorderAccount account : accountMapper.selectByIds(ids)) {
             accountNos.put(account.getId(), account.getAccountNo());
         }
-        return list.stream()
-                .map(item -> RemittanceResponse.from(item,
-                        accountNos.getOrDefault(item.getPayerAccountId(), ""),
-                        accountNos.getOrDefault(item.getPayeeAccountId(), "")))
-                .toList();
+        return list.stream().map(item -> RemittanceResponse.from(item, accountNos.getOrDefault(item.getPayerAccountId(), ""), accountNos.getOrDefault(item.getPayeeAccountId(), ""))).toList();
     }
 
     /**
@@ -430,15 +408,12 @@ public class RemittanceServiceImpl implements RemittanceService {
     public RemittanceResponse approveReview(String remittanceNo, ReviewDecisionRequest decision) {
         CrossBorderRemittance suspended = requireRemittance(remittanceNo);
         if (!suspended.getStatus().isPendingReview()) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " is not pending review");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " is not pending review");
         }
         CrossBorderAccount payer = requireAccountById(suspended.getPayerAccountId());
-        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.QUOTE_LOCKED,
-                RemittanceStatus.PENDING_REVIEW, suspended.getVersion());
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.QUOTE_LOCKED, RemittanceStatus.PENDING_REVIEW, suspended.getVersion());
         if (claimed <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " has been handled by another reviewer");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " has been handled by another reviewer");
         }
         try {
             settleSuspended(suspended, payer);
@@ -446,10 +421,8 @@ public class RemittanceServiceImpl implements RemittanceService {
             revertToPendingReview(remittanceNo, suspended.getVersion() + 1);
             throw ex;
         }
-        complianceService.recordManualDecision(remittanceNo, ComplianceResult.PASS,
-                "approved by " + decision.getReviewer() + appendNote(decision.getNote()));
-        eventService.record(remittanceNo, RemittanceStatus.PENDING_REVIEW,
-                RemittanceStatus.FUNDS_DEBITED, "reviewApprove", decision.getReviewer());
+        complianceService.recordManualDecision(remittanceNo, ComplianceResult.PASS, "approved by " + decision.getReviewer() + appendNote(decision.getNote()));
+        eventService.record(remittanceNo, RemittanceStatus.PENDING_REVIEW, RemittanceStatus.FUNDS_DEBITED, "reviewApprove", decision.getReviewer());
         reviewApproved.increment();
         created.increment();
         CrossBorderRemittance settled = remittanceMapper.selectByRemittanceNo(remittanceNo);
@@ -464,10 +437,8 @@ public class RemittanceServiceImpl implements RemittanceService {
     private void settleSuspended(CrossBorderRemittance suspended, CrossBorderAccount payer) {
         BigDecimal rate = fxQuoteService.lock(suspended.getQuoteNo(), suspended.getRemittanceNo());
         BigDecimal fee = fxQuoteService.fee(suspended.getSourceAmount(), suspended.getChannel());
-        BigDecimal targetAmount = suspended.getSourceAmount().multiply(rate)
-                .setScale(2, RoundingMode.HALF_UP);
-        remittanceMapper.updateSettlementTerms(suspended.getRemittanceNo(), rate, fee, targetAmount,
-                ComplianceResult.PASS.getCode());
+        BigDecimal targetAmount = suspended.getSourceAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
+        remittanceMapper.updateSettlementTerms(suspended.getRemittanceNo(), rate, fee, targetAmount, ComplianceResult.PASS.getCode());
         CrossBorderRemittance current = remittanceMapper.selectByRemittanceNo(suspended.getRemittanceNo());
         ledgerService.debitExisting(current, payer, suspended.getSourceAmount().add(fee));
         fxQuoteService.markUsed(suspended.getQuoteNo());
@@ -479,8 +450,7 @@ public class RemittanceServiceImpl implements RemittanceService {
      */
     private void revertToPendingReview(String remittanceNo, int versionAfterClaim) {
         try {
-            remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.PENDING_REVIEW,
-                    RemittanceStatus.QUOTE_LOCKED, versionAfterClaim);
+            remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.PENDING_REVIEW, RemittanceStatus.QUOTE_LOCKED, versionAfterClaim);
         } catch (Exception revertEx) {
             log.error("failed to revert remittance to pending review remittanceNo={}", remittanceNo, revertEx);
         }
@@ -495,28 +465,20 @@ public class RemittanceServiceImpl implements RemittanceService {
     public RemittanceResponse rejectReview(String remittanceNo, ReviewDecisionRequest decision) {
         CrossBorderRemittance suspended = requireRemittance(remittanceNo);
         if (!suspended.getStatus().isPendingReview()) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " is not pending review");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " is not pending review");
         }
-        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED,
-                RemittanceStatus.PENDING_REVIEW, suspended.getVersion());
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED, RemittanceStatus.PENDING_REVIEW, suspended.getVersion());
         if (claimed <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " has been handled by another reviewer");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " has been handled by another reviewer");
         }
         complianceService.releaseDailyLimit(suspended.getPayerAccountId(), suspended.getSourceAmount());
-        complianceService.recordManualDecision(remittanceNo, ComplianceResult.REJECT,
-                "rejected by " + decision.getReviewer() + appendNote(decision.getNote()));
-        String reason = "rejected by " + decision.getReviewer()
-                + (decision.getNote() == null || decision.getNote().isBlank() ? "" : ": " + decision.getNote());
-        remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED,
-                reason.substring(0, Math.min(255, reason.length())));
+        complianceService.recordManualDecision(remittanceNo, ComplianceResult.REJECT, "rejected by " + decision.getReviewer() + appendNote(decision.getNote()));
+        String reason = "rejected by " + decision.getReviewer() + (decision.getNote() == null || decision.getNote().isBlank() ? "" : ": " + decision.getNote());
+        remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.COMPLIANCE_REJECTED, reason.substring(0, Math.min(255, reason.length())));
         // 审核人必须写进日志：监管检查时要能回答「这笔放行/驳回是谁做的」
-        eventService.record(remittanceNo, RemittanceStatus.PENDING_REVIEW,
-                RemittanceStatus.COMPLIANCE_REJECTED, "reviewReject", decision.getReviewer());
+        eventService.record(remittanceNo, RemittanceStatus.PENDING_REVIEW, RemittanceStatus.COMPLIANCE_REJECTED, "reviewReject", decision.getReviewer());
         reviewRejected.increment();
-        log.warn("remittance rejected by manual review remittanceNo={} reviewer={}",
-                remittanceNo, decision.getReviewer());
+        log.warn("remittance rejected by manual review remittanceNo={} reviewer={}", remittanceNo, decision.getReviewer());
         return findByRemittanceNo(remittanceNo);
     }
 
@@ -533,8 +495,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     private CrossBorderRemittance requireRemittance(String remittanceNo) {
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null) {
-            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND,
-                    "remittance " + remittanceNo + " not found");
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "remittance " + remittanceNo + " not found");
         }
         return remittance;
     }
@@ -549,8 +510,7 @@ public class RemittanceServiceImpl implements RemittanceService {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "account " + accountId + " not found");
         }
         if (account.getStatus() == null || account.getStatus() != ACCOUNT_STATUS_ACTIVE) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "account " + account.getAccountNo() + " is not active, status " + account.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account " + account.getAccountNo() + " is not active, status " + account.getStatus());
         }
         return account;
     }
@@ -570,8 +530,7 @@ public class RemittanceServiceImpl implements RemittanceService {
             return true;
         }
         if (remittance.getStatus() != expected) {
-            log.warn("skip advance remittanceNo={} current={} expected={}", remittanceNo,
-                    remittance.getStatus(), expected);
+            log.warn("skip advance remittanceNo={} current={} expected={}", remittanceNo, remittance.getStatus(), expected);
             return false;
         }
         int updated = remittanceMapper.updateStatus(remittanceNo, target, expected, remittance.getVersion());
@@ -590,8 +549,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         if (remittance == null || remittance.getStatus().isFinal()) {
             return;
         }
-        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.REFUNDED,
-                remittance.getStatus(), remittance.getVersion());
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.REFUNDED, remittance.getStatus(), remittance.getVersion());
         if (claimed <= 0) {
             log.info("refund claimed by another request remittanceNo={}", remittanceNo);
             return;
@@ -642,16 +600,12 @@ public class RemittanceServiceImpl implements RemittanceService {
         CrossBorderRemittance remittance = requireRemittance(remittanceNo);
         RemittanceStatus current = remittance.getStatus();
         if (!current.isDelivered()) {
-            eventService.recordRejected(remittanceNo, current, "return",
-                    "only delivered remittance can be returned, current=" + current, operator);
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " is not delivered, current status " + current);
+            eventService.recordRejected(remittanceNo, current, "return", "only delivered remittance can be returned, current=" + current, operator);
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " is not delivered, current status " + current);
         }
-        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.RETURNING,
-                current, remittance.getVersion());
+        int claimed = remittanceMapper.updateStatus(remittanceNo, RemittanceStatus.RETURNING, current, remittance.getVersion());
         if (claimed <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " is being handled by another request");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " is being handled by another request");
         }
         CrossBorderAccount payee = requireAccountById(remittance.getPayeeAccountId());
         CrossBorderAccount payer = requireAccountById(remittance.getPayerAccountId());
@@ -659,22 +613,16 @@ public class RemittanceServiceImpl implements RemittanceService {
         // 必须抛出让事务回滚，转为人工追讨
         int deducted = accountMapper.deduct(payee.getId(), remittance.getTargetAmount(), 0);
         if (deducted <= 0) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "payee account " + payee.getAccountNo() + " balance insufficient for return");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "payee account " + payee.getAccountNo() + " balance insufficient for return");
         }
-        ledgerMapper.insert(buildLedger(remittance, payee.getId(), LedgerDirection.DEBIT,
-                remittance.getTargetAmount(), remittance.getTargetCurrency(),
-                accountMapper.selectById(payee.getId()).getBalance()));
+        ledgerMapper.insert(buildLedger(remittance, payee.getId(), LedgerDirection.DEBIT, remittance.getTargetAmount(), remittance.getTargetCurrency(), accountMapper.selectById(payee.getId()).getBalance()));
         accountMapper.credit(payer.getId(), remittance.getSourceAmount());
-        ledgerMapper.insert(buildLedger(remittance, payer.getId(), LedgerDirection.CREDIT,
-                remittance.getSourceAmount(), remittance.getSourceCurrency(),
-                accountMapper.selectById(payer.getId()).getBalance()));
+        ledgerMapper.insert(buildLedger(remittance, payer.getId(), LedgerDirection.CREDIT, remittance.getSourceAmount(), remittance.getSourceCurrency(), accountMapper.selectById(payer.getId()).getBalance()));
         // updateFailReason 会同时推进状态与版本，不必再调一次 updateStatus。
         // 到这里已经用 updateStatus 抢占过 RETURNING，只有一个线程能执行本段
         String trimmed = reason == null ? "" : reason.substring(0, Math.min(255, reason.length()));
         remittanceMapper.updateFailReason(remittanceNo, RemittanceStatus.RETURNED, trimmed);
-        eventService.record(remittanceNo, current, RemittanceStatus.RETURNED, "return",
-                operator == null || operator.isBlank() ? "system" : operator);
+        eventService.record(remittanceNo, current, RemittanceStatus.RETURNED, "return", operator == null || operator.isBlank() ? "system" : operator);
         log.warn("remittance returned remittanceNo={} reason={} operator={}", remittanceNo, trimmed, operator);
         return findByRemittanceNo(remittanceNo);
     }
@@ -682,9 +630,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     /**
      * 构造一条流水。balanceAfter 取事务内重新读到的余额，保证流水能还原当时快照。
      */
-    private AccountLedger buildLedger(CrossBorderRemittance remittance, Long accountId,
-                                      LedgerDirection direction, BigDecimal amount,
-                                      String currency, BigDecimal balanceAfter) {
+    private AccountLedger buildLedger(CrossBorderRemittance remittance, Long accountId, LedgerDirection direction, BigDecimal amount, String currency, BigDecimal balanceAfter) {
         AccountLedger ledger = new AccountLedger();
         ledger.setLedgerNo("LG" + snowflake.nextId());
         ledger.setRemittanceNo(remittance.getRemittanceNo());
@@ -703,12 +649,10 @@ public class RemittanceServiceImpl implements RemittanceService {
     public RemittanceResponse retrySettlement(String remittanceNo) {
         CrossBorderRemittance remittance = requireRemittance(remittanceNo);
         if (remittance.getStatus().isFinal()) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "remittance " + remittanceNo + " already finalized as " + remittance.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "remittance " + remittanceNo + " already finalized as " + remittance.getStatus());
         }
         remittanceMapper.resetRetryCount(remittanceNo);
-        log.warn("settlement retry triggered manually remittanceNo={} status={}",
-                remittanceNo, remittance.getStatus());
+        log.warn("settlement retry triggered manually remittanceNo={} status={}", remittanceNo, remittance.getStatus());
         sendSettlementMessage(remittance);
         return findByRemittanceNo(remittanceNo);
     }
@@ -753,8 +697,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     /**
      * buildRemittance。
      */
-    private CrossBorderRemittance buildRemittance(RemittanceCreateRequest request, CrossBorderAccount payer,
-                                                  CrossBorderAccount payee, SettlementChannel channel) {
+    private CrossBorderRemittance buildRemittance(RemittanceCreateRequest request, CrossBorderAccount payer, CrossBorderAccount payee, SettlementChannel channel) {
         CrossBorderRemittance remittance = new CrossBorderRemittance();
         remittance.setRemittanceNo("RM" + snowflake.nextId());
         remittance.setIdempotentKey(request.getIdempotentKey());
@@ -769,9 +712,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         remittance.setChannel(channel);
         remittance.setStatus(RemittanceStatus.CREATED);
         remittance.setComplianceStatus(0);
-        remittance.setQuoteNo(request.getQuoteNo() == null || request.getQuoteNo().isBlank()
-                ? fxQuoteService.quote(payer.getCurrency(), payee.getCurrency(), 300L).getQuoteNo()
-                : request.getQuoteNo());
+        remittance.setQuoteNo(request.getQuoteNo() == null || request.getQuoteNo().isBlank() ? fxQuoteService.quote(payer.getCurrency(), payee.getCurrency(), 300L).getQuoteNo() : request.getQuoteNo());
         remittance.setBatchNo("");
         remittance.setFailReason("");
         remittance.setVersion(0);
@@ -789,8 +730,7 @@ public class RemittanceServiceImpl implements RemittanceService {
         }
         boolean urgent = Boolean.TRUE.equals(request.getUrgent());
         ChannelRouter.RouteDecision decision = channelRouter.route(request.getSourceAmount(), urgent);
-        log.info("channel routed amount={} urgent={} channel={} reasons={}",
-                request.getSourceAmount(), urgent, decision.channel(), decision.reasons());
+        log.info("channel routed amount={} urgent={} channel={} reasons={}", request.getSourceAmount(), urgent, decision.channel(), decision.reasons());
         return decision.channel();
     }
 
@@ -804,8 +744,7 @@ public class RemittanceServiceImpl implements RemittanceService {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "account " + accountNo + " not found");
         }
         if (account.getStatus() == null || account.getStatus() != ACCOUNT_STATUS_ACTIVE) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "account " + accountNo + " is not active, status " + account.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account " + accountNo + " is not active, status " + account.getStatus());
         }
         return account;
     }
@@ -816,9 +755,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     private RemittanceResponse toResponse(CrossBorderRemittance remittance) {
         CrossBorderAccount payer = accountMapper.selectById(remittance.getPayerAccountId());
         CrossBorderAccount payee = accountMapper.selectById(remittance.getPayeeAccountId());
-        return RemittanceResponse.from(remittance,
-                payer == null ? "" : payer.getAccountNo(),
-                payee == null ? "" : payee.getAccountNo());
+        return RemittanceResponse.from(remittance, payer == null ? "" : payer.getAccountNo(), payee == null ? "" : payee.getAccountNo());
     }
 
 }

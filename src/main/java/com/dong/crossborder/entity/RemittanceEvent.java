@@ -3,6 +3,7 @@ package com.dong.crossborder.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 汇款单流转日志。
  *

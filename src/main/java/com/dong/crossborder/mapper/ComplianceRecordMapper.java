@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * 合规检查记录数据访问。记录只插入与查询，不提供更新：
  * 检查留痕一旦允许修改就失去监管证据的效力。

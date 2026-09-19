@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 账户状态。冻结不是删除：账户与历史流水必须完整保留，
  * 这是反洗钱调查与司法取证的要求，解冻后账户可立即恢复使用。

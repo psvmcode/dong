@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
 /**
  * Web 层配置。目前只注册全局限流拦截器。
  *
@@ -27,9 +28,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(globalRateLimitInterceptor)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/actuator/**");
+        registry.addInterceptor(globalRateLimitInterceptor).addPathPatterns("/api/**").excludePathPatterns("/actuator/**");
     }
 
 }

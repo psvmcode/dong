@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 汇率报价状态。锁汇是跨境支付的核心概念：
  * 报价在有效期内按锁定汇率成交，过期自动失效需要重新询价。

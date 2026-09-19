@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 合规检查类型。真实的跨境汇款要依次过这几道：
  * 制裁名单筛查最优先，命中直接拒绝；

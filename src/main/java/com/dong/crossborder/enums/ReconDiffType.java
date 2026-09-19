@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 对账差异类型。长款指渠道记的比本地多，短款指渠道记的比本地少，
  * 这两类会直接造成资金损失，必须当日处理；

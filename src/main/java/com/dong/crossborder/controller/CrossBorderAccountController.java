@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 跨境账户与制裁名单。账户按币种分开，
  * 因为各币种资金分开清算，不能混在一个余额里。
@@ -63,8 +64,7 @@ public class CrossBorderAccountController {
      */
     @GetMapping("/accounts/{accountNo}")
     @Operation(summary = "按账号查询账户，含可用余额")
-    public Result<AccountResponse> findByAccountNo(@PathVariable
- @NotBlank @Size(max = 128) String accountNo) {
+    public Result<AccountResponse> findByAccountNo(@PathVariable @NotBlank @Size(max = 128) String accountNo) {
         return Result.success(accountService.findByAccountNo(accountNo));
     }
 
@@ -82,18 +82,10 @@ public class CrossBorderAccountController {
      */
     @GetMapping("/accounts/{accountNo}/diff")
     @Operation(summary = "校验账户余额与流水的差额，入参必须是精确小数，不能用浮点")
-    public Result<Map<String, Object>> balanceDiff(@PathVariable
- @NotBlank @Size(max = 128) String accountNo,
-                                                   @RequestParam(defaultValue = "0")
-                                                   @Digits(integer = 16, fraction = 2)
-                                                   java.math.BigDecimal initial) {
+    public Result<Map<String, Object>> balanceDiff(@PathVariable @NotBlank @Size(max = 128) String accountNo, @RequestParam(defaultValue = "0") @Digits(integer = 16, fraction = 2) java.math.BigDecimal initial) {
         AccountResponse account = accountService.findByAccountNo(accountNo);
         java.math.BigDecimal diff = accountService.balanceDiff(account.getId(), initial);
-        return Result.success(Map.of(
-                "accountNo", accountNo,
-                "balance", account.getBalance(),
-                "diff", diff,
-                "consistent", diff.compareTo(java.math.BigDecimal.ZERO) == 0));
+        return Result.success(Map.of("accountNo", accountNo, "balance", account.getBalance(), "diff", diff, "consistent", diff.compareTo(java.math.BigDecimal.ZERO) == 0));
     }
 
     /**
@@ -102,12 +94,7 @@ public class CrossBorderAccountController {
      */
     @PostMapping("/accounts/{accountNo}/freeze")
     @Operation(summary = "冻结账户，事件落库留痕")
-    public Result<AccountResponse> freeze(@PathVariable
- @NotBlank @Size(max = 128) String accountNo,
-                                          @RequestParam
-                                          @NotBlank @Size(max = 512) String reason,
-                                          @RequestParam
-                                          @NotBlank @Size(max = 128) String operator) {
+    public Result<AccountResponse> freeze(@PathVariable @NotBlank @Size(max = 128) String accountNo, @RequestParam @NotBlank @Size(max = 512) String reason, @RequestParam @NotBlank @Size(max = 128) String operator) {
         return Result.success(accountService.freeze(accountNo, reason, operator));
     }
 
@@ -116,12 +103,7 @@ public class CrossBorderAccountController {
      */
     @PostMapping("/accounts/{accountNo}/unfreeze")
     @Operation(summary = "解冻账户，事件落库留痕")
-    public Result<AccountResponse> unfreeze(@PathVariable
- @NotBlank @Size(max = 128) String accountNo,
-                                            @RequestParam
-                                            @NotBlank @Size(max = 512) String reason,
-                                            @RequestParam
-                                            @NotBlank @Size(max = 128) String operator) {
+    public Result<AccountResponse> unfreeze(@PathVariable @NotBlank @Size(max = 128) String accountNo, @RequestParam @NotBlank @Size(max = 512) String reason, @RequestParam @NotBlank @Size(max = 128) String operator) {
         return Result.success(accountService.unfreeze(accountNo, reason, operator));
     }
 
@@ -130,8 +112,7 @@ public class CrossBorderAccountController {
      */
     @GetMapping("/accounts/{accountNo}/events")
     @Operation(summary = "查询账户冻结/解冻事件历史")
-    public Result<List<AccountEventResponse>> events(@PathVariable
- @NotBlank @Size(max = 128) String accountNo) {
+    public Result<List<AccountEventResponse>> events(@PathVariable @NotBlank @Size(max = 128) String accountNo) {
         return Result.success(accountService.events(accountNo));
     }
 
@@ -140,8 +121,7 @@ public class CrossBorderAccountController {
      */
     @PostMapping("/sanction")
     @Operation(summary = "加入制裁名单")
-    public Result<Void> addSanction(@RequestParam
- @NotBlank @Size(max = 128) String ownerName) {
+    public Result<Void> addSanction(@RequestParam @NotBlank @Size(max = 128) String ownerName) {
         complianceService.addSanction(ownerName);
         return Result.success();
     }
@@ -151,8 +131,7 @@ public class CrossBorderAccountController {
      */
     @DeleteMapping("/sanction")
     @Operation(summary = "从制裁名单移除")
-    public Result<Void> removeSanction(@RequestParam
- @NotBlank @Size(max = 128) String ownerName) {
+    public Result<Void> removeSanction(@RequestParam @NotBlank @Size(max = 128) String ownerName) {
         complianceService.removeSanction(ownerName);
         return Result.success();
     }

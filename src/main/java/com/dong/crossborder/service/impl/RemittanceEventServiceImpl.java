@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
 /**
  * 流转日志实现。
  *
@@ -30,8 +31,7 @@ public class RemittanceEventServiceImpl implements RemittanceEventService {
      * 记录一次成功的流转。
      */
     @Override
-    public void record(String remittanceNo, RemittanceStatus from, RemittanceStatus to,
-                       String event, String operator) {
+    public void record(String remittanceNo, RemittanceStatus from, RemittanceStatus to, String event, String operator) {
         write(remittanceNo, from, to, event, 1, "", operator);
     }
 
@@ -39,8 +39,7 @@ public class RemittanceEventServiceImpl implements RemittanceEventService {
      * 记录一次被拒绝的流转，状态保持不变。
      */
     @Override
-    public void recordRejected(String remittanceNo, RemittanceStatus current, String event,
-                               String reason, String operator) {
+    public void recordRejected(String remittanceNo, RemittanceStatus current, String event, String reason, String operator) {
         write(remittanceNo, current, current, event, 0, reason, operator);
     }
 
@@ -49,16 +48,13 @@ public class RemittanceEventServiceImpl implements RemittanceEventService {
      */
     @Override
     public List<RemittanceEventResponse> history(String remittanceNo) {
-        return eventMapper.selectByRemittanceNo(remittanceNo).stream()
-                .map(RemittanceEventResponse::from)
-                .toList();
+        return eventMapper.selectByRemittanceNo(remittanceNo).stream().map(RemittanceEventResponse::from).toList();
     }
 
     /**
      * 落库，异常只记录不抛出。
      */
-    private void write(String remittanceNo, RemittanceStatus from, RemittanceStatus to,
-                       String event, int result, String reason, String operator) {
+    private void write(String remittanceNo, RemittanceStatus from, RemittanceStatus to, String event, int result, String reason, String operator) {
         RemittanceEvent record = new RemittanceEvent();
         record.setRemittanceNo(remittanceNo);
         record.setFromStatus(from == null ? 0 : from.getCode());

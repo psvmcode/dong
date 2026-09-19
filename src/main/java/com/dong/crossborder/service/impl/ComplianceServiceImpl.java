@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * 合规筛查实现。
  *
@@ -131,9 +132,7 @@ public class ComplianceServiceImpl implements ComplianceService {
      */
     private ComplianceResult checkSanction(CrossBorderRemittance remittance, CrossBorderAccount payer) {
         boolean hit = hitSanction(payer.getCountry(), payer.getOwnerName());
-        record(remittance.getRemittanceNo(), ComplianceCheckType.SANCTION,
-                hit ? ComplianceResult.REJECT : ComplianceResult.PASS,
-                hit ? "sanction list matched " + payer.getOwnerName() : "");
+        record(remittance.getRemittanceNo(), ComplianceCheckType.SANCTION, hit ? ComplianceResult.REJECT : ComplianceResult.PASS, hit ? "sanction list matched " + payer.getOwnerName() : "");
         return hit ? ComplianceResult.REJECT : ComplianceResult.PASS;
     }
 
@@ -150,9 +149,7 @@ public class ComplianceServiceImpl implements ComplianceService {
             default -> new BigDecimal("10000000");
         };
         boolean pass = amount.compareTo(allowed) <= 0;
-        record(remittance.getRemittanceNo(), ComplianceCheckType.KYC,
-                pass ? ComplianceResult.PASS : ComplianceResult.REJECT,
-                pass ? "" : "kyc level " + level + " allows at most " + allowed);
+        record(remittance.getRemittanceNo(), ComplianceCheckType.KYC, pass ? ComplianceResult.PASS : ComplianceResult.REJECT, pass ? "" : "kyc level " + level + " allows at most " + allowed);
         return pass ? ComplianceResult.PASS : ComplianceResult.REJECT;
     }
 
@@ -162,9 +159,7 @@ public class ComplianceServiceImpl implements ComplianceService {
      */
     private ComplianceResult checkAml(CrossBorderRemittance remittance, BigDecimal amount) {
         boolean needReview = amount.compareTo(MANUAL_REVIEW_THRESHOLD) > 0;
-        record(remittance.getRemittanceNo(), ComplianceCheckType.AML,
-                needReview ? ComplianceResult.MANUAL_REVIEW : ComplianceResult.PASS,
-                needReview ? "amount exceeds manual review threshold " + MANUAL_REVIEW_THRESHOLD : "");
+        record(remittance.getRemittanceNo(), ComplianceCheckType.AML, needReview ? ComplianceResult.MANUAL_REVIEW : ComplianceResult.PASS, needReview ? "amount exceeds manual review threshold " + MANUAL_REVIEW_THRESHOLD : "");
         return needReview ? ComplianceResult.MANUAL_REVIEW : ComplianceResult.PASS;
     }
 
@@ -172,20 +167,15 @@ public class ComplianceServiceImpl implements ComplianceService {
      * 限额检查。单笔限额直接比对，日累计限额走 Lua 原子累加。
      */
     private ComplianceResult checkLimit(CrossBorderRemittance remittance, CrossBorderAccount payer, BigDecimal amount) {
-        BigDecimal singleLimit = payer.getSingleLimit() == null
-                ? new BigDecimal("1000000") : payer.getSingleLimit();
+        BigDecimal singleLimit = payer.getSingleLimit() == null ? new BigDecimal("1000000") : payer.getSingleLimit();
         if (amount.compareTo(singleLimit) > 0) {
-            record(remittance.getRemittanceNo(), ComplianceCheckType.LIMIT, ComplianceResult.REJECT,
-                    "single amount exceeds limit " + singleLimit);
+            record(remittance.getRemittanceNo(), ComplianceCheckType.LIMIT, ComplianceResult.REJECT, "single amount exceeds limit " + singleLimit);
             return ComplianceResult.REJECT;
         }
 
-        BigDecimal dailyLimit = payer.getDailyLimit() == null
-                ? new BigDecimal("1000000") : payer.getDailyLimit();
+        BigDecimal dailyLimit = payer.getDailyLimit() == null ? new BigDecimal("1000000") : payer.getDailyLimit();
         boolean within = checkAndAccumulateDailyLimit(payer.getId(), amount, dailyLimit);
-        record(remittance.getRemittanceNo(), ComplianceCheckType.LIMIT,
-                within ? ComplianceResult.PASS : ComplianceResult.REJECT,
-                within ? "" : "daily limit " + dailyLimit + " exceeded");
+        record(remittance.getRemittanceNo(), ComplianceCheckType.LIMIT, within ? ComplianceResult.PASS : ComplianceResult.REJECT, within ? "" : "daily limit " + dailyLimit + " exceeded");
         return within ? ComplianceResult.PASS : ComplianceResult.REJECT;
     }
 
@@ -260,9 +250,7 @@ public class ComplianceServiceImpl implements ComplianceService {
      */
     @Override
     public List<ComplianceRecordResponse> recordsOf(String remittanceNo) {
-        return complianceRecordMapper.selectByRemittanceNo(remittanceNo).stream()
-                .map(ComplianceRecordResponse::from)
-                .toList();
+        return complianceRecordMapper.selectByRemittanceNo(remittanceNo).stream().map(ComplianceRecordResponse::from).toList();
     }
 
     /**
@@ -271,8 +259,7 @@ public class ComplianceServiceImpl implements ComplianceService {
      */
     @Override
     public void recordManualDecision(String remittanceNo, ComplianceResult result, String detail) {
-        record(remittanceNo, ComplianceCheckType.MANUAL_REVIEW, result,
-                detail == null || detail.isBlank() ? "no detail" : detail);
+        record(remittanceNo, ComplianceCheckType.MANUAL_REVIEW, result, detail == null || detail.isBlank() ? "no detail" : detail);
     }
 
     /**

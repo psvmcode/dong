@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 敞口监控实现。取已锁汇但尚未清算完成的汇款单，
  * 按货币对汇总锁定量，用当前中间价重估并与锁定汇率比对得出浮动盈亏。
@@ -55,8 +56,7 @@ public class FxExposureServiceImpl implements FxExposureService {
         open.addAll(remittanceMapper.selectByStatus(RemittanceStatus.SETTLING, 200));
         Map<String, List<CrossBorderRemittance>> byPair = new LinkedHashMap<>();
         for (CrossBorderRemittance item : open) {
-            byPair.computeIfAbsent(item.getSourceCurrency() + "/" + item.getTargetCurrency(),
-                    k -> new ArrayList<>()).add(item);
+            byPair.computeIfAbsent(item.getSourceCurrency() + "/" + item.getTargetCurrency(), k -> new ArrayList<>()).add(item);
         }
 
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -69,12 +69,10 @@ public class FxExposureServiceImpl implements FxExposureService {
                 lockedNotional = lockedNotional.add(item.getSourceAmount());
                 weightedRate = weightedRate.add(item.getExchangeRate().multiply(item.getSourceAmount()));
             }
-            BigDecimal avgLockedRate = lockedNotional.signum() == 0 ? BigDecimal.ZERO
-                    : weightedRate.divide(lockedNotional, 8, RoundingMode.HALF_UP);
+            BigDecimal avgLockedRate = lockedNotional.signum() == 0 ? BigDecimal.ZERO : weightedRate.divide(lockedNotional, 8, RoundingMode.HALF_UP);
             String[] parts = pair.split("/");
             BigDecimal current = fxQuoteService.currentRate(parts[0], parts[1]);
-            BigDecimal floating = lockedNotional.multiply(avgLockedRate.subtract(current))
-                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal floating = lockedNotional.multiply(avgLockedRate.subtract(current)).setScale(2, RoundingMode.HALF_UP);
             boolean alert = lockedNotional.compareTo(EXPOSURE_ALERT) > 0;
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("currencyPair", pair);

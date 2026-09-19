@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * CrossBorderRemittanceMapper，MyBatis 数据访问接口。
  */
@@ -35,9 +36,7 @@ public interface CrossBorderRemittanceMapper {
     /**
      * 分页查询记录。
      */
-    List<CrossBorderRemittance> selectPage(@Param("status") RemittanceStatus status,
-                                           @Param("offset") int offset,
-                                           @Param("size") int size);
+    List<CrossBorderRemittance> selectPage(@Param("status") RemittanceStatus status, @Param("offset") int offset, @Param("size") int size);
 
     /**
      * 按状态统计记录数。
@@ -49,8 +48,7 @@ public interface CrossBorderRemittanceMapper {
      * 用于卡单检测：资金已扣减却迟迟没有终结的单子必须能被主动发现，
      * 不能只等客户来问。
      */
-    long countStuckBefore(@Param("status") RemittanceStatus status,
-                          @Param("threshold") java.time.LocalDateTime threshold);
+    long countStuckBefore(@Param("status") RemittanceStatus status, @Param("threshold") java.time.LocalDateTime threshold);
 
     /**
      * 递增补偿重试次数。
@@ -81,10 +79,7 @@ public interface CrossBorderRemittanceMapper {
      * 推进状态。带 version 条件形成乐观锁，并发推进时只有一个能成功，
      * 失败方需要重新读取最新状态再决定下一步，不能直接覆盖。
      */
-    int updateStatus(@Param("remittanceNo") String remittanceNo,
-                     @Param("status") RemittanceStatus status,
-                     @Param("expectedStatus") RemittanceStatus expectedStatus,
-                     @Param("version") int version);
+    int updateStatus(@Param("remittanceNo") String remittanceNo, @Param("status") RemittanceStatus status, @Param("expectedStatus") RemittanceStatus expectedStatus, @Param("version") int version);
 
     /**
      * 更新批次号。
@@ -97,18 +92,12 @@ public interface CrossBorderRemittanceMapper {
      * 不带 version 条件：调用前已用 updateStatus 独占抢占，
      * 只有抢占成功的请求能走到这里，天然无并发写。
      */
-    int updateSettlementTerms(@Param("remittanceNo") String remittanceNo,
-                              @Param("exchangeRate") java.math.BigDecimal exchangeRate,
-                              @Param("feeAmount") java.math.BigDecimal feeAmount,
-                              @Param("targetAmount") java.math.BigDecimal targetAmount,
-                              @Param("complianceStatus") int complianceStatus);
+    int updateSettlementTerms(@Param("remittanceNo") String remittanceNo, @Param("exchangeRate") java.math.BigDecimal exchangeRate, @Param("feeAmount") java.math.BigDecimal feeAmount, @Param("targetAmount") java.math.BigDecimal targetAmount, @Param("complianceStatus") int complianceStatus);
 
     /**
      * 更新失败原因。
      */
-    int updateFailReason(@Param("remittanceNo") String remittanceNo,
-                         @Param("status") RemittanceStatus status,
-                         @Param("failReason") String failReason);
+    int updateFailReason(@Param("remittanceNo") String remittanceNo, @Param("status") RemittanceStatus status, @Param("failReason") String failReason);
 
     /**
      * 更新报价编号。

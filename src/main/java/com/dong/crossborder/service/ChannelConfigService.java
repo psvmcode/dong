@@ -4,6 +4,7 @@ import com.dong.crossborder.entity.ChannelConfig;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 /**
  * 清算渠道配置。
  *
@@ -45,8 +46,7 @@ public interface ChannelConfigService {
      * @param rateFee    比例手续费
      * @param enabled    是否启用
      */
-    void update(int channel, Long etaMinutes, BigDecimal perTxLimit, BigDecimal fixedFee,
-                BigDecimal rateFee, Integer enabled);
+    void update(int channel, Long etaMinutes, BigDecimal perTxLimit, BigDecimal fixedFee, BigDecimal rateFee, Integer enabled);
 
     /**
      * 启停渠道。渠道故障时停用，等于把它从路由候选里摘掉。

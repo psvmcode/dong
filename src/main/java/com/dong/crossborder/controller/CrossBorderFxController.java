@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 汇率报价。锁汇是跨境支付的核心概念：
  * 报价在有效期内按锁定汇率成交，过期自动失效需要重新询价。
@@ -47,9 +48,7 @@ public class CrossBorderFxController {
      */
     @PostMapping("/quote")
     @Operation(summary = "询价，返回带有效期的汇率报价")
-    public Result<FxQuoteResponse> quote(@RequestParam @Pattern(regexp = "^[A-Z]{3}$") String sourceCurrency,
-                                         @RequestParam @Pattern(regexp = "^[A-Z]{3}$") String targetCurrency,
-                                         @RequestParam(defaultValue = "300") @Min(1) @Max(86400) long validSeconds) {
+    public Result<FxQuoteResponse> quote(@RequestParam @Pattern(regexp = "^[A-Z]{3}$") String sourceCurrency, @RequestParam @Pattern(regexp = "^[A-Z]{3}$") String targetCurrency, @RequestParam(defaultValue = "300") @Min(1) @Max(86400) long validSeconds) {
         return Result.success(fxQuoteService.quote(sourceCurrency, targetCurrency, validSeconds));
     }
 
@@ -58,8 +57,7 @@ public class CrossBorderFxController {
      */
     @GetMapping("/{quoteNo}")
     @Operation(summary = "查询报价详情与剩余有效期")
-    public Result<FxQuoteResponse> findByQuoteNo(@PathVariable
- @NotBlank @Size(max = 128) String quoteNo) {
+    public Result<FxQuoteResponse> findByQuoteNo(@PathVariable @NotBlank @Size(max = 128) String quoteNo) {
         return Result.success(fxQuoteService.findByQuoteNo(quoteNo));
     }
 
@@ -68,10 +66,7 @@ public class CrossBorderFxController {
      */
     @GetMapping("/available")
     @Operation(summary = "查询某货币对的可用报价")
-    public Result<List<FxQuoteResponse>> available(@RequestParam
- @NotBlank @Size(max = 128) String sourceCurrency,
-                                                   @RequestParam
- @NotBlank @Size(max = 128) String targetCurrency) {
+    public Result<List<FxQuoteResponse>> available(@RequestParam @NotBlank @Size(max = 128) String sourceCurrency, @RequestParam @NotBlank @Size(max = 128) String targetCurrency) {
         return Result.success(fxQuoteService.available(sourceCurrency + "/" + targetCurrency));
     }
 
@@ -80,18 +75,9 @@ public class CrossBorderFxController {
      */
     @GetMapping("/rate")
     @Operation(summary = "查询当前中间价，走缓存")
-    public Result<Map<String, Object>> currentRate(@RequestParam
- @NotBlank @Size(max = 128) String sourceCurrency,
-                                                   @RequestParam
- @NotBlank @Size(max = 128) String targetCurrency) {
+    public Result<Map<String, Object>> currentRate(@RequestParam @NotBlank @Size(max = 128) String sourceCurrency, @RequestParam @NotBlank @Size(max = 128) String targetCurrency) {
         BigDecimal rate = fxQuoteService.currentRate(sourceCurrency, targetCurrency);
-        return Result.success(Map.of(
-                "currencyPair", sourceCurrency + "/" + targetCurrency,
-                "midRate", rate,
-                "fee50kSwift", fxQuoteService.fee(new BigDecimal("50000"),
-                        com.dong.crossborder.enums.SettlementChannel.SWIFT),
-                "fee50kCips", fxQuoteService.fee(new BigDecimal("50000"),
-                        com.dong.crossborder.enums.SettlementChannel.CIPS)));
+        return Result.success(Map.of("currencyPair", sourceCurrency + "/" + targetCurrency, "midRate", rate, "fee50kSwift", fxQuoteService.fee(new BigDecimal("50000"), com.dong.crossborder.enums.SettlementChannel.SWIFT), "fee50kCips", fxQuoteService.fee(new BigDecimal("50000"), com.dong.crossborder.enums.SettlementChannel.CIPS)));
     }
 
     /**
@@ -109,9 +95,7 @@ public class CrossBorderFxController {
      */
     @PostMapping("/rate")
     @Operation(summary = "调整某个币种的牌价")
-    public Result<Void> updateRate(@RequestParam @Pattern(regexp = "^[A-Z]{3}$") String currency,
-                                   @RequestParam @DecimalMin(value = "0", inclusive = false)
-                                   @Digits(integer = 12, fraction = 8) BigDecimal usdRate) {
+    public Result<Void> updateRate(@RequestParam @Pattern(regexp = "^[A-Z]{3}$") String currency, @RequestParam @DecimalMin(value = "0", inclusive = false) @Digits(integer = 12, fraction = 8) BigDecimal usdRate) {
         fxQuoteService.updateRate(currency, usdRate);
         return Result.success();
     }

@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 /**
  * AccountLedgerMapper，MyBatis 数据访问接口。
  */
@@ -36,8 +37,7 @@ public interface AccountLedgerMapper {
     /**
      * 统计某账户某方向的流水总额，用于核对余额与流水是否一致。
      */
-    BigDecimal sumByAccountAndDirection(@Param("accountId") Long accountId,
-                                        @Param("direction") LedgerDirection direction);
+    BigDecimal sumByAccountAndDirection(@Param("accountId") Long accountId, @Param("direction") LedgerDirection direction);
 
     /**
      * 清空全部数据，仅测试场景使用。

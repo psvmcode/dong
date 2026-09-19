@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 清算与对账。清算按批次走，渠道有固定的清算窗口；
  * 对账把渠道回单与本地流水比对，差异逐笔记账由运营处理。
@@ -69,19 +70,7 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/channel/{channel}")
     @Operation(summary = "调整渠道的时效、限额与费率")
-    public Result<Void> updateChannel(@PathVariable
- @Min(0) @Max(99) int channel,
-                                      @RequestParam long etaMinutes,
-                                      @RequestParam
-                                      @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2)
-                                      java.math.BigDecimal perTxLimit,
-                                      @RequestParam
-                                      @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2)
-                                      java.math.BigDecimal fixedFee,
-                                      @RequestParam
-                                      @NotNull @PositiveOrZero @Digits(integer = 4, fraction = 6)
-                                      java.math.BigDecimal rateFee,
-                                      @RequestParam(defaultValue = "1") int enabled) {
+    public Result<Void> updateChannel(@PathVariable @Min(0) @Max(99) int channel, @RequestParam long etaMinutes, @RequestParam @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2) java.math.BigDecimal perTxLimit, @RequestParam @NotNull @PositiveOrZero @Digits(integer = 16, fraction = 2) java.math.BigDecimal fixedFee, @RequestParam @NotNull @PositiveOrZero @Digits(integer = 4, fraction = 6) java.math.BigDecimal rateFee, @RequestParam(defaultValue = "1") int enabled) {
         channelConfigService.update(channel, etaMinutes, perTxLimit, fixedFee, rateFee, enabled);
         return Result.success();
     }
@@ -91,8 +80,7 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/channel/{channel}/toggle")
     @Operation(summary = "启停渠道，渠道故障时的熔断开关")
-    public Result<Void> toggleChannel(@PathVariable
- @Min(0) @Max(99) int channel, @RequestParam boolean enabled) {
+    public Result<Void> toggleChannel(@PathVariable @Min(0) @Max(99) int channel, @RequestParam boolean enabled) {
         channelConfigService.setEnabled(channel, enabled);
         return Result.success();
     }
@@ -102,11 +90,7 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/batch")
     @Operation(summary = "创建清算批次，指定渠道与清算截止时间")
-    public Result<String> createBatch(@RequestParam SettlementChannel channel,
-                                      @RequestParam
- @NotBlank @Size(max = 128) String currency,
-                                      @RequestParam(defaultValue = "10")
-                                      @Min(0) @Max(14_400) long cutoffMinutes) {
+    public Result<String> createBatch(@RequestParam SettlementChannel channel, @RequestParam @NotBlank @Size(max = 128) String currency, @RequestParam(defaultValue = "10") @Min(0) @Max(14_400) long cutoffMinutes) {
         return Result.success(settlementService.createBatch(channel, currency, cutoffMinutes));
     }
 
@@ -115,8 +99,7 @@ public class CrossBorderSettlementController {
      */
     @GetMapping("/batch/{batchNo}")
     @Operation(summary = "查询清算批次详情")
-    public Result<SettlementBatchResponse> findByBatchNo(@PathVariable
- @NotBlank @Size(max = 128) String batchNo) {
+    public Result<SettlementBatchResponse> findByBatchNo(@PathVariable @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(settlementService.findByBatchNo(batchNo));
     }
 
@@ -134,10 +117,7 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/batch/{batchNo}/collect")
     @Operation(summary = "把已扣款的汇款单并入批次")
-    public Result<Integer> collect(@PathVariable
- @NotBlank @Size(max = 128) String batchNo,
-                                   @RequestParam(defaultValue = "100")
-                                   @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
+    public Result<Integer> collect(@PathVariable @NotBlank @Size(max = 128) String batchNo, @RequestParam(defaultValue = "100") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
         return Result.success(settlementService.collect(batchNo, limit));
     }
 
@@ -146,8 +126,7 @@ public class CrossBorderSettlementController {
      */
     @PostMapping("/batch/{batchNo}/settle")
     @Operation(summary = "执行清算，给收款方入账并推进状态")
-    public Result<Integer> settle(@PathVariable
- @NotBlank @Size(max = 128) String batchNo) {
+    public Result<Integer> settle(@PathVariable @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(settlementService.settle(batchNo));
     }
 
@@ -165,17 +144,9 @@ public class CrossBorderSettlementController {
      */
     @GetMapping("/recon")
     @Operation(summary = "查询对账差异，可按批次过滤")
-    public Result<Map<String, Object>> recon(@RequestParam(required = false)
- @Size(max = 128) String batchNo) {
-        List<ReconDiffResponse> diffs = (batchNo == null || batchNo.isBlank()
-                ? reconDiffMapper.selectAll(100)
-                : reconDiffMapper.selectByBatchNo(batchNo)).stream()
-                .map(ReconDiffResponse::from)
-                .toList();
-        return Result.success(Map.of(
-                "count", diffs.size(),
-                "unhandled", reconDiffMapper.countUnhandled(),
-                "diffs", diffs));
+    public Result<Map<String, Object>> recon(@RequestParam(required = false) @Size(max = 128) String batchNo) {
+        List<ReconDiffResponse> diffs = (batchNo == null || batchNo.isBlank() ? reconDiffMapper.selectAll(100) : reconDiffMapper.selectByBatchNo(batchNo)).stream().map(ReconDiffResponse::from).toList();
+        return Result.success(Map.of("count", diffs.size(), "unhandled", reconDiffMapper.countUnhandled(), "diffs", diffs));
     }
 
     /**
@@ -186,9 +157,7 @@ public class CrossBorderSettlementController {
     public Result<Map<String, Object>> statusDistribution() {
         Map<String, Object> result = new java.util.LinkedHashMap<>();
         for (SettlementStatus status : SettlementStatus.values()) {
-            result.put(status.name(), settlementService.findAll().stream()
-                    .filter(b -> b.getStatus() == status)
-                    .count());
+            result.put(status.name(), settlementService.findAll().stream().filter(b -> b.getStatus() == status).count());
         }
         return Result.success(result);
     }

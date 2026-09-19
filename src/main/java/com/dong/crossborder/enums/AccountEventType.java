@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 账户事件类型。冻结与解冻都必须落库留痕：
  * 监管检查时会追问「谁在什么时间因为什么冻结了这个账户」，
