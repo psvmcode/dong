@@ -1,6 +1,7 @@
 package com.dong.search.dto;
 
 import lombok.Data;
+
 /**
  * 索引重建结果。
  *

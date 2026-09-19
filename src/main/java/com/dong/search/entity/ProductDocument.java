@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 商品搜索文档。与 MySQL 商品表对应，是 Elasticsearch 里那条可检索的数据。
  *

@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 /**
  * 地理检索结果。按与给定坐标的距离由近到远返回。
  *

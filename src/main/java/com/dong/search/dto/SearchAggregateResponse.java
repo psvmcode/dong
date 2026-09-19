@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 聚合统计结果。一次查询里同时跑四种聚合：分面、数值统计、区间分布、时间直方图，
  * 外加一个「分面里再挂数值统计」的子聚合。

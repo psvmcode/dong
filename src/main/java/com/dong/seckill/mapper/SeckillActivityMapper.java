@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * SeckillActivityMapper，MyBatis 数据访问接口。
  */
@@ -29,9 +30,7 @@ public interface SeckillActivityMapper {
     /**
      * 更新状态，返回影响行数。
      */
-    int updateStatus(@Param("id") Long id,
-                     @Param("status") int status,
-                     @Param("expectedVersion") int expectedVersion);
+    int updateStatus(@Param("id") Long id, @Param("status") int status, @Param("expectedVersion") int expectedVersion);
 
     /**
      * 更新可用库存。

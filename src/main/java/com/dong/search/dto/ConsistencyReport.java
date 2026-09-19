@@ -3,6 +3,7 @@ package com.dong.search.dto;
 import lombok.Data;
 
 import java.util.List;
+
 /**
  * 索引一致性对账报告。
  *

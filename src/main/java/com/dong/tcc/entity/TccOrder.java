@@ -4,6 +4,7 @@ import com.dong.tcc.enums.TccOrderStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * TCC 订单。记录分布式事务场景下的下单结果，
  * 订单状态与全局事务状态联动，用于验证最终一致性。

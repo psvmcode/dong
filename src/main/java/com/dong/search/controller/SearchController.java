@@ -81,24 +81,8 @@ public class SearchController {
      */
     @GetMapping
     @Operation(summary = "全文检索，支持过滤、排序、多字段高亮与分面聚合")
-    public Result<ProductSearchResponse> search(@RequestParam(required = false)
-                                                @Size(max = 256) String keyword,
-                                                @RequestParam(required = false)
-                                                @Size(max = 128) String category,
-                                                @RequestParam(required = false)
-                                                @PositiveOrZero Double minPrice,
-                                                @RequestParam(required = false)
-                                                @PositiveOrZero Double maxPrice,
-                                                @RequestParam(defaultValue = ProductSearchRequest.SORT_RELEVANCE)
-                                                @Pattern(regexp = ProductSearchRequest.SORT_PATTERN)
-                                                String sort,
-                                                @RequestParam(defaultValue = "false") boolean includeOffShelf,
-                                                @RequestParam(defaultValue = "1")
-                                                @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
-                                                @RequestParam(defaultValue = "20")
-                                                @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
-        return Result.success(requireSearchService().search(
-                toRequest(keyword, category, minPrice, maxPrice, sort, includeOffShelf, pageNum, pageSize)));
+    public Result<ProductSearchResponse> search(@RequestParam(required = false) @Size(max = 256) String keyword, @RequestParam(required = false) @Size(max = 128) String category, @RequestParam(required = false) @PositiveOrZero Double minPrice, @RequestParam(required = false) @PositiveOrZero Double maxPrice, @RequestParam(defaultValue = ProductSearchRequest.SORT_RELEVANCE) @Pattern(regexp = ProductSearchRequest.SORT_PATTERN) String sort, @RequestParam(defaultValue = "false") boolean includeOffShelf, @RequestParam(defaultValue = "1") @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
+        return Result.success(requireSearchService().search(toRequest(keyword, category, minPrice, maxPrice, sort, includeOffShelf, pageNum, pageSize)));
     }
 
     /**
@@ -107,12 +91,7 @@ public class SearchController {
      */
     @GetMapping("/deep")
     @Operation(summary = "深分页检索，用 search_after 翻页，不受 from+size 的一万条上限限制")
-    public Result<DeepSearchResponse> deep(@RequestParam(defaultValue = ProductSearchRequest.SORT_PRICE_ASC)
-                                           @Pattern(regexp = ProductSearchRequest.SORT_PATTERN) String sort,
-                                           @RequestParam(required = false)
-                                           @Size(max = 128) String after,
-                                           @RequestParam(defaultValue = "20")
-                                           @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
+    public Result<DeepSearchResponse> deep(@RequestParam(defaultValue = ProductSearchRequest.SORT_PRICE_ASC) @Pattern(regexp = ProductSearchRequest.SORT_PATTERN) String sort, @RequestParam(required = false) @Size(max = 128) String after, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
         return Result.success(requireSearchService().searchAfter(sort, after, size));
     }
 
@@ -122,19 +101,8 @@ public class SearchController {
      */
     @GetMapping("/aggregate")
     @Operation(summary = "聚合统计：分类分面、价格统计、价格区间分布、按月趋势")
-    public Result<SearchAggregateResponse> aggregate(@RequestParam(required = false)
-                                                     @Size(max = 256) String keyword,
-                                                     @RequestParam(required = false)
-                                                     @Size(max = 128) String category,
-                                                     @RequestParam(required = false)
-                                                     @PositiveOrZero Double minPrice,
-                                                     @RequestParam(required = false)
-                                                     @PositiveOrZero Double maxPrice,
-                                                     @RequestParam(defaultValue = "false") boolean includeOffShelf) {
-        return Result.success(requireSearchService().aggregate(
-                toRequest(keyword, category, minPrice, maxPrice,
-                        ProductSearchRequest.SORT_RELEVANCE, includeOffShelf,
-                        Constants.DEFAULT_PAGE_NUM, Constants.DEFAULT_PAGE_SIZE)));
+    public Result<SearchAggregateResponse> aggregate(@RequestParam(required = false) @Size(max = 256) String keyword, @RequestParam(required = false) @Size(max = 128) String category, @RequestParam(required = false) @PositiveOrZero Double minPrice, @RequestParam(required = false) @PositiveOrZero Double maxPrice, @RequestParam(defaultValue = "false") boolean includeOffShelf) {
+        return Result.success(requireSearchService().aggregate(toRequest(keyword, category, minPrice, maxPrice, ProductSearchRequest.SORT_RELEVANCE, includeOffShelf, Constants.DEFAULT_PAGE_NUM, Constants.DEFAULT_PAGE_SIZE)));
     }
 
     /**
@@ -143,10 +111,7 @@ public class SearchController {
      */
     @GetMapping("/suggest")
     @Operation(summary = "搜索框前缀补全，走 completion suggester")
-    public Result<List<String>> suggest(@RequestParam
-                                        @NotBlank @Size(max = 128) String prefix,
-                                        @RequestParam(defaultValue = "10")
-                                        @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
+    public Result<List<String>> suggest(@RequestParam @NotBlank @Size(max = 128) String prefix, @RequestParam(defaultValue = "10") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
         return Result.success(requireSearchService().suggest(prefix, size));
     }
 
@@ -156,14 +121,7 @@ public class SearchController {
      */
     @GetMapping("/nearby")
     @Operation(summary = "按坐标检索附近商品，半径过滤加距离排序")
-    public Result<NearbySearchResponse> nearby(@RequestParam
-                                               @DecimalMin("-90") @DecimalMax("90") double lat,
-                                               @RequestParam
-                                               @DecimalMin("-180") @DecimalMax("180") double lon,
-                                               @RequestParam(defaultValue = "10")
-                                               @Positive @Max(20_000) double radiusKm,
-                                               @RequestParam(defaultValue = "20")
-                                               @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
+    public Result<NearbySearchResponse> nearby(@RequestParam @DecimalMin("-90") @DecimalMax("90") double lat, @RequestParam @DecimalMin("-180") @DecimalMax("180") double lon, @RequestParam(defaultValue = "10") @Positive @Max(20_000) double radiusKm, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int size) {
         return Result.success(requireSearchService().nearby(lat, lon, radiusKm, size));
     }
 
@@ -194,8 +152,7 @@ public class SearchController {
      */
     @PostMapping("/sync/{productId}")
     @Operation(summary = "按 id 重同步单个商品，库里有则覆盖文档，没有则删除文档")
-    public Result<Void> syncOne(@PathVariable
-                                @Positive Long productId) {
+    public Result<Void> syncOne(@PathVariable @Positive Long productId) {
         requireSyncService().syncOne(productId);
         return Result.success();
     }
@@ -242,8 +199,7 @@ public class SearchController {
     /**
      * 组装检索请求。检索与聚合共用同一套过滤，统计口径才不会和列表对不上。
      */
-    private ProductSearchRequest toRequest(String keyword, String category, Double minPrice, Double maxPrice,
-                                           String sort, boolean includeOffShelf, int pageNum, int pageSize) {
+    private ProductSearchRequest toRequest(String keyword, String category, Double minPrice, Double maxPrice, String sort, boolean includeOffShelf, int pageNum, int pageSize) {
         ProductSearchRequest request = new ProductSearchRequest();
         request.setKeyword(keyword);
         request.setCategory(category);
@@ -262,8 +218,7 @@ public class SearchController {
     private SearchService requireSearchService() {
         SearchService service = searchServiceProvider.getIfAvailable();
         if (service == null) {
-            throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED,
-                    "set dong.elasticsearch.enabled=true first");
+            throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED, "set dong.elasticsearch.enabled=true first");
         }
         return service;
     }
@@ -274,8 +229,7 @@ public class SearchController {
     private SearchSyncService requireSyncService() {
         SearchSyncService service = searchSyncServiceProvider.getIfAvailable();
         if (service == null) {
-            throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED,
-                    "set dong.elasticsearch.enabled=true first");
+            throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED, "set dong.elasticsearch.enabled=true first");
         }
         return service;
     }
@@ -286,8 +240,7 @@ public class SearchController {
     private SearchIndexService requireIndexService() {
         SearchIndexService service = searchIndexServiceProvider.getIfAvailable();
         if (service == null) {
-            throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED,
-                    "set dong.elasticsearch.enabled=true first");
+            throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED, "set dong.elasticsearch.enabled=true first");
         }
         return service;
     }

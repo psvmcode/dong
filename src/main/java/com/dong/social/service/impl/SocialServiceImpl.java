@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 /**
  * 微博模型实现。关注关系用两个 Set 双向维护：
  * following 记录我关注的人，follower 记录关注我的人。
@@ -112,9 +113,7 @@ public class SocialServiceImpl implements SocialService {
     @Override
     public List<Long> followees(Long followerId) {
         Collection<Long> cached = followingSet(followerId).readAll();
-        return cached == null || cached.isEmpty()
-                ? socialRelationMapper.selectFollowees(followerId)
-                : List.copyOf(cached);
+        return cached == null || cached.isEmpty() ? socialRelationMapper.selectFollowees(followerId) : List.copyOf(cached);
     }
 
     /**
@@ -123,9 +122,7 @@ public class SocialServiceImpl implements SocialService {
     @Override
     public List<Long> followers(Long followeeId) {
         Collection<Long> cached = followerSet(followeeId).readAll();
-        return cached == null || cached.isEmpty()
-                ? socialRelationMapper.selectFollowers(followeeId)
-                : List.copyOf(cached);
+        return cached == null || cached.isEmpty() ? socialRelationMapper.selectFollowers(followeeId) : List.copyOf(cached);
     }
 
     /**
@@ -175,9 +172,7 @@ public class SocialServiceImpl implements SocialService {
      */
     @Override
     public List<FeedResponse> timelinePush(Long userId, int size) {
-        return socialTimelineService.readTimeline(userId, size).stream()
-                .map(this::toResponse)
-                .toList();
+        return socialTimelineService.readTimeline(userId, size).stream().map(this::toResponse).toList();
     }
 
     /**
@@ -190,9 +185,7 @@ public class SocialServiceImpl implements SocialService {
             return List.of();
         }
         int offset = Math.max(0, pageNum - 1) * pageSize;
-        return socialFeedMapper.selectByAuthors(followees, offset, pageSize).stream()
-                .map(FeedResponse::from)
-                .toList();
+        return socialFeedMapper.selectByAuthors(followees, offset, pageSize).stream().map(FeedResponse::from).toList();
     }
 
     /**

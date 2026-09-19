@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 秒杀。核心思路是把库存决策从数据库搬到 Redis：
  * 用一条 Lua 脚本原子完成查余额、扣减、记录用户，全程无锁无事务，
@@ -70,8 +71,7 @@ public class SeckillController {
      */
     @PostMapping("/activities/{id}/prepare")
     @Operation(summary = "预热库存到 Redis 并开启活动")
-    public Result<Integer> prepare(@PathVariable
- @Positive Long id) {
+    public Result<Integer> prepare(@PathVariable @Positive Long id) {
         return Result.success(seckillService.prepare(id));
     }
 
@@ -81,11 +81,7 @@ public class SeckillController {
      */
     @PostMapping("/activities/{id}/seckill")
     @Operation(summary = "秒杀下单，先扣 Redis 库存再异步建单")
-    public Result<SeckillReceiptResponse> seckill(@PathVariable
- @Positive Long id,
-                                                  @RequestParam Long userId,
-                                                  @RequestParam(defaultValue = "1")
-                                                  @Min(1) @Max(1000) int quantity) {
+    public Result<SeckillReceiptResponse> seckill(@PathVariable @Positive Long id, @RequestParam Long userId, @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int quantity) {
         return Result.success(seckillService.seckill(id, userId, quantity));
     }
 
@@ -94,8 +90,7 @@ public class SeckillController {
      */
     @GetMapping("/activities/{id}/stock")
     @Operation(summary = "查询 Redis 中的剩余库存")
-    public Result<Integer> stock(@PathVariable
- @Positive Long id) {
+    public Result<Integer> stock(@PathVariable @Positive Long id) {
         return Result.success(seckillService.stockOf(id));
     }
 
@@ -114,8 +109,7 @@ public class SeckillController {
      */
     @GetMapping("/orders/{orderNo}")
     @Operation(summary = "按订单号查询秒杀订单")
-    public Result<SeckillOrderResponse> order(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<SeckillOrderResponse> order(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(SeckillOrderResponse.from(seckillService.order(orderNo)));
     }
 
@@ -124,8 +118,7 @@ public class SeckillController {
      */
     @PostMapping("/orders/{orderNo}/pay")
     @Operation(summary = "支付秒杀订单")
-    public Result<Void> pay(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<Void> pay(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         seckillService.pay(orderNo);
         return Result.success();
     }
@@ -135,8 +128,7 @@ public class SeckillController {
      */
     @PostMapping("/orders/{orderNo}/cancel")
     @Operation(summary = "取消订单并回滚库存")
-    public Result<Void> cancel(@PathVariable
- @NotBlank @Size(max = 128) String orderNo) {
+    public Result<Void> cancel(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         seckillService.cancel(orderNo);
         return Result.success();
     }

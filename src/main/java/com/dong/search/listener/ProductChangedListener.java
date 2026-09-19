@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
 /**
  * 商品变更监听器，负责把数据库的变更实时推给 Elasticsearch。
  *
@@ -39,8 +40,7 @@ public class ProductChangedListener {
         try {
             searchSyncService.syncOne(event.getProductId());
         } catch (Exception ex) {
-            log.error("failed to sync product {} into elasticsearch, will be repaired by reconciliation",
-                    event.getProductId(), ex);
+            log.error("failed to sync product {} into elasticsearch, will be repaired by reconciliation", event.getProductId(), ex);
         }
     }
 

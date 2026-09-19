@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 /**
  * TCC 协调者实现。依次驱动各参与者的 Try、Confirm、Cancel。
  *
@@ -117,8 +118,7 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         for (TccParticipant participant : tried) {
             try {
                 participant.confirmPhase(xid, payload);
-                tccTransactionMapper.updateBranchStatus(xid, participant.branchId(),
-                        TccBranchStatus.CONFIRMED.getCode(), "");
+                tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.CONFIRMED.getCode(), "");
             } catch (Exception ex) {
                 confirmed = false;
                 failure.append(participant.branchId()).append(": ").append(ex.getMessage()).append("; ");
@@ -150,11 +150,7 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         status.put("xid", transaction.getXid());
         status.put("status", transaction.getStatus() == null ? null : transaction.getStatus().name());
         status.put("retryCount", transaction.getRetryCount());
-        status.put("branches", branches(xid).stream()
-                .map(branch -> Map.of("branchId", branch.getBranchId(),
-                        "status", branch.getStatus() == null ? null : branch.getStatus().name(),
-                        "errorMessage", branch.getErrorMessage() == null ? "" : branch.getErrorMessage()))
-                .toList());
+        status.put("branches", branches(xid).stream().map(branch -> Map.of("branchId", branch.getBranchId(), "status", branch.getStatus() == null ? null : branch.getStatus().name(), "errorMessage", branch.getErrorMessage() == null ? "" : branch.getErrorMessage())).toList());
         return status;
     }
 
@@ -173,8 +169,7 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int recoverPending() {
-        List<TccTransaction> pending = tccTransactionMapper.selectByStatus(
-                TccTransactionStatus.CONFIRMING.getCode(), 100);
+        List<TccTransaction> pending = tccTransactionMapper.selectByStatus(TccTransactionStatus.CONFIRMING.getCode(), 100);
         if (pending.isEmpty()) {
             return 0;
         }
@@ -183,8 +178,7 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         for (TccTransaction transaction : pending) {
             String xid = transaction.getXid();
             List<TccBranch> branches = tccTransactionMapper.selectBranches(xid);
-            boolean allConfirmed = branches.stream()
-                    .allMatch(branch -> branch.getStatus() == TccBranchStatus.CONFIRMED);
+            boolean allConfirmed = branches.stream().allMatch(branch -> branch.getStatus() == TccBranchStatus.CONFIRMED);
             if (allConfirmed && !branches.isEmpty()) {
                 tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CONFIRMED.getCode());
                 tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CONFIRMED.getCode());
@@ -238,12 +232,10 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         for (TccParticipant participant : tried) {
             try {
                 participant.cancelPhase(xid, payload);
-                tccTransactionMapper.updateBranchStatus(xid, participant.branchId(),
-                        TccBranchStatus.CANCELLED.getCode(), "");
+                tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.CANCELLED.getCode(), "");
             } catch (Exception ex) {
                 log.error("tcc cancel failed xid={} branch={}", xid, participant.branchId(), ex);
-                tccTransactionMapper.updateBranchStatus(xid, participant.branchId(),
-                        TccBranchStatus.TRIED.getCode(), ex.getMessage());
+                tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.TRIED.getCode(), ex.getMessage());
             }
         }
         tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLED.getCode());
@@ -254,26 +246,20 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
      * 取消指定事务下的所有分支。
      */
     private void cancelBranches(String xid, List<TccBranch> branches) {
-        Map<String, Object> payload = branches.isEmpty()
-                ? Map.of()
-                : JsonUtils.fromJson(branches.get(0).getPayload(),
-                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-                });
+        Map<String, Object> payload = branches.isEmpty() ? Map.of() : JsonUtils.fromJson(branches.get(0).getPayload(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+        });
         for (TccBranch branch : branches) {
             if (branch.getStatus() == TccBranchStatus.CANCELLED) {
                 continue;
             }
-            participants.stream()
-                    .filter(participant -> participant.branchId().equals(branch.getBranchId()))
-                    .forEach(participant -> {
-                        try {
-                            participant.cancelPhase(xid, payload);
-                            tccTransactionMapper.updateBranchStatus(xid, participant.branchId(),
-                                    TccBranchStatus.CANCELLED.getCode(), "");
-                        } catch (Exception ex) {
-                            log.error("tcc recovery cancel failed xid={} branch={}", xid, participant.branchId(), ex);
-                        }
-                    });
+            participants.stream().filter(participant -> participant.branchId().equals(branch.getBranchId())).forEach(participant -> {
+                try {
+                    participant.cancelPhase(xid, payload);
+                    tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.CANCELLED.getCode(), "");
+                } catch (Exception ex) {
+                    log.error("tcc recovery cancel failed xid={} branch={}", xid, participant.branchId(), ex);
+                }
+            });
         }
         tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLED.getCode());
         tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
@@ -283,8 +269,7 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
      * 记录分支。errorMessage 必须用空字符串代替 null，
      * 因为该字段在数据库上有非空约束，写入 null 会让回滚本身失败。
      */
-    private void recordBranch(String xid, String branchId, Map<String, Object> payload,
-                              TccBranchStatus status, String errorMessage) {
+    private void recordBranch(String xid, String branchId, Map<String, Object> payload, TccBranchStatus status, String errorMessage) {
         TccBranch branch = new TccBranch();
         branch.setXid(xid);
         branch.setBranchId(branchId);

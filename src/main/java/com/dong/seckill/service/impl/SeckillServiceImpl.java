@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 /**
  * 秒杀实现。四道防线依次生效：
  * 限流令牌桶挡住超出承载力的流量，
@@ -103,8 +104,7 @@ public class SeckillServiceImpl implements SeckillService {
         SeckillActivity activity = requireActivity(activityId);
         seckillStockService.prepare(activityId, activity.getTotalStock());
         soldOutFlag.clear(activityId);
-        int updated = seckillActivityMapper.updateStatus(activityId,
-                SeckillActivityStatus.ONLINE.getCode(), activity.getVersion());
+        int updated = seckillActivityMapper.updateStatus(activityId, SeckillActivityStatus.ONLINE.getCode(), activity.getVersion());
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "activity was modified by someone else");
         }
@@ -114,13 +114,10 @@ public class SeckillServiceImpl implements SeckillService {
     }
 
     @Override
-    @RateLimited(key = "'seckill:activity:' + #activityId",
-            limit = 200, window = 1, unit = TimeUnit.SECONDS,
-            algorithm = RateLimitAlgorithm.TOKEN_BUCKET)
+    @RateLimited(key = "'seckill:activity:' + #activityId", limit = 200, window = 1, unit = TimeUnit.SECONDS, algorithm = RateLimitAlgorithm.TOKEN_BUCKET)
     /**
      * 秒杀下单，先扣 Redis 库存再异步建单。
-     */
-    public SeckillReceiptResponse seckill(Long activityId, Long userId, int quantity) {
+     */ public SeckillReceiptResponse seckill(Long activityId, Long userId, int quantity) {
         if (quantity <= 0) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "quantity must be positive");
         }
@@ -201,8 +198,7 @@ public class SeckillServiceImpl implements SeckillService {
     public void pay(String orderNo) {
         SeckillOrder order = order(orderNo);
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "order is not payable: " + order.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "order is not payable: " + order.getStatus());
         }
         seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.PAID.getCode());
         log.info("seckill order paid orderNo={}", orderNo);
@@ -216,8 +212,7 @@ public class SeckillServiceImpl implements SeckillService {
     public void cancel(String orderNo) {
         SeckillOrder order = order(orderNo);
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "order cannot be cancelled: " + order.getStatus());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "order cannot be cancelled: " + order.getStatus());
         }
         seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.CANCELLED.getCode());
         seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());
@@ -242,9 +237,7 @@ public class SeckillServiceImpl implements SeckillService {
      */
     private boolean isActive(SeckillActivity activity) {
         LocalDateTime now = LocalDateTime.now();
-        return activity.getStatus() == SeckillActivityStatus.ONLINE
-                && !now.isBefore(activity.getStartTime())
-                && !now.isAfter(activity.getEndTime());
+        return activity.getStatus() == SeckillActivityStatus.ONLINE && !now.isBefore(activity.getStartTime()) && !now.isAfter(activity.getEndTime());
     }
 
     /**

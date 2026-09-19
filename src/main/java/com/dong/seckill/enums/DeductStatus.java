@@ -2,6 +2,7 @@ package com.dong.seckill.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * 秒杀库存扣减结果。通过返回码区分扣减是否成功及失败原因。
  */

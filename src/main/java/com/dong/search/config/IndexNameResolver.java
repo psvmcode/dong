@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 /**
  * 索引名解析器。项目里所有索引名都不写死，统一经这里拼出来。
  *

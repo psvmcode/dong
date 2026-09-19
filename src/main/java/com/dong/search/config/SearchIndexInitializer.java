@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+
 /**
  * 启动期的索引引导。真正干活的是 SearchIndexService，
  * 这里只负责在应用起来时把别名准备好，保证后面所有读写都不会撞上「索引不存在」。

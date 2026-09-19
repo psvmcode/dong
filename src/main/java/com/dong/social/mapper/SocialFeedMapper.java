@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * SocialFeedMapper，MyBatis 数据访问接口。
  */
@@ -24,9 +25,7 @@ public interface SocialFeedMapper {
     /**
      * 按 Authors 查询记录。
      */
-    List<SocialFeed> selectByAuthors(@Param("authorIds") List<Long> authorIds,
-                                     @Param("offset") int offset,
-                                     @Param("size") int size);
+    List<SocialFeed> selectByAuthors(@Param("authorIds") List<Long> authorIds, @Param("offset") int offset, @Param("size") int size);
 
     /**
      * 按 Author 查询记录。

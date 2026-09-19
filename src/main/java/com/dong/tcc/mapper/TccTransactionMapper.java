@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * TccTransactionMapper，MyBatis 数据访问接口。
  */
@@ -45,10 +46,7 @@ public interface TccTransactionMapper {
     /**
      * 更新分支事务状态。
      */
-    int updateBranchStatus(@Param("xid") String xid,
-                           @Param("branchId") String branchId,
-                           @Param("status") int status,
-                           @Param("errorMessage") String errorMessage);
+    int updateBranchStatus(@Param("xid") String xid, @Param("branchId") String branchId, @Param("status") int status, @Param("errorMessage") String errorMessage);
 
     /**
      * 查询分支记录。

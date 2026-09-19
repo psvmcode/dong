@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 微博模型。关注关系用 Set 存储，天然支持交集运算，
  * 共同关注就是一次求交，不需要在应用层循环比对。
@@ -110,8 +111,7 @@ public class SocialController {
      */
     @PostMapping("/feed")
     @Operation(summary = "发布一条动态")
-    public Result<Long> publishFeed(@RequestParam Long authorId, @RequestParam
- @NotBlank @Size(max = 4096) String content) {
+    public Result<Long> publishFeed(@RequestParam Long authorId, @RequestParam @NotBlank @Size(max = 4096) String content) {
         return Result.success(socialService.publishFeed(authorId, content));
     }
 
@@ -120,9 +120,7 @@ public class SocialController {
      */
     @GetMapping("/timeline/push")
     @Operation(summary = "推模式时间线，直接读取已准备好的结果")
-    public Result<List<FeedResponse>> timelinePush(@RequestParam Long userId,
-                                                  @RequestParam(defaultValue = "20")
-                                                  @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int size) {
+    public Result<List<FeedResponse>> timelinePush(@RequestParam Long userId, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int size) {
         return Result.success(socialService.timelinePush(userId, size));
     }
 
@@ -131,11 +129,7 @@ public class SocialController {
      */
     @GetMapping("/timeline/pull")
     @Operation(summary = "拉模式时间线，读时聚合所有关注者的动态")
-    public Result<List<FeedResponse>> timelinePull(@RequestParam Long userId,
-                                                  @RequestParam(defaultValue = "1")
-                                                  @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
-                                                  @RequestParam(defaultValue = "20")
-                                                  @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
+    public Result<List<FeedResponse>> timelinePull(@RequestParam Long userId, @RequestParam(defaultValue = "1") @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         return Result.success(socialService.timelinePull(userId, pageNum, pageSize));
     }
 

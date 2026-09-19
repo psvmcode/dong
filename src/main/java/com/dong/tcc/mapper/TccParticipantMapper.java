@@ -5,6 +5,7 @@ import com.dong.tcc.entity.TccInventory;
 import com.dong.tcc.entity.TccOrder;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
 /**
  * TccParticipantMapper，MyBatis 数据访问接口。
  */

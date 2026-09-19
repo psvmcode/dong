@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
+
 /**
  * 秒杀库存实现。查余额、扣减、记录用户三步由一条 Lua 脚本完成，
  * 原子性由 Redis 单线程保证，因此不需要分布式锁，也不存在读改写竞态。
@@ -39,17 +40,17 @@ public class SeckillStockServiceImpl implements SeckillStockService {
             if redis.call('sismember', KEYS[2], ARGV[2]) == 1 then
                 return -3
             end
-
+            
             local stock = tonumber(redis.call('get', KEYS[1]))
             if stock == nil then
                 return -1
             end
-
+            
             local quantity = tonumber(ARGV[1])
             if stock < quantity then
                 return -2
             end
-
+            
             redis.call('decrby', KEYS[1], quantity)
             redis.call('sadd', KEYS[2], ARGV[2])
             return stock - quantity
@@ -82,11 +83,9 @@ public class SeckillStockServiceImpl implements SeckillStockService {
      */
     @Override
     public int deduct(Long activityId, Long userId, int quantity) {
-        Long result = redisService.execute(DEDUCT,
-                List.of(stockKey(activityId), participantsKey(activityId)), quantity, userId);
+        Long result = redisService.execute(DEDUCT, List.of(stockKey(activityId), participantsKey(activityId)), quantity, userId);
         if (result == null) {
-            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE,
-                    "seckill deduct script returned nothing");
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "seckill deduct script returned nothing");
         }
         return result.intValue();
     }

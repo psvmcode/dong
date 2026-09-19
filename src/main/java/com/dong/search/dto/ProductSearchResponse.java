@@ -6,6 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
 /**
  * ProductSearchResponse。
  */
@@ -39,39 +40,39 @@ public class ProductSearchResponse {
 
     @Data
     public static class Hit {
-    /**
-     * 唯一标识 id。
-     */
+        /**
+         * 唯一标识 id。
+         */
         private String id;
 
-    /**
-     * 名称。
-     */
+        /**
+         * 名称。
+         */
         private String name;
 
-    /**
-     * category。
-     */
+        /**
+         * category。
+         */
         private String category;
 
-    /**
-     * price。
-     */
+        /**
+         * price。
+         */
         private BigDecimal price;
 
-    /**
-     * stock。
-     */
+        /**
+         * stock。
+         */
         private Integer stock;
 
-    /**
-     * highlight。
-     */
+        /**
+         * highlight。
+         */
         private List<String> highlight;
 
-    /**
-     * descriptionHighlight。
-     */
+        /**
+         * descriptionHighlight。
+         */
         private List<String> descriptionHighlight;
 
     }

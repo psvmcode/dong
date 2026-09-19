@@ -96,10 +96,7 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public void index(ProductDocument document) {
         try {
-            elasticsearchClient.index(builder -> builder
-                    .index(indexName())
-                    .id(document.getId())
-                    .document(document));
+            elasticsearchClient.index(builder -> builder.index(indexName()).id(document.getId()).document(document));
             log.info("document indexed id={}", document.getId());
         } catch (Exception ex) {
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "index failed", ex);
@@ -117,14 +114,7 @@ public class SearchServiceImpl implements SearchService {
             return;
         }
         try {
-            List<BulkOperation> operations = list.stream()
-                    .map(document -> new BulkOperation.Builder()
-                            .index(index -> index
-                                    .index(indexName())
-                                    .id(document.getId())
-                                    .document(document))
-                            .build())
-                    .toList();
+            List<BulkOperation> operations = list.stream().map(document -> new BulkOperation.Builder().index(index -> index.index(indexName()).id(document.getId()).document(document)).build()).toList();
             var response = elasticsearchClient.bulk(builder -> builder.index(indexName()).operations(operations));
             checkBulkResponse(response);
             log.info("bulk indexed {} documents", list.size());
@@ -153,10 +143,7 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public Map<String, ProductDocument> listAll(int limit) {
         try {
-            SearchResponse<ProductDocument> response = elasticsearchClient.search(builder -> builder
-                    .index(indexName())
-                    .size(limit)
-                    .query(query -> query.matchAll(matchAll -> matchAll)), ProductDocument.class);
+            SearchResponse<ProductDocument> response = elasticsearchClient.search(builder -> builder.index(indexName()).size(limit).query(query -> query.matchAll(matchAll -> matchAll)), ProductDocument.class);
             Map<String, ProductDocument> documents = new LinkedHashMap<>();
             for (Hit<ProductDocument> hit : response.hits().hits()) {
                 if (hit.source() != null) {
@@ -180,11 +167,7 @@ public class SearchServiceImpl implements SearchService {
             return;
         }
         try {
-            List<BulkOperation> operations = list.stream()
-                    .map(id -> new BulkOperation.Builder()
-                            .delete(delete -> delete.index(indexName()).id(id))
-                            .build())
-                    .toList();
+            List<BulkOperation> operations = list.stream().map(id -> new BulkOperation.Builder().delete(delete -> delete.index(indexName()).id(id)).build()).toList();
             var response = elasticsearchClient.bulk(builder -> builder.index(indexName()).operations(operations));
             checkBulkResponse(response);
             log.info("bulk deleted {} documents", list.size());
@@ -203,11 +186,7 @@ public class SearchServiceImpl implements SearchService {
         List<String> ids = new ArrayList<>();
         keepIds.forEach(ids::add);
         try {
-            var response = elasticsearchClient.deleteByQuery(request -> request
-                    .index(indexName())
-                    .refresh(true)
-                    .query(query -> query.bool(bool -> bool.mustNot(mustNot -> mustNot
-                            .ids(idsQuery -> idsQuery.values(ids))))));
+            var response = elasticsearchClient.deleteByQuery(request -> request.index(indexName()).refresh(true).query(query -> query.bool(bool -> bool.mustNot(mustNot -> mustNot.ids(idsQuery -> idsQuery.values(ids))))));
             long deleted = response.deleted() == null ? 0L : response.deleted();
             if (deleted > 0) {
                 log.info("deleted {} documents outside the keep list", deleted);
@@ -251,23 +230,11 @@ public class SearchServiceImpl implements SearchService {
     public ProductSearchResponse search(ProductSearchRequest request) {
         int from = Math.max(0, request.getPageNum() - 1) * request.getPageSize();
         if (from + request.getPageSize() > MAX_RESULT_WINDOW) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "from+size exceeds max result window " + MAX_RESULT_WINDOW + ", use the deep paging api");
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "from+size exceeds max result window " + MAX_RESULT_WINDOW + ", use the deep paging api");
         }
         try {
-            SearchRequest searchRequest = SearchRequest.of(builder -> builder
-                    .index(indexName())
-                    .from(from)
-                    .size(request.getPageSize())
-                    .query(filteredQuery(request))
-                    .sort(sortOptions(request.getSort()))
-                    .highlight(Highlight.of(highlight -> highlight
-                            .fields("name", HighlightField.of(field -> field))
-                            .fields("description", HighlightField.of(field -> field))))
-                    .aggregations("categoryFacets", aggregation -> aggregation
-                            .terms(terms -> terms.field("category"))));
-            SearchResponse<ProductDocument> response =
-                    elasticsearchClient.search(searchRequest, ProductDocument.class);
+            SearchRequest searchRequest = SearchRequest.of(builder -> builder.index(indexName()).from(from).size(request.getPageSize()).query(filteredQuery(request)).sort(sortOptions(request.getSort())).highlight(Highlight.of(highlight -> highlight.fields("name", HighlightField.of(field -> field)).fields("description", HighlightField.of(field -> field)))).aggregations("categoryFacets", aggregation -> aggregation.terms(terms -> terms.field("category"))));
+            SearchResponse<ProductDocument> response = elasticsearchClient.search(searchRequest, ProductDocument.class);
             ProductSearchResponse result = new ProductSearchResponse();
             result.setTotal(response.hits().total() == null ? 0L : response.hits().total().value());
             result.setPageNum(request.getPageNum());
@@ -290,16 +257,12 @@ public class SearchServiceImpl implements SearchService {
     public DeepSearchResponse searchAfter(String sort, String after, int size) {
         try {
             SearchRequest.Builder builder = new SearchRequest.Builder();
-            builder.index(indexName())
-                    .size(size)
-                    .query(Query.of(query -> query.matchAll(matchAll -> matchAll)))
-                    .sort(deepSortOptions(sort));
+            builder.index(indexName()).size(size).query(Query.of(query -> query.matchAll(matchAll -> matchAll))).sort(deepSortOptions(sort));
             List<FieldValue> cursor = parseCursor(sort, after);
             if (!cursor.isEmpty()) {
                 builder.searchAfter(cursor);
             }
-            SearchResponse<ProductDocument> response =
-                    elasticsearchClient.search(builder.build(), ProductDocument.class);
+            SearchResponse<ProductDocument> response = elasticsearchClient.search(builder.build(), ProductDocument.class);
             List<Hit<ProductDocument>> hits = response.hits().hits();
 
             DeepSearchResponse result = new DeepSearchResponse();
@@ -319,27 +282,9 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public SearchAggregateResponse aggregate(ProductSearchRequest request) {
         try {
-            SearchRequest searchRequest = SearchRequest.of(builder -> builder
-                    .index(indexName())
-                    .size(0)
-                    .query(filteredQuery(request))
-                    .aggregations("categoryFacets", aggregation -> aggregation
-                            .terms(terms -> terms.field("category").size(20))
-                            .aggregations("priceStats", sub -> sub.stats(stats -> stats.field("price"))))
-                    .aggregations("priceStats", aggregation -> aggregation.stats(stats -> stats.field("price")))
-                    .aggregations("priceRanges", aggregation -> aggregation.range(range -> range
-                            .field("price")
-                            .ranges(List.of(
-                                    AggregationRange.of(bucket -> bucket.to(100.0)),
-                                    AggregationRange.of(bucket -> bucket.from(100.0).to(500.0)),
-                                    AggregationRange.of(bucket -> bucket.from(500.0))))))
-                    .aggregations("monthly", aggregation -> aggregation.dateHistogram(histogram -> histogram
-                            .field("createTime")
-                            .calendarInterval(CalendarInterval.Month))));
-            SearchResponse<ProductDocument> response =
-                    elasticsearchClient.search(searchRequest, ProductDocument.class);
-            Map<String, Aggregate> aggregations = response.aggregations() == null
-                    ? Map.of() : response.aggregations();
+            SearchRequest searchRequest = SearchRequest.of(builder -> builder.index(indexName()).size(0).query(filteredQuery(request)).aggregations("categoryFacets", aggregation -> aggregation.terms(terms -> terms.field("category").size(20)).aggregations("priceStats", sub -> sub.stats(stats -> stats.field("price")))).aggregations("priceStats", aggregation -> aggregation.stats(stats -> stats.field("price"))).aggregations("priceRanges", aggregation -> aggregation.range(range -> range.field("price").ranges(List.of(AggregationRange.of(bucket -> bucket.to(100.0)), AggregationRange.of(bucket -> bucket.from(100.0).to(500.0)), AggregationRange.of(bucket -> bucket.from(500.0)))))).aggregations("monthly", aggregation -> aggregation.dateHistogram(histogram -> histogram.field("createTime").calendarInterval(CalendarInterval.Month))));
+            SearchResponse<ProductDocument> response = elasticsearchClient.search(searchRequest, ProductDocument.class);
+            Map<String, Aggregate> aggregations = response.aggregations() == null ? Map.of() : response.aggregations();
 
             SearchAggregateResponse result = new SearchAggregateResponse();
             result.setTotal(response.hits().total() == null ? 0L : response.hits().total().value());
@@ -351,8 +296,7 @@ public class SearchServiceImpl implements SearchService {
                 for (StringTermsBucket bucket : facets.sterms().buckets().array()) {
                     String category = bucket.key().stringValue();
                     result.getCategoryFacets().put(category, bucket.docCount());
-                    Aggregate sub = bucket.aggregations() == null
-                            ? null : bucket.aggregations().get("priceStats");
+                    Aggregate sub = bucket.aggregations() == null ? null : bucket.aggregations().get("priceStats");
                     if (sub != null && sub.isStats()) {
                         result.getPriceStatsByCategory().put(category, toStats(sub));
                     }
@@ -375,15 +319,7 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public List<String> suggest(String prefix, int size) {
         try {
-            SearchResponse<Void> response = elasticsearchClient.search(builder -> builder
-                    .index(indexName())
-                    .size(0)
-                    .suggest(suggest -> suggest.suggesters(SUGGESTER_NAME, suggester -> suggester
-                            .prefix(prefix)
-                            .completion(completion -> completion
-                                    .field("suggest")
-                                    .size(size)
-                                    .skipDuplicates(true)))), Void.class);
+            SearchResponse<Void> response = elasticsearchClient.search(builder -> builder.index(indexName()).size(0).suggest(suggest -> suggest.suggesters(SUGGESTER_NAME, suggester -> suggester.prefix(prefix).completion(completion -> completion.field("suggest").size(size).skipDuplicates(true)))), Void.class);
             if (response.suggest() == null) {
                 return List.of();
             }
@@ -391,12 +327,7 @@ public class SearchServiceImpl implements SearchService {
             if (suggestions == null) {
                 return List.of();
             }
-            return suggestions.stream()
-                    .filter(Suggestion::isCompletion)
-                    .flatMap(suggestion -> suggestion.completion().options().stream())
-                    .map(CompletionSuggestOption::text)
-                    .filter(Objects::nonNull)
-                    .toList();
+            return suggestions.stream().filter(Suggestion::isCompletion).flatMap(suggestion -> suggestion.completion().options().stream()).map(CompletionSuggestOption::text).filter(Objects::nonNull).toList();
         } catch (Exception ex) {
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "suggest failed", ex);
         }
@@ -409,25 +340,10 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public NearbySearchResponse nearby(double latitude, double longitude, double radiusKm, int size) {
         try {
-            SearchResponse<ProductDocument> response = elasticsearchClient.search(builder -> builder
-                    .index(indexName())
-                    .size(size)
-                    .query(query -> query.bool(bool -> bool
-                            .filter(filter -> filter.geoDistance(geo -> geo
-                                    .field("location")
-                                    .distance(radiusKm + "km")
-                                    .location(location -> location.latlon(latlon -> latlon
-                                            .lat(latitude)
-                                            .lon(longitude)))))))
-                    .sort(sort -> sort.geoDistance(geo -> geo
-                            .field("location")
-                            .location(location -> location.latlon(latlon -> latlon
-                                    .lat(latitude)
-                                    .lon(longitude)))
-                            // 不指定 unit 时 ES 按米返回，直接当成公里用会差一千倍，
-                            // 而且数值看起来「像公里」，是最难发现的一类 bug
-                            .unit(DistanceUnit.Kilometers)
-                            .order(SortOrder.Asc))), ProductDocument.class);
+            SearchResponse<ProductDocument> response = elasticsearchClient.search(builder -> builder.index(indexName()).size(size).query(query -> query.bool(bool -> bool.filter(filter -> filter.geoDistance(geo -> geo.field("location").distance(radiusKm + "km").location(location -> location.latlon(latlon -> latlon.lat(latitude).lon(longitude))))))).sort(sort -> sort.geoDistance(geo -> geo.field("location").location(location -> location.latlon(latlon -> latlon.lat(latitude).lon(longitude)))
+                    // 不指定 unit 时 ES 按米返回，直接当成公里用会差一千倍，
+                    // 而且数值看起来「像公里」，是最难发现的一类 bug
+                    .unit(DistanceUnit.Kilometers).order(SortOrder.Asc))), ProductDocument.class);
 
             NearbySearchResponse result = new NearbySearchResponse();
             result.setTotal(response.hits().total() == null ? 0L : response.hits().total().value());
@@ -459,25 +375,17 @@ public class SearchServiceImpl implements SearchService {
         if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
             // name 权重 3 倍于 description：标题命中比正文命中更可信，
             // 而 fuzzy 容忍用户打错字，代价是可能召回一些不相关的长尾词
-            bool.must(MultiMatchQuery.of(match -> match
-                    .fields("name^3", "description")
-                    .query(request.getKeyword())
-                    .fuzziness("AUTO"))._toQuery());
+            bool.must(MultiMatchQuery.of(match -> match.fields("name^3", "description").query(request.getKeyword()).fuzziness("AUTO"))._toQuery());
         }
         if (request.getCategory() != null && !request.getCategory().isBlank()) {
             bool.filter(TermQuery.of(term -> term.field("category").value(request.getCategory()))._toQuery());
         }
         if (request.getMinPrice() != null || request.getMaxPrice() != null) {
-            var numberRange = new NumberRangeQuery.Builder()
-                    .field("price")
-                    .gte(request.getMinPrice())
-                    .lte(request.getMaxPrice());
+            var numberRange = new NumberRangeQuery.Builder().field("price").gte(request.getMinPrice()).lte(request.getMaxPrice());
             bool.filter(new RangeQuery.Builder().number(numberRange.build()).build()._toQuery());
         }
         if (!request.isIncludeOffShelf()) {
-            bool.filter(TermQuery.of(term -> term
-                    .field("status")
-                    .value(ProductStatus.ON_SALE.name()))._toQuery());
+            bool.filter(TermQuery.of(term -> term.field("status").value(ProductStatus.ON_SALE.name()))._toQuery());
         }
         return new Query.Builder().bool(bool.build()).build();
     }
@@ -488,16 +396,13 @@ public class SearchServiceImpl implements SearchService {
      */
     private List<SortOptions> sortOptions(String sort) {
         if (ProductSearchRequest.SORT_PRICE_ASC.equals(sort)) {
-            return List.of(SortOptions.of(option -> option
-                    .field(field -> field.field("price").order(SortOrder.Asc))));
+            return List.of(SortOptions.of(option -> option.field(field -> field.field("price").order(SortOrder.Asc))));
         }
         if (ProductSearchRequest.SORT_PRICE_DESC.equals(sort)) {
-            return List.of(SortOptions.of(option -> option
-                    .field(field -> field.field("price").order(SortOrder.Desc))));
+            return List.of(SortOptions.of(option -> option.field(field -> field.field("price").order(SortOrder.Desc))));
         }
         if (ProductSearchRequest.SORT_CREATED_DESC.equals(sort)) {
-            return List.of(SortOptions.of(option -> option
-                    .field(field -> field.field("createTime").order(SortOrder.Desc))));
+            return List.of(SortOptions.of(option -> option.field(field -> field.field("createTime").order(SortOrder.Desc))));
         }
         return List.of(SortOptions.of(option -> option.score(score -> score.order(SortOrder.Desc))));
     }
@@ -508,8 +413,7 @@ public class SearchServiceImpl implements SearchService {
      */
     private List<SortOptions> deepSortOptions(String sort) {
         List<SortOptions> options = new ArrayList<>(sortOptions(sort));
-        options.add(SortOptions.of(option -> option
-                .field(field -> field.field("id").order(SortOrder.Asc))));
+        options.add(SortOptions.of(option -> option.field(field -> field.field("id").order(SortOrder.Asc))));
         return options;
     }
 
@@ -563,12 +467,7 @@ public class SearchServiceImpl implements SearchService {
         if (!Boolean.TRUE.equals(response.errors())) {
             return;
         }
-        String reason = response.items().stream()
-                .filter(item -> item.error() != null)
-                .map(item -> item.id() + ": " + item.error().reason())
-                .limit(3)
-                .reduce((first, second) -> first + "; " + second)
-                .orElse("unknown");
+        String reason = response.items().stream().filter(item -> item.error() != null).map(item -> item.id() + ": " + item.error().reason()).limit(3).reduce((first, second) -> first + "; " + second).orElse("unknown");
         log.error("bulk request reported errors: {}", reason);
         throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "bulk request failed: " + reason);
     }

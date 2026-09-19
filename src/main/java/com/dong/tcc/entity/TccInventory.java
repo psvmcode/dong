@@ -3,6 +3,7 @@ package com.dong.tcc.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * TCC 库存。在 Try-Confirm-Cancel 分布式事务中承担库存的预留与扣减，
  * available 与 frozen 配合实现资源隔离。

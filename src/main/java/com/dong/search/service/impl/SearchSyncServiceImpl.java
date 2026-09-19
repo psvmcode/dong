@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 /**
  * 索引同步实现。
  *
@@ -109,15 +110,11 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         List<Product> products = productMapper.selectAll();
         long esCount = searchService.count();
         if (products.size() > MAX_RECONCILE_SIZE || esCount > MAX_RECONCILE_SIZE) {
-            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED,
-                    "too many rows to reconcile safely: db=" + products.size() + ", es=" + esCount
-                            + ", limit=" + MAX_RECONCILE_SIZE);
+            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "too many rows to reconcile safely: db=" + products.size() + ", es=" + esCount + ", limit=" + MAX_RECONCILE_SIZE);
         }
 
         Map<String, ProductDocument> documents = searchService.listAll(MAX_RECONCILE_SIZE);
-        Set<String> dbIds = products.stream()
-                .map(product -> String.valueOf(product.getId()))
-                .collect(Collectors.toSet());
+        Set<String> dbIds = products.stream().map(product -> String.valueOf(product.getId())).collect(Collectors.toSet());
 
         List<String> missingIds = new ArrayList<>();
         List<String> staleIds = new ArrayList<>();
@@ -134,9 +131,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
             }
         }
 
-        List<String> orphanIds = documents.keySet().stream()
-                .filter(id -> !dbIds.contains(id))
-                .toList();
+        List<String> orphanIds = documents.keySet().stream().filter(id -> !dbIds.contains(id)).toList();
 
         ConsistencyReport report = new ConsistencyReport();
         report.setDbCount(products.size());
@@ -164,9 +159,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         // 不刷新的话调用方紧接着复查会看到同一批差异，像是没修好；
         // 二来定时任务按间隔轮询，无差异也打日志会把日志刷成没什么可看的流水。
         searchService.refresh();
-        log.warn("reconciled search index: db={}, es={}, missing={}, stale={}, orphan={}, repaired={}",
-                products.size(), esCount, missingIds.size(), staleIds.size(), orphanIds.size(),
-                report.getRepairedCount());
+        log.warn("reconciled search index: db={}, es={}, missing={}, stale={}, orphan={}, repaired={}", products.size(), esCount, missingIds.size(), staleIds.size(), orphanIds.size(), report.getRepairedCount());
         return report;
     }
 
@@ -187,9 +180,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
             log.warn("database returns no product, skip orphan cleanup to avoid wiping the index");
             return 0;
         }
-        Set<String> dbIds = products.stream()
-                .map(product -> String.valueOf(product.getId()))
-                .collect(Collectors.toSet());
+        Set<String> dbIds = products.stream().map(product -> String.valueOf(product.getId())).collect(Collectors.toSet());
         return (int) searchService.deleteExcept(dbIds);
     }
 

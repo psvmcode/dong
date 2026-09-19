@@ -4,6 +4,7 @@ import com.dong.tcc.enums.TccTransactionStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * TCC 全局事务。记录分布式事务的整体状态与过期时间，
  * 恢复任务定时扫描并推进超时事务。

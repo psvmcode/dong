@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
+
 /**
  * 秒杀订单异步建单。库存扣减已在 Redis 完成，这里只负责落库。
  *
@@ -48,9 +49,8 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
      */
     @Override
     public boolean handle(String key, String payload) {
-        Map<String, Object> message = JsonUtils.fromJson(payload,
-                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-                });
+        Map<String, Object> message = JsonUtils.fromJson(payload, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+        });
         String orderNo = String.valueOf(message.get("orderNo"));
         Long activityId = Long.valueOf(String.valueOf(message.get("activityId")));
         Long userId = Long.valueOf(String.valueOf(message.get("userId")));

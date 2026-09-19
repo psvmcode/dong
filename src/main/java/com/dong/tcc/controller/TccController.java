@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+
 /**
  * 分布式事务 TCC。三阶段依次是 Try 冻结资源、Confirm 确认扣减、Cancel 释放冻结。
  *
@@ -51,11 +52,7 @@ public class TccController {
      */
     @PostMapping("/seed")
     @Operation(summary = "初始化库存与账户，作为演示数据")
-    public Result<Void> seed(@RequestParam Long userId,
-                             @RequestParam Long productId,
-                             @RequestParam(defaultValue = "100")
-                             @Min(0) @Max(1_000_000) int available,
-                             @RequestParam(defaultValue = "100000") long balance) {
+    public Result<Void> seed(@RequestParam Long userId, @RequestParam Long productId, @RequestParam(defaultValue = "100") @Min(0) @Max(1_000_000) int available, @RequestParam(defaultValue = "100000") long balance) {
         tccCoordinatorService.seed(userId, productId, available, balance);
         return Result.success();
     }
@@ -74,8 +71,7 @@ public class TccController {
      */
     @GetMapping("/{xid}")
     @Operation(summary = "查询事务状态")
-    public Result<Map<String, Object>> status(@PathVariable
- @NotBlank @Size(max = 128) String xid) {
+    public Result<Map<String, Object>> status(@PathVariable @NotBlank @Size(max = 128) String xid) {
         return Result.success(tccCoordinatorService.status(xid));
     }
 
@@ -84,8 +80,7 @@ public class TccController {
      */
     @GetMapping("/{xid}/branches")
     @Operation(summary = "查询事务的各分支记录")
-    public Result<List<TccBranch>> branches(@PathVariable
- @NotBlank @Size(max = 128) String xid) {
+    public Result<List<TccBranch>> branches(@PathVariable @NotBlank @Size(max = 128) String xid) {
         return Result.success(tccCoordinatorService.branches(xid));
     }
 

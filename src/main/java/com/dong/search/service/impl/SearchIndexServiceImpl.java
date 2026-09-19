@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.List;
+
 /**
  * 索引治理实现。
  *
@@ -60,10 +61,7 @@ public class SearchIndexServiceImpl implements SearchIndexService {
      * <p>这里直接内联在索引设置里，改规则要重建索引才生效（改 analyzer 属于改 settings）。
      * 数据量大了应该换成同义词文件放磁盘，让 ES 定时热加载。
      */
-    private static final List<String> SYNONYM_RULES = List.of(
-            "手机,智能手机,移动电话",
-            "电脑,计算机,笔记本",
-            "云服务器,云服务,ecs");
+    private static final List<String> SYNONYM_RULES = List.of("手机,智能手机,移动电话", "电脑,计算机,笔记本", "云服务器,云服务,ecs");
 
     /**
      * 索引里的日期格式，接受 ISO 时间或时间戳两种写法。
@@ -117,10 +115,7 @@ public class SearchIndexServiceImpl implements SearchIndexService {
         String alias = indexNameResolver.resolve(IndexNameResolver.PRODUCT_INDEX);
         try {
             var response = elasticsearchClient.indices().getAlias(request -> request.name(alias));
-            return response.result().keySet().stream()
-                    .findFirst()
-                    .orElseThrow(() -> new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE,
-                            "alias " + alias + " points to no index"));
+            return response.result().keySet().stream().findFirst().orElseThrow(() -> new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "alias " + alias + " points to no index"));
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -135,17 +130,11 @@ public class SearchIndexServiceImpl implements SearchIndexService {
     public RebuildResponse rebuild() {
         String alias = indexNameResolver.resolve(IndexNameResolver.PRODUCT_INDEX);
         String current = currentIndex();
-        String next = indexNameResolver.versioned(IndexNameResolver.PRODUCT_INDEX,
-                indexNameResolver.versionOf(current) + 1);
+        String next = indexNameResolver.versioned(IndexNameResolver.PRODUCT_INDEX, indexNameResolver.versionOf(current) + 1);
         try {
             createIndex(next);
-            var reindex = elasticsearchClient.reindex(request -> request
-                    .source(source -> source.index(current))
-                    .dest(dest -> dest.index(next))
-                    .refresh(true));
-            elasticsearchClient.indices().updateAliases(request -> request
-                    .actions(action -> action.remove(remove -> remove.index(current).alias(alias)))
-                    .actions(action -> action.add(add -> add.index(next).alias(alias))));
+            var reindex = elasticsearchClient.reindex(request -> request.source(source -> source.index(current)).dest(dest -> dest.index(next)).refresh(true));
+            elasticsearchClient.indices().updateAliases(request -> request.actions(action -> action.remove(remove -> remove.index(current).alias(alias))).actions(action -> action.add(add -> add.index(next).alias(alias))));
             elasticsearchClient.indices().delete(request -> request.index(current));
             log.info("index rebuilt: {} -> {} (alias {}, {} docs moved)", current, next, alias, reindex.total());
 
@@ -167,10 +156,7 @@ public class SearchIndexServiceImpl implements SearchIndexService {
     private void migrateLegacyIndex(String legacyIndex, String target) throws IOException {
         if (!elasticsearchClient.indices().exists(request -> request.index(target)).value()) {
             createIndex(target);
-            var reindex = elasticsearchClient.reindex(request -> request
-                    .source(source -> source.index(legacyIndex))
-                    .dest(dest -> dest.index(target))
-                    .refresh(true));
+            var reindex = elasticsearchClient.reindex(request -> request.source(source -> source.index(legacyIndex)).dest(dest -> dest.index(target)).refresh(true));
             log.info("migrated {} docs from legacy index {} to {}", reindex.total(), legacyIndex, target);
         }
         elasticsearchClient.indices().delete(request -> request.index(legacyIndex));
@@ -181,10 +167,7 @@ public class SearchIndexServiceImpl implements SearchIndexService {
      * 索引健康度永远进不了 green；单节点下副本本来也没有可用性收益。
      */
     private void createIndex(String index) throws IOException {
-        elasticsearchClient.indices().create(request -> request
-                .index(index)
-                .mappings(mapping())
-                .settings(settings()));
+        elasticsearchClient.indices().create(request -> request.index(index).mappings(mapping()).settings(settings()));
         log.info("index {} created with ik analyzer mapping", index);
     }
 
@@ -192,36 +175,14 @@ public class SearchIndexServiceImpl implements SearchIndexService {
      * 索引映射。字段类型逐个写死，见类注释。
      */
     private TypeMapping mapping() {
-        return TypeMapping.of(builder -> builder
-                .properties("id", Property.of(property -> property.keyword(keyword -> keyword)))
-                .properties("name", Property.of(property -> property.text(text -> text
-                        .analyzer(ANALYZER_INDEX)
-                        .searchAnalyzer(ANALYZER_SEARCH_SYNONYM))))
-                .properties("category", Property.of(property -> property.keyword(keyword -> keyword)))
-                .properties("description", Property.of(property -> property.text(text -> text
-                        .analyzer(ANALYZER_INDEX)
-                        .searchAnalyzer(ANALYZER_SEARCH))))
-                .properties("price", Property.of(property -> property.double_(number -> number)))
-                .properties("stock", Property.of(property -> property.integer(number -> number)))
-                .properties("status", Property.of(property -> property.keyword(keyword -> keyword)))
-                .properties("suggest", Property.of(property -> property.completion(completion -> completion)))
-                .properties("location", Property.of(property -> property.geoPoint(geoPoint -> geoPoint)))
-                .properties("createTime", Property.of(property -> property.date(date -> date.format(DATE_FORMAT)))));
+        return TypeMapping.of(builder -> builder.properties("id", Property.of(property -> property.keyword(keyword -> keyword))).properties("name", Property.of(property -> property.text(text -> text.analyzer(ANALYZER_INDEX).searchAnalyzer(ANALYZER_SEARCH_SYNONYM)))).properties("category", Property.of(property -> property.keyword(keyword -> keyword))).properties("description", Property.of(property -> property.text(text -> text.analyzer(ANALYZER_INDEX).searchAnalyzer(ANALYZER_SEARCH)))).properties("price", Property.of(property -> property.double_(number -> number))).properties("stock", Property.of(property -> property.integer(number -> number))).properties("status", Property.of(property -> property.keyword(keyword -> keyword))).properties("suggest", Property.of(property -> property.completion(completion -> completion))).properties("location", Property.of(property -> property.geoPoint(geoPoint -> geoPoint))).properties("createTime", Property.of(property -> property.date(date -> date.format(DATE_FORMAT)))));
     }
 
     /**
      * 索引设置。同义词只在查询时展开，见常量注释。
      */
     private IndexSettings settings() {
-        return IndexSettings.of(builder -> builder
-                .numberOfShards("1")
-                .numberOfReplicas("0")
-                .analysis(analysis -> analysis
-                        .filter(SYNONYM_FILTER, filter -> filter.definition(definition -> definition
-                                .synonymGraph(synonym -> synonym.lenient(true).synonyms(SYNONYM_RULES))))
-                        .analyzer(ANALYZER_SEARCH_SYNONYM, analyzer -> analyzer.custom(custom -> custom
-                                .tokenizer(ANALYZER_SEARCH)
-                                .filter("lowercase", SYNONYM_FILTER)))));
+        return IndexSettings.of(builder -> builder.numberOfShards("1").numberOfReplicas("0").analysis(analysis -> analysis.filter(SYNONYM_FILTER, filter -> filter.definition(definition -> definition.synonymGraph(synonym -> synonym.lenient(true).synonyms(SYNONYM_RULES)))).analyzer(ANALYZER_SEARCH_SYNONYM, analyzer -> analyzer.custom(custom -> custom.tokenizer(ANALYZER_SEARCH).filter("lowercase", SYNONYM_FILTER)))));
     }
 
 }

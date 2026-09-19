@@ -3,6 +3,7 @@ package com.dong.search.dto;
 import lombok.Data;
 
 import java.util.List;
+
 /**
  * 深分页结果。
  *

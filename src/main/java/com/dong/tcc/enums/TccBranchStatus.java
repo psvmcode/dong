@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
 /**
  * TCC 分支事务状态。记录每个分支在 Try-Confirm-Cancel 三阶段中的状态。
  */

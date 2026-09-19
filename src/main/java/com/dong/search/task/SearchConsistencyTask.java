@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
 /**
  * 索引一致性兜底任务。
  *
@@ -29,8 +30,7 @@ public class SearchConsistencyTask {
      * 定期对账并自动修复。修了什么由同步服务负责打日志，这里只兜住异常：
      * 定时任务抛出的异常会被调度线程直接吞掉，不打日志就只能看到任务「静默地不再工作」。
      */
-    @Scheduled(fixedDelayString = "${dong.elasticsearch.reconcile-interval-ms:600000}",
-            initialDelayString = "${dong.elasticsearch.reconcile-initial-delay-ms:60000}")
+    @Scheduled(fixedDelayString = "${dong.elasticsearch.reconcile-interval-ms:600000}", initialDelayString = "${dong.elasticsearch.reconcile-initial-delay-ms:60000}")
     public void reconcile() {
         try {
             searchSyncService.repairConsistency();

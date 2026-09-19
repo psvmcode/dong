@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
 /**
  * 超时未支付订单回收。库存扣减是即时生效的，
  * 若不回收，用户拍下不付款就会永久占用库存，这是秒杀场景必须处理的漏洞。
@@ -51,8 +52,7 @@ public class SeckillTimeoutTask {
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
     public void releaseUnpaidOrders() {
-        List<SeckillOrder> candidates = seckillOrderMapper.selectTimeoutCandidates(
-                SeckillOrderStatus.PENDING_PAYMENT.getCode(), paymentTimeoutMinutes);
+        List<SeckillOrder> candidates = seckillOrderMapper.selectTimeoutCandidates(SeckillOrderStatus.PENDING_PAYMENT.getCode(), paymentTimeoutMinutes);
         if (candidates.isEmpty()) {
             return;
         }
