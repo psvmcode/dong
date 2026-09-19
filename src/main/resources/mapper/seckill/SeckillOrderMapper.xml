@@ -33,7 +33,7 @@
         select count(1)
         from seckill_order
         where activity_id = #{activityId}
-          and user_id = #{userId}
+        and user_id = #{userId}
     </select>
 
     <!-- 查超时未支付订单，供定时任务回收 -->
@@ -42,7 +42,7 @@
         <include refid="orderColumns"/>
         from seckill_order
         where status = #{status}
-          and create_time &lt;= date_sub(now(), interval #{minutes} minute)
+        and create_time &lt;= date_sub(now(), interval #{minutes} minute)
         limit 200
     </select>
 

@@ -29,7 +29,7 @@
         select id, packet_no, seq, amount, status, user_id, grab_time, create_time, update_time
         from red_packet_item
         where packet_no = #{packetNo}
-          and status = 0
+        and status = 0
         order by seq asc
     </select>
 
@@ -38,8 +38,8 @@
         select id, packet_no, seq, amount, status, user_id, grab_time, create_time, update_time
         from red_packet_item
         where packet_no = #{packetNo}
-          and status = 0
-          and seq &gt;= #{seqFrom}
+        and status = 0
+        and seq &gt;= #{seqFrom}
         order by seq asc
         limit 1
     </select>
@@ -47,24 +47,24 @@
     <!-- 占位领取，status = 0 是并发下唯一的获胜条件 -->
     <update id="claim">
         update red_packet_item
-        set status    = 1,
-            user_id   = #{userId},
-            grab_time = now()
+        set status = 1,
+        user_id = #{userId},
+        grab_time = now()
         where packet_no = #{packetNo}
-          and seq = #{seq}
-          and status = 0
+        and seq = #{seq}
+        and status = 0
     </update>
 
     <!-- 退回已占位的份额，只退自己占的那一份 -->
     <update id="release">
         update red_packet_item
-        set status    = 0,
-            user_id   = null,
-            grab_time = null
+        set status = 0,
+        user_id = null,
+        grab_time = null
         where packet_no = #{packetNo}
-          and seq = #{seq}
-          and status = 1
-          and user_id = #{userId}
+        and seq = #{seq}
+        and status = 1
+        and user_id = #{userId}
     </update>
 
     <!-- 未领取份数 -->
@@ -72,7 +72,7 @@
         select count(1)
         from red_packet_item
         where packet_no = #{packetNo}
-          and status = 0
+        and status = 0
     </select>
 
     <!-- 未领取金额总和，无记录时返回 0 而不是 null -->
@@ -80,7 +80,7 @@
         select coalesce(sum(amount), 0)
         from red_packet_item
         where packet_no = #{packetNo}
-          and status = 0
+        and status = 0
     </select>
 
     <!-- 该用户是否已领过 -->
@@ -88,7 +88,7 @@
         select count(1)
         from red_packet_item
         where packet_no = #{packetNo}
-          and user_id = #{userId}
+        and user_id = #{userId}
     </select>
 
 </mapper>

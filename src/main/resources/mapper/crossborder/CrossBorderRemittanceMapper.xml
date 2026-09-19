@@ -103,22 +103,22 @@
         select count(*)
         from cross_border_remittance
         where status = #{status}
-          and create_time &lt; #{threshold}
+        and create_time &lt; #{threshold}
     </select>
 
     <!-- 递增补偿重试次数 -->
     <update id="increaseRetryCount">
         update cross_border_remittance
-        set retry_count  = retry_count + 1,
-            update_time = now()
+        set retry_count = retry_count + 1,
+        update_time = now()
         where remittance_no = #{remittanceNo}
     </update>
 
     <!-- 重置补偿重试次数，人工介入后让单子重新进入补偿 -->
     <update id="resetRetryCount">
         update cross_border_remittance
-        set retry_count  = 0,
-            update_time = now()
+        set retry_count = 0,
+        update_time = now()
         where remittance_no = #{remittanceNo}
     </update>
 
@@ -133,52 +133,52 @@
     <insert id="insert" parameterType="com.dong.crossborder.entity.CrossBorderRemittance"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_remittance (remittance_no, idempotent_key, payer_account_id, payee_account_id,
-                                             source_currency, target_currency, source_amount, exchange_rate,
-                                             target_amount, fee_amount, channel, status, compliance_status,
-                                             quote_no, batch_no, fail_reason, version, retry_count)
+        source_currency, target_currency, source_amount, exchange_rate,
+        target_amount, fee_amount, channel, status, compliance_status,
+        quote_no, batch_no, fail_reason, version, retry_count)
         values (#{remittanceNo}, #{idempotentKey}, #{payerAccountId}, #{payeeAccountId},
-                #{sourceCurrency}, #{targetCurrency}, #{sourceAmount}, #{exchangeRate},
-                #{targetAmount}, #{feeAmount}, #{channel}, #{status}, #{complianceStatus},
-                #{quoteNo}, #{batchNo}, #{failReason}, #{version}, #{retryCount})
+        #{sourceCurrency}, #{targetCurrency}, #{sourceAmount}, #{exchangeRate},
+        #{targetAmount}, #{feeAmount}, #{channel}, #{status}, #{complianceStatus},
+        #{quoteNo}, #{batchNo}, #{failReason}, #{version}, #{retryCount})
     </insert>
 
     <!-- 乐观锁推进状态，期望状态与版本号都匹配才更新 -->
     <update id="updateStatus">
         update cross_border_remittance
-        set status   = #{status},
-            version  = version + 1,
-            update_time = now()
+        set status = #{status},
+        version = version + 1,
+        update_time = now()
         where remittance_no = #{remittanceNo}
-          and status = #{expectedStatus}
-          and version = #{version}
+        and status = #{expectedStatus}
+        and version = #{version}
     </update>
 
     <!-- 回写批次号 -->
     <update id="updateBatchNo">
         update cross_border_remittance
         set batch_no = #{batchNo},
-            update_time = now()
+        update_time = now()
         where remittance_no = #{remittanceNo}
     </update>
 
     <!-- 审核放行后回填成交要素，不带 version 条件：调用前已用 updateStatus 独占抢占 -->
     <update id="updateSettlementTerms">
         update cross_border_remittance
-        set exchange_rate     = #{exchangeRate},
-            fee_amount        = #{feeAmount},
-            target_amount     = #{targetAmount},
-            compliance_status = #{complianceStatus},
-            update_time       = now()
+        set exchange_rate = #{exchangeRate},
+        fee_amount = #{feeAmount},
+        target_amount = #{targetAmount},
+        compliance_status = #{complianceStatus},
+        update_time = now()
         where remittance_no = #{remittanceNo}
     </update>
 
     <!-- 失败并记录原因 -->
     <update id="updateFailReason">
         update cross_border_remittance
-        set status      = #{status},
-            fail_reason = #{failReason},
-            version     = version + 1,
-            update_time = now()
+        set status = #{status},
+        fail_reason = #{failReason},
+        version = version + 1,
+        update_time = now()
         where remittance_no = #{remittanceNo}
     </update>
 
@@ -186,7 +186,7 @@
     <update id="updateQuoteNo">
         update cross_border_remittance
         set quote_no = #{quoteNo},
-            update_time = now()
+        update_time = now()
         where remittance_no = #{remittanceNo}
     </update>
 

@@ -66,13 +66,13 @@
     <!-- 更新商品 -->
     <update id="update" parameterType="com.dong.cache.entity.Product">
         update product
-        set name      = #{name},
-            category  = #{category},
-            price     = #{price},
-            stock     = #{stock},
-            longitude = #{longitude},
-            latitude  = #{latitude},
-            description = #{description}
+        set name = #{name},
+        category = #{category},
+        price = #{price},
+        stock = #{stock},
+        longitude = #{longitude},
+        latitude = #{latitude},
+        description = #{description}
         where id = #{id}
     </update>
 

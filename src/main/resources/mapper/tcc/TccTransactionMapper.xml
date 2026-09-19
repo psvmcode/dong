@@ -59,10 +59,10 @@
     <!-- 查分支记录 -->
     <select id="selectBranch" resultMap="branchMap">
         select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
-               update_time
+        update_time
         from tcc_branch
         where xid = #{xid}
-          and branch_id = #{branchId}
+        and branch_id = #{branchId}
     </select>
 
     <!-- 写入分支记录 -->
@@ -75,16 +75,16 @@
     <!-- 推进分支状态 -->
     <update id="updateBranchStatus">
         update tcc_branch
-        set status        = #{status},
-            error_message = ifnull(#{errorMessage}, '')
+        set status = #{status},
+        error_message = ifnull(#{errorMessage}, '')
         where xid = #{xid}
-          and branch_id = #{branchId}
+        and branch_id = #{branchId}
     </update>
 
     <!-- 查事务全部分支 -->
     <select id="selectBranches" resultMap="branchMap">
         select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
-               update_time
+        update_time
         from tcc_branch
         where xid = #{xid}
         order by id asc
@@ -93,10 +93,10 @@
     <!-- 查待重试分支，恢复任务用 -->
     <select id="selectRetryableBranches" resultMap="branchMap">
         select id, xid, branch_id, status, payload, error_message, next_retry_time, retry_count, create_time,
-               update_time
+        update_time
         from tcc_branch
         where status = #{status}
-          and next_retry_time &lt;= now()
+        and next_retry_time &lt;= now()
         limit #{limit}
     </select>
 

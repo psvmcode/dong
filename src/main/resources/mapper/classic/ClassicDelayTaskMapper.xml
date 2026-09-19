@@ -29,8 +29,8 @@
          本表只有 create_time，状态变更时间由 actual_time 承担 -->
     <update id="updateStatus">
         update classic_delay_task
-        set status      = #{status},
-            actual_time = #{actualTime}
+        set status = #{status},
+        actual_time = #{actualTime}
         where task_no = #{taskNo}
     </update>
 
@@ -43,10 +43,10 @@
     <!-- 按 payload 反查标记已消费，取预计时间最早的一条未消费记录 -->
     <update id="markConsumedByPayload">
         update classic_delay_task
-        set status      = 3,
-            actual_time = #{actualTime}
+        set status = 3,
+        actual_time = #{actualTime}
         where payload = #{payload}
-          and status in (1, 2)
+        and status in (1, 2)
         order by expect_time asc
         limit 1
     </update>
@@ -57,7 +57,7 @@
         <include refid="columns"/>
         from classic_delay_task
         where status in (1, 2)
-          and expect_time &lt;= #{threshold}
+        and expect_time &lt;= #{threshold}
         order by expect_time asc
         limit #{limit}
     </select>

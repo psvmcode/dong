@@ -23,7 +23,7 @@
     <!-- 按报价单号查报价 -->
     <select id="selectByQuoteNo" resultMap="quoteMap">
         select id, quote_no, currency_pair, bid_rate, ask_rate, locked_rate, status, expire_time,
-               remittance_no, create_time, update_time
+        remittance_no, create_time, update_time
         from cross_border_fx_quote
         where quote_no = #{quoteNo}
     </select>
@@ -31,11 +31,11 @@
     <!-- 按货币对与状态查可用报价 -->
     <select id="selectByPairAndStatus" resultMap="quoteMap">
         select id, quote_no, currency_pair, bid_rate, ask_rate, locked_rate, status, expire_time,
-               remittance_no, create_time, update_time
+        remittance_no, create_time, update_time
         from cross_border_fx_quote
         where currency_pair = #{currencyPair}
-          and status = #{status}
-          and expire_time > now()
+        and status = #{status}
+        and expire_time > now()
         order by id asc
         limit #{limit}
     </select>
@@ -44,20 +44,20 @@
     <insert id="insert" parameterType="com.dong.crossborder.entity.FxQuote"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_fx_quote (quote_no, currency_pair, bid_rate, ask_rate, locked_rate,
-                                           status, expire_time, remittance_no)
+        status, expire_time, remittance_no)
         values (#{quoteNo}, #{currencyPair}, #{bidRate}, #{askRate}, #{lockedRate},
-                #{status}, #{expireTime}, #{remittanceNo})
+        #{status}, #{expireTime}, #{remittanceNo})
     </insert>
 
     <!-- 乐观锁锁定报价，状态与有效期都匹配才更新 -->
     <update id="lock">
         update cross_border_fx_quote
-        set status        = 2,
-            remittance_no = #{remittanceNo},
-            locked_rate   = #{lockedRate}
+        set status = 2,
+        remittance_no = #{remittanceNo},
+        locked_rate = #{lockedRate}
         where quote_no = #{quoteNo}
-          and status = 1
-          and expire_time > now()
+        and status = 1
+        and expire_time > now()
     </update>
 
     <!-- 推进报价状态 -->
@@ -72,7 +72,7 @@
         update cross_border_fx_quote
         set status = 4
         where status = 1
-          and expire_time &lt;= #{now}
+        and expire_time &lt;= #{now}
     </update>
 
     <!-- 清空报价，实验环境用 -->

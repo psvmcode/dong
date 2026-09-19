@@ -49,9 +49,9 @@
     <insert id="insert" parameterType="com.dong.order.entity.TradeOrder"
             useGeneratedKeys="true" keyProperty="id">
         insert into trade_order (order_no, user_id, product_name, quantity, pay_amount, refund_amount,
-                                 status, refund_from, tracking_no, pay_no, urge_count, version)
+        status, refund_from, tracking_no, pay_no, urge_count, version)
         values (#{orderNo}, #{userId}, #{productName}, #{quantity}, #{payAmount}, #{refundAmount},
-                #{status}, #{refundFrom}, #{trackingNo}, #{payNo}, #{urgeCount}, #{version})
+        #{status}, #{refundFrom}, #{trackingNo}, #{payNo}, #{urgeCount}, #{version})
     </insert>
 
     <!-- 乐观锁推进状态，业务字段只写非空值，防止旧值覆盖新值 -->
@@ -67,15 +67,15 @@
             update_time = now()
         </set>
         where order_no = #{order.orderNo}
-          and status = #{expected}
-          and version = #{order.version}
+        and status = #{expected}
+        and version = #{order.version}
     </update>
 
     <!-- 无保护推进状态，不带期望状态与版本号，并发下会互相覆盖 -->
     <update id="updateStatusUnlocked">
         update trade_order
         set status = #{status},
-            update_time = now()
+        update_time = now()
         where order_no = #{orderNo}
     </update>
 
@@ -83,7 +83,7 @@
     <update id="increaseUrgeCount">
         update trade_order
         set urge_count = urge_count + 1,
-            update_time = now()
+        update_time = now()
         where order_no = #{orderNo}
     </update>
 

@@ -51,8 +51,8 @@
     <!-- 启停短链并设置过期时间 -->
     <update id="updateStatus">
         update short_url
-        set enabled     = #{enabled},
-            expire_time = #{expireTime}
+        set enabled = #{enabled},
+        expire_time = #{expireTime}
         where code = #{code}
     </update>
 

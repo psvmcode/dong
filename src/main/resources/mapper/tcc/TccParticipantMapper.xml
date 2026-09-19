@@ -52,9 +52,9 @@
     <update id="freezeInventory">
         update tcc_inventory
         set available = available - #{quantity},
-            frozen    = frozen + #{quantity}
+        frozen = frozen + #{quantity}
         where product_id = #{productId}
-          and available &gt;= #{quantity}
+        and available &gt;= #{quantity}
     </update>
 
     <!-- Confirm 阶段扣减冻结库存 -->
@@ -62,16 +62,16 @@
         update tcc_inventory
         set frozen = frozen - #{quantity}
         where product_id = #{productId}
-          and frozen &gt;= #{quantity}
+        and frozen &gt;= #{quantity}
     </update>
 
     <!-- Cancel 阶段释放冻结库存 -->
     <update id="cancelInventory">
         update tcc_inventory
         set available = available + #{quantity},
-            frozen    = frozen - #{quantity}
+        frozen = frozen - #{quantity}
         where product_id = #{productId}
-          and frozen &gt;= #{quantity}
+        and frozen &gt;= #{quantity}
     </update>
 
     <!-- 查账户 -->
@@ -92,9 +92,9 @@
     <update id="freezeAccount">
         update tcc_account
         set balance = balance - #{amount},
-            frozen  = frozen + #{amount}
+        frozen = frozen + #{amount}
         where user_id = #{userId}
-          and balance &gt;= #{amount}
+        and balance &gt;= #{amount}
     </update>
 
     <!-- Confirm 阶段扣减冻结余额 -->
@@ -102,16 +102,16 @@
         update tcc_account
         set frozen = frozen - #{amount}
         where user_id = #{userId}
-          and frozen &gt;= #{amount}
+        and frozen &gt;= #{amount}
     </update>
 
     <!-- Cancel 阶段释放冻结余额 -->
     <update id="cancelAccount">
         update tcc_account
         set balance = balance + #{amount},
-            frozen  = frozen - #{amount}
+        frozen = frozen - #{amount}
         where user_id = #{userId}
-          and frozen &gt;= #{amount}
+        and frozen &gt;= #{amount}
     </update>
 
     <!-- 按全局事务查订单 -->

@@ -24,7 +24,7 @@
         <include refid="columns"/>
         from cross_border_fx_rate
         where currency = #{currency}
-          and status = 1
+        and status = 1
     </select>
 
     <select id="selectAll" resultMap="rateMap">
@@ -42,8 +42,8 @@
 
     <update id="updateRate">
         update cross_border_fx_rate
-        set usd_rate    = #{usdRate},
-            update_time = now()
+        set usd_rate = #{usdRate},
+        update_time = now()
         where currency = #{currency}
     </update>
 

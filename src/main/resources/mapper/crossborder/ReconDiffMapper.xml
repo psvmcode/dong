@@ -21,7 +21,7 @@
     <!-- 查批次的差异记录 -->
     <select id="selectByBatchNo" resultMap="diffMap">
         select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
-               create_time, update_time
+        create_time, update_time
         from cross_border_recon_diff
         where batch_no = #{batchNo}
         order by id asc
@@ -30,7 +30,7 @@
     <!-- 最近差异记录 -->
     <select id="selectAll" resultMap="diffMap">
         select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
-               create_time, update_time
+        create_time, update_time
         from cross_border_recon_diff
         order by id desc
         limit #{limit}
@@ -39,7 +39,7 @@
     <!-- 未处理差异 -->
     <select id="selectUnhandled" resultMap="diffMap">
         select id, batch_no, remittance_no, diff_type, local_amount, channel_amount, handle_status,
-               create_time, update_time
+        create_time, update_time
         from cross_border_recon_diff
         where handle_status = 0
         order by id asc
@@ -50,18 +50,18 @@
     <insert id="insert" parameterType="com.dong.crossborder.entity.ReconDiff"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
-                                             channel_amount, handle_status)
+        channel_amount, handle_status)
         values (#{batchNo}, #{remittanceNo}, #{diffType}, #{localAmount}, #{channelAmount}, #{handleStatus})
     </insert>
 
     <!-- 批量写入差异，一轮对账一次落库 -->
     <insert id="batchInsert" parameterType="java.util.List">
         insert into cross_border_recon_diff (batch_no, remittance_no, diff_type, local_amount,
-                                             channel_amount, handle_status)
+        channel_amount, handle_status)
         values
         <foreach collection="items" item="item" separator=",">
             (#{item.batchNo}, #{item.remittanceNo}, #{item.diffType}, #{item.localAmount},
-             #{item.channelAmount}, #{item.handleStatus})
+            #{item.channelAmount}, #{item.handleStatus})
         </foreach>
     </insert>
 
@@ -77,25 +77,25 @@
         select count(*)
         from cross_border_recon_diff
         where batch_no = #{batchNo}
-          and diff_type = #{diffType}
+        and diff_type = #{diffType}
     </select>
 
     <!-- 批量标记批次内差异已处理 -->
     <update id="markHandled">
         update cross_border_recon_diff
         set handle_status = 1,
-            update_time = now()
+        update_time = now()
         where batch_no = #{batchNo}
-          and handle_status = 0
+        and handle_status = 0
     </update>
 
     <!-- 单笔标记已处理 -->
     <update id="markOneHandled">
         update cross_border_recon_diff
         set handle_status = 1,
-            update_time = now()
+        update_time = now()
         where id = #{id}
-          and handle_status = 0
+        and handle_status = 0
     </update>
 
     <!-- 清空批次差异，对账重跑用 -->

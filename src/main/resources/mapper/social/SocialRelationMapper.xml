@@ -14,7 +14,7 @@
     <delete id="delete">
         delete from social_relation
         where follower_id = #{followerId}
-          and followee_id = #{followeeId}
+        and followee_id = #{followeeId}
     </delete>
 
     <!-- 判断是否已关注 -->
@@ -22,7 +22,7 @@
         select count(1)
         from social_relation
         where follower_id = #{followerId}
-          and followee_id = #{followeeId}
+        and followee_id = #{followeeId}
     </select>
 
     <!-- 查关注列表 -->

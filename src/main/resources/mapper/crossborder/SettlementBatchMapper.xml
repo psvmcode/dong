@@ -24,7 +24,7 @@
     <!-- 按批次号查批次 -->
     <select id="selectByBatchNo" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
-               create_time, update_time
+        create_time, update_time
         from cross_border_settlement_batch
         where batch_no = #{batchNo}
     </select>
@@ -32,7 +32,7 @@
     <!-- 按状态查批次 -->
     <select id="selectByStatus" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
-               create_time, update_time
+        create_time, update_time
         from cross_border_settlement_batch
         where status = #{status}
         order by id asc
@@ -42,11 +42,11 @@
     <!-- 查渠道与币种的打开批次，实时清算归批用 -->
     <select id="selectOpenByChannelAndCurrency" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
-               create_time, update_time
+        create_time, update_time
         from cross_border_settlement_batch
         where status = 1
-          and channel = #{channel}
-          and currency = #{currency}
+        and channel = #{channel}
+        and currency = #{currency}
         order by id desc
         limit 1
     </select>
@@ -54,7 +54,7 @@
     <!-- 全部批次 -->
     <select id="selectAll" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
-               create_time, update_time
+        create_time, update_time
         from cross_border_settlement_batch
         order by id desc
     </select>
@@ -63,7 +63,7 @@
     <insert id="insert" parameterType="com.dong.crossborder.entity.SettlementBatch"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_settlement_batch (batch_no, channel, currency, total_count, total_amount,
-                                                   status, cutoff_time)
+        status, cutoff_time)
         values (#{batchNo}, #{channel}, #{currency}, #{totalCount}, #{totalAmount}, #{status}, #{cutoffTime})
     </insert>
 
@@ -71,7 +71,7 @@
     <update id="updateStatus">
         update cross_border_settlement_batch
         set status = #{status},
-            update_time = now()
+        update_time = now()
         where batch_no = #{batchNo}
     </update>
 
@@ -79,8 +79,8 @@
     <update id="updateTotal">
         update cross_border_settlement_batch
         set total_count = #{totalCount},
-            total_amount = #{totalAmount},
-            update_time = now()
+        total_amount = #{totalAmount},
+        update_time = now()
         where batch_no = #{batchNo}
     </update>
 
@@ -88,9 +88,9 @@
     <update id="closeOverdue">
         update cross_border_settlement_batch
         set status = 2,
-            update_time = now()
+        update_time = now()
         where status = 1
-          and cutoff_time &lt;= #{now}
+        and cutoff_time &lt;= #{now}
     </update>
 
     <!-- 清空批次，实验环境用 -->

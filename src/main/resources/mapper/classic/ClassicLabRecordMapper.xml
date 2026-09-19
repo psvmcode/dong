@@ -15,15 +15,15 @@
         insert into classic_lock_lab_result
         (mode, expected_count, actual_count, lock_acquired, lock_timed_out, lost_updates, elapsed_millis)
         values (#{mode}, #{expectedCount}, #{actualCount}, #{lockAcquired}, #{lockTimedOut},
-                #{lostUpdates}, #{elapsedMillis})
+        #{lostUpdates}, #{elapsedMillis})
     </insert>
 
     <insert id="insertRateLimitResult" parameterType="com.dong.classic.entity.ClassicRateLimitLabResult">
         insert into classic_rate_limit_lab_result
         (biz_key, algorithm, limit_count, window_seconds, attempts,
-         first_burst_allowed, second_burst_allowed, distributed)
+        first_burst_allowed, second_burst_allowed, distributed)
         values (#{bizKey}, #{algorithm}, #{limitCount}, #{windowSeconds}, #{attempts},
-                #{firstBurstAllowed}, #{secondBurstAllowed}, #{distributed})
+        #{firstBurstAllowed}, #{secondBurstAllowed}, #{distributed})
     </insert>
 
     <select id="selectIdGenerated" resultType="com.dong.classic.entity.ClassicIdGenerated">
@@ -36,7 +36,7 @@
 
     <select id="selectLockLabResult" resultType="com.dong.classic.entity.ClassicLockLabResult">
         select id, mode, expected_count, actual_count, lock_acquired, lock_timed_out,
-               lost_updates, elapsed_millis, create_time
+        lost_updates, elapsed_millis, create_time
         from classic_lock_lab_result
         where mode = #{mode}
         order by id desc
@@ -45,7 +45,7 @@
 
     <select id="selectRateLimitResult" resultType="com.dong.classic.entity.ClassicRateLimitLabResult">
         select id, biz_key, algorithm, limit_count, window_seconds, attempts,
-               first_burst_allowed, second_burst_allowed, distributed, create_time
+        first_burst_allowed, second_burst_allowed, distributed, create_time
         from classic_rate_limit_lab_result
         where biz_key = #{bizKey}
         order by id desc

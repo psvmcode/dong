@@ -28,7 +28,7 @@
     <!-- 按红包编号查红包 -->
     <select id="selectByPacketNo" resultMap="redPacketMap">
         select id, packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count, packet_type, status,
-               create_time, update_time
+        create_time, update_time
         from red_packet
         where packet_no = #{packetNo}
     </select>
@@ -37,9 +37,9 @@
     <insert id="insert" parameterType="com.dong.redpacket.entity.RedPacket"
             useGeneratedKeys="true" keyProperty="id">
         insert into red_packet (packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count,
-                                packet_type, status)
+        packet_type, status)
         values (#{packetNo}, #{sponsorId}, #{totalAmount}, #{totalCount}, #{remainAmount}, #{remainCount},
-                #{packetType}, #{status})
+        #{packetType}, #{status})
     </insert>
 
     <!-- 推进红包状态，已处于目标状态就不再写库 -->
@@ -47,7 +47,7 @@
         update red_packet
         set status = #{status}
         where packet_no = #{packetNo}
-          and status &lt;&gt; #{status}
+        and status &lt;&gt; #{status}
     </update>
 
     <!-- 扣减剩余金额与份数。充足条件写在 where 里是防超发的关键：
@@ -55,10 +55,10 @@
     <update id="decreaseRemain">
         update red_packet
         set remain_amount = remain_amount - #{amount},
-            remain_count  = remain_count - #{count}
+        remain_count = remain_count - #{count}
         where packet_no = #{packetNo}
-          and remain_count &gt;= #{count}
-          and remain_amount &gt;= #{amount}
+        and remain_count &gt;= #{count}
+        and remain_amount &gt;= #{amount}
     </update>
 
     <!-- 查领取记录 -->
@@ -81,7 +81,7 @@
         select count(1)
         from red_packet_record
         where packet_no = #{packetNo}
-          and user_id = #{userId}
+        and user_id = #{userId}
     </select>
 
     <!-- 已领取用户 id，重建 Redis 去重集合时使用 -->
@@ -95,14 +95,14 @@
     <update id="updateRemain">
         update red_packet
         set remain_amount = #{remainAmount},
-            remain_count  = #{remainCount}
+        remain_count = #{remainCount}
         where packet_no = #{packetNo}
     </update>
 
     <!-- 未结束的红包，对账任务按主键顺序扫描 -->
     <select id="selectUnfinished" resultMap="redPacketMap">
         select id, packet_no, sponsor_id, total_amount, total_count, remain_amount, remain_count, packet_type, status,
-               create_time, update_time
+        create_time, update_time
         from red_packet
         where status in (0, 1)
         order by id asc

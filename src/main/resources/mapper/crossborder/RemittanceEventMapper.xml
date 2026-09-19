@@ -24,7 +24,7 @@
     <insert id="insert" parameterType="com.dong.crossborder.entity.RemittanceEvent"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_remittance_event (remittance_no, from_status, to_status, event, result, reason,
-                                                  operator)
+        operator)
         values (#{remittanceNo}, #{fromStatus}, #{toStatus}, #{event}, #{result}, #{reason}, #{operator})
     </insert>
 

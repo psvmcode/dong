@@ -51,19 +51,19 @@
 
     <update id="update" parameterType="com.dong.crossborder.entity.ChannelConfig">
         update cross_border_channel_config
-        set eta_minutes  = #{etaMinutes},
-            per_tx_limit = #{perTxLimit},
-            fixed_fee    = #{fixedFee},
-            rate_fee     = #{rateFee},
-            enabled      = #{enabled},
-            update_time  = now()
+        set eta_minutes = #{etaMinutes},
+        per_tx_limit = #{perTxLimit},
+        fixed_fee = #{fixedFee},
+        rate_fee = #{rateFee},
+        enabled = #{enabled},
+        update_time = now()
         where channel = #{channel}
     </update>
 
     <update id="updateEnabled">
         update cross_border_channel_config
-        set enabled     = #{enabled},
-            update_time = now()
+        set enabled = #{enabled},
+        update_time = now()
         where channel = #{channel}
     </update>
 

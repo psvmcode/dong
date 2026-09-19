@@ -43,18 +43,18 @@
     <insert id="insert" parameterType="com.dong.seckill.entity.SeckillActivity"
             useGeneratedKeys="true" keyProperty="id">
         insert into seckill_activity (product_id, title, total_stock, available_stock, unit_price, start_time, end_time,
-                                      status)
+        status)
         values (#{productId}, #{title}, #{totalStock}, #{availableStock}, #{unitPrice}, #{startTime}, #{endTime},
-                #{status})
+        #{status})
     </insert>
 
     <!-- 推进活动状态 -->
     <update id="updateStatus">
         update seckill_activity
-        set status  = #{status},
-            version = version + 1
+        set status = #{status},
+        version = version + 1
         where id = #{id}
-          and version = #{expectedVersion}
+        and version = #{expectedVersion}
     </update>
 
     <!-- 回写 Redis 扣减后的剩余库存 -->

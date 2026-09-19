@@ -26,7 +26,7 @@
     <!-- 按账号查账户 -->
     <select id="selectByAccountNo" resultMap="accountMap">
         select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
-               daily_limit, single_limit, status, create_time, update_time
+        daily_limit, single_limit, status, create_time, update_time
         from cross_border_account
         where account_no = #{accountNo}
     </select>
@@ -34,7 +34,7 @@
     <!-- 按主键查账户 -->
     <select id="selectById" resultMap="accountMap">
         select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
-               daily_limit, single_limit, status, create_time, update_time
+        daily_limit, single_limit, status, create_time, update_time
         from cross_border_account
         where id = #{id}
     </select>
@@ -42,7 +42,7 @@
     <!-- 全部账户 -->
     <select id="selectAll" resultMap="accountMap">
         select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
-               daily_limit, single_limit, status, create_time, update_time
+        daily_limit, single_limit, status, create_time, update_time
         from cross_border_account
         order by id asc
     </select>
@@ -50,7 +50,7 @@
     <!-- 按 id 批量查，列表场景避免 N+1 -->
     <select id="selectByIds" resultMap="accountMap">
         select id, account_no, owner_name, country, currency, balance, frozen_balance, kyc_level,
-               daily_limit, single_limit, status, create_time, update_time
+        daily_limit, single_limit, status, create_time, update_time
         from cross_border_account
         where id in
         <foreach collection="ids" item="id" open="(" separator="," close=")">
@@ -62,25 +62,25 @@
     <insert id="insert" parameterType="com.dong.crossborder.entity.CrossBorderAccount"
             useGeneratedKeys="true" keyProperty="id">
         insert into cross_border_account (account_no, owner_name, country, currency, balance, frozen_balance,
-                                         kyc_level, daily_limit, single_limit, status)
+        kyc_level, daily_limit, single_limit, status)
         values (#{accountNo}, #{ownerName}, #{country}, #{currency}, #{balance}, #{frozenBalance},
-                #{kycLevel}, #{dailyLimit}, #{singleLimit}, #{status})
+        #{kycLevel}, #{dailyLimit}, #{singleLimit}, #{status})
     </insert>
 
     <!-- 扣减余额，带余额充足条件防止扣成负数 -->
     <update id="deduct">
         update cross_border_account
-        set balance  = balance - #{amount},
-            update_time = now()
+        set balance = balance - #{amount},
+        update_time = now()
         where id = #{id}
-          and balance - frozen_balance >= #{amount}
+        and balance - frozen_balance >= #{amount}
     </update>
 
     <!-- 增加余额，入账或退款 -->
     <update id="credit">
         update cross_border_account
-        set balance  = balance + #{amount},
-            update_time = now()
+        set balance = balance + #{amount},
+        update_time = now()
         where id = #{id}
     </update>
 
@@ -88,27 +88,27 @@
     <update id="freeze">
         update cross_border_account
         set frozen_balance = frozen_balance + #{amount},
-            update_time = now()
+        update_time = now()
         where id = #{id}
-          and balance - frozen_balance >= #{amount}
+        and balance - frozen_balance >= #{amount}
     </update>
 
     <!-- 解冻金额 -->
     <update id="unfreeze">
         update cross_border_account
         set frozen_balance = frozen_balance - #{amount},
-            update_time = now()
+        update_time = now()
         where id = #{id}
-          and frozen_balance >= #{amount}
+        and frozen_balance >= #{amount}
     </update>
 
     <!-- 推进账户状态 -->
     <update id="updateStatus">
         update cross_border_account
-        set status      = #{status},
-            update_time = now()
+        set status = #{status},
+        update_time = now()
         where id = #{id}
-          and status = #{expectedStatus}
+        and status = #{expectedStatus}
     </update>
 
     <!-- 清空账户，实验环境用 -->
