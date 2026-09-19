@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+
 /**
  * 限流算法对比实现。四种算法在同一突发流量下放行数量差异明显：
  * 固定窗口在边界处最多放过两倍配额，滑动窗口精确但占内存，
@@ -39,11 +40,9 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
      * 差异只在配额如何恢复，所以没做第二轮时记 -1 以示区别。
      * 失败只记录日志，实验已经跑完，不应因为落库问题丢掉结果。
      */
-    private void persist(String bizKey, String algorithm, long limit, long windowSeconds,
-                         int attempts, long firstBurst, long secondBurst, boolean distributed) {
+    private void persist(String bizKey, String algorithm, long limit, long windowSeconds, int attempts, long firstBurst, long secondBurst, boolean distributed) {
         try {
-            com.dong.classic.entity.ClassicRateLimitLabResult record =
-                    new com.dong.classic.entity.ClassicRateLimitLabResult();
+            com.dong.classic.entity.ClassicRateLimitLabResult record = new com.dong.classic.entity.ClassicRateLimitLabResult();
             record.setBizKey(bizKey);
             record.setAlgorithm(algorithm);
             record.setLimitCount(limit);
@@ -70,8 +69,7 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
      * 对比限流效果。
      */
     @Override
-    public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts,
-                                       boolean distributed, long delayMillis) {
+    public Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts, boolean distributed, long delayMillis) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (RateLimitAlgorithm algorithm : RateLimitAlgorithm.values()) {
             String key = bizKey + ":" + algorithm.name().toLowerCase() + ":" + UUID.randomUUID();
@@ -92,11 +90,9 @@ public class RateLimitLabServiceImpl implements RateLimitLabService {
                 detail.put("recoveredInGap", secondBurst);
             }
             result.put(algorithm.name(), detail);
-            persist(bizKey, algorithm.name(), limit, windowSeconds, attempts,
-                    firstBurst, secondBurst, distributed);
+            persist(bizKey, algorithm.name(), limit, windowSeconds, attempts, firstBurst, secondBurst, distributed);
         }
-        log.info("rate limit comparison finished distributed={} limit={} attempts={} delayMillis={}",
-                distributed, limit, attempts, delayMillis);
+        log.info("rate limit comparison finished distributed={} limit={} attempts={} delayMillis={}", distributed, limit, attempts, delayMillis);
         return result;
     }
 

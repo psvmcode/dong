@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 /**
  * 雪花发号器。
  */
@@ -58,8 +59,7 @@ public class Snowflake {
      * @param workerId     工作节点 id
      * @param dataCenterId 数据中心 id
      */
-    public Snowflake(@Value("${dong.snowflake.worker-id:1}") long workerId,
-                     @Value("${dong.snowflake.data-center-id:1}") long dataCenterId) {
+    public Snowflake(@Value("${dong.snowflake.worker-id:1}") long workerId, @Value("${dong.snowflake.data-center-id:1}") long dataCenterId) {
         if (workerId < 0 || workerId > MAX_WORKER_ID || dataCenterId < 0 || dataCenterId > MAX_DATA_CENTER_ID) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "worker id or data center id out of range");
         }
@@ -93,10 +93,7 @@ public class Snowflake {
         }
 
         lastTimestamp = timestamp;
-        return ((timestamp - EPOCH) << TIMESTAMP_SHIFT)
-                | (dataCenterId << DATA_CENTER_ID_SHIFT)
-                | (workerId << WORKER_ID_SHIFT)
-                | sequence;
+        return ((timestamp - EPOCH) << TIMESTAMP_SHIFT) | (dataCenterId << DATA_CENTER_ID_SHIFT) | (workerId << WORKER_ID_SHIFT) | sequence;
     }
 
     /**

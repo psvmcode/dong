@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * 分布式锁对照实验。不加锁的模式会大量丢失更新，加锁的模式结果精确，
  * 代价是耗时高出一到两个数量级，这就是正确性的成本。
@@ -107,8 +108,7 @@ public class LockLabServiceImpl implements LockLabService {
         redisService.set(key, "0");
         long requested = (long) Math.max(1, threads) * Math.max(1, loops);
         if (requested > MAX_TOTAL_TASKS) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "total tasks " + requested + " exceeds limit " + MAX_TOTAL_TASKS);
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "total tasks " + requested + " exceeds limit " + MAX_TOTAL_TASKS);
         }
         int total = (int) requested;
         long start = System.currentTimeMillis();
@@ -144,10 +144,8 @@ public class LockLabServiceImpl implements LockLabService {
         result.put("lockTimedOut", guarded ? timedOut.get() : 0);
         result.put("lostUpdates", total - actual);
         result.put("elapsedMillis", System.currentTimeMillis() - start);
-        log.info("lock lab mode={} expected={} actual={} acquired={} timedOut={}",
-                result.get("mode"), total, actual, succeeded.get(), timedOut.get());
-        persist(guarded ? "redisson-lock" : "no-lock", total, actual,
-                succeeded.get(), timedOut.get(), System.currentTimeMillis() - start);
+        log.info("lock lab mode={} expected={} actual={} acquired={} timedOut={}", result.get("mode"), total, actual, succeeded.get(), timedOut.get());
+        persist(guarded ? "redisson-lock" : "no-lock", total, actual, succeeded.get(), timedOut.get(), System.currentTimeMillis() - start);
         return result;
     }
 
@@ -156,11 +154,9 @@ public class LockLabServiceImpl implements LockLabService {
      * 锁等待超时次数单独记录，不能混进丢失更新，否则实验结论失真。
      * 失败只记录日志，实验已经跑完，不应因为落库问题丢掉结果。
      */
-    private void persist(String mode, int expected, long actual,
-                         long acquired, long timedOut, long elapsed) {
+    private void persist(String mode, int expected, long actual, long acquired, long timedOut, long elapsed) {
         try {
-            com.dong.classic.entity.ClassicLockLabResult record =
-                    new com.dong.classic.entity.ClassicLockLabResult();
+            com.dong.classic.entity.ClassicLockLabResult record = new com.dong.classic.entity.ClassicLockLabResult();
             record.setMode(mode);
             record.setExpectedCount(expected);
             record.setActualCount((int) actual);

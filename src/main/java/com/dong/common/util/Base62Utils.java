@@ -5,8 +5,7 @@ import com.dong.common.exception.BusinessException;
 
 public final class Base62Utils {
 
-    private static final char[] ALPHABET =
-            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+    private static final char[] ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
     private static final int BASE = ALPHABET.length;
 

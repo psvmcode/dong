@@ -3,6 +3,7 @@ package com.dong.classic.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 限流算法对比结果。
  *
@@ -19,7 +20,6 @@ public class ClassicRateLimitLabResult {
      * 主键
      */
     private Long id;
-
 
 
     /**

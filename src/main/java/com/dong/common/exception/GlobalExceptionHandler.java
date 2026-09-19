@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
 /**
  * 全局异常处理器。
  *
@@ -47,10 +48,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     public Result<Void> handleBindException(BindException ex) {
-        String detail = ex.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(error -> error.getField() + " " + error.getDefaultMessage())
-                .orElse(Constants.MESSAGE_PARAM_INVALID);
+        String detail = ex.getBindingResult().getFieldErrors().stream().findFirst().map(error -> error.getField() + " " + error.getDefaultMessage()).orElse(Constants.MESSAGE_PARAM_INVALID);
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, detail);
     }
 
@@ -71,10 +69,7 @@ public class GlobalExceptionHandler {
      * @param ex 请求异常
      * @return 失败响应
      */
-    @ExceptionHandler({MissingServletRequestParameterException.class,
-            MethodArgumentTypeMismatchException.class,
-            HttpMessageNotReadableException.class,
-            HttpRequestMethodNotSupportedException.class})
+    @ExceptionHandler({MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class, HttpRequestMethodNotSupportedException.class})
     public Result<Void> handleRequestException(Exception ex) {
         return Result.fail(Constants.CODE_PARAM_INVALID, Constants.MESSAGE_PARAM_INVALID, ex.getMessage());
     }
@@ -131,8 +126,7 @@ public class GlobalExceptionHandler {
     public Result<Void> handleUnexpected(Exception ex) {
         String traceId = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         log.error("unexpected error traceId={}", traceId, ex);
-        return Result.fail(Constants.CODE_INTERNAL_ERROR, Constants.MESSAGE_INTERNAL_ERROR,
-                "traceId=" + traceId);
+        return Result.fail(Constants.CODE_INTERNAL_ERROR, Constants.MESSAGE_INTERNAL_ERROR, "traceId=" + traceId);
     }
 
 }

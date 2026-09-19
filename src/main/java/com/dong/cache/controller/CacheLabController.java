@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 /**
  * 缓存实验室。提供可量化对比的实验入口，
  * 核心是穿透实验，其余接口用于观察多级缓存的运行状态。
@@ -107,7 +108,7 @@ public class CacheLabController {
     @GetMapping("/penetration")
     @Operation(summary = "缓存穿透实验，对比空值标记与布隆过滤器两种防护手段")
     public Result<Map<String, Object>> penetration(@RequestParam(defaultValue = "2000")
- @Min(1) @Max(Constants.MAX_BATCH_SIZE) int count,
+                                                   @Min(1) @Max(Constants.MAX_BATCH_SIZE) int count,
                                                    @RequestParam(defaultValue = "false") boolean guarded) {
         return Result.success(cacheLabService.penetration(count, guarded));
     }
@@ -118,7 +119,7 @@ public class CacheLabController {
     @GetMapping("/probe")
     @Operation(summary = "读取缓存，完整走一遍 L1 到 L2 再到回源的链路")
     public Result<String> probe(@RequestParam
- @NotBlank @Size(max = 128) String key,
+                                @NotBlank @Size(max = 128) String key,
                                 @RequestParam(defaultValue = "probe-value")
                                 @NotBlank @Size(max = 4096) String value) {
         return Result.success(multiLevelCache.get(key, String.class, Duration.ofMinutes(5), () -> value));
@@ -130,7 +131,7 @@ public class CacheLabController {
     @DeleteMapping("/probe")
     @Operation(summary = "删除缓存并广播失效事件到其他节点")
     public Result<Void> evict(@RequestParam
- @NotBlank @Size(max = 128) String key) {
+                              @NotBlank @Size(max = 128) String key) {
         multiLevelCache.invalidate(key);
         return Result.success();
     }

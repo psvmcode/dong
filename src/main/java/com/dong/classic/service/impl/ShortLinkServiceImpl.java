@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+
 /**
  * 短链接实现。短码由发号器生成后做 Base62 编码，
  * 同一原始链接每次生成的短码都不同，避免被批量遍历。
@@ -92,16 +93,14 @@ public class ShortLinkServiceImpl implements ShortLinkService {
     /**
      * 创建短链并返回短码。
      *
-     * @param originUrl    原始链接
+     * @param originUrl     原始链接
      * @param expireMinutes 有效分钟数，小于等于 0 表示长期有效
      * @return 短码
      */
     @Override
     public String create(String originUrl, long expireMinutes) {
         validateOriginUrl(originUrl);
-        LocalDateTime expireTime = expireMinutes > 0
-                ? LocalDateTime.now().plusMinutes(expireMinutes)
-                : null;
+        LocalDateTime expireTime = expireMinutes > 0 ? LocalDateTime.now().plusMinutes(expireMinutes) : null;
         String code = Base62Utils.encode(snowflake.nextId());
         ShortLink shortLink = new ShortLink();
         shortLink.setCode(code);
@@ -266,15 +265,12 @@ public class ShortLinkServiceImpl implements ShortLinkService {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "malformed url");
         }
         String scheme = uri.getScheme();
-        if (scheme == null
-                || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "only http and https are allowed");
+        if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "only http and https are allowed");
         }
         String host = uri.getHost();
         if (host == null || isPrivateHost(host)) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID,
-                    "host is not allowed: " + host);
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "host is not allowed: " + host);
         }
     }
 
@@ -288,8 +284,7 @@ public class ShortLinkServiceImpl implements ShortLinkService {
      */
     private boolean isPrivateHost(String host) {
         String lower = host.toLowerCase();
-        if ("localhost".equals(lower) || lower.endsWith(".localhost")
-                || lower.endsWith(".internal") || "0.0.0.0".equals(lower)) {
+        if ("localhost".equals(lower) || lower.endsWith(".localhost") || lower.endsWith(".internal") || "0.0.0.0".equals(lower)) {
             return true;
         }
         java.net.InetAddress address;
@@ -299,10 +294,7 @@ public class ShortLinkServiceImpl implements ShortLinkService {
             // 解析不了主机名，放行到后面由其它环节处理，不在这里误杀
             return false;
         }
-        return address.isLoopbackAddress()
-                || address.isLinkLocalAddress()
-                || address.isSiteLocalAddress()
-                || address.isAnyLocalAddress();
+        return address.isLoopbackAddress() || address.isLinkLocalAddress() || address.isSiteLocalAddress() || address.isAnyLocalAddress();
     }
 
     /**
@@ -312,12 +304,10 @@ public class ShortLinkServiceImpl implements ShortLinkService {
      */
     private void ensureUsable(ShortLink shortLink) {
         if (shortLink.getEnabled() != null && shortLink.getEnabled() == DISABLED) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "short link " + shortLink.getCode() + " is disabled");
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "short link " + shortLink.getCode() + " is disabled");
         }
         if (shortLink.getExpireTime() != null && shortLink.getExpireTime().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT,
-                    "short link " + shortLink.getCode() + " expired at " + shortLink.getExpireTime());
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "short link " + shortLink.getCode() + " expired at " + shortLink.getExpireTime());
         }
     }
 

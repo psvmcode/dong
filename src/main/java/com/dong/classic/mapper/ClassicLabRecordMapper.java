@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+
 /**
  * 实验类场景的落库访问：发号器、锁、限流。
  *
@@ -35,19 +36,16 @@ public interface ClassicLabRecordMapper {
     /**
      * 按策略查最近的发号记录，用于对比性能。
      */
-    List<ClassicIdGenerated> selectIdGenerated(@Param("strategy") String strategy,
-                                               @Param("limit") int limit);
+    List<ClassicIdGenerated> selectIdGenerated(@Param("strategy") String strategy, @Param("limit") int limit);
 
     /**
      * 按模式查最近的锁实验结果。
      */
-    List<ClassicLockLabResult> selectLockLabResult(@Param("mode") String mode,
-                                                   @Param("limit") int limit);
+    List<ClassicLockLabResult> selectLockLabResult(@Param("mode") String mode, @Param("limit") int limit);
 
     /**
      * 按业务键查最近的限流对比结果。
      */
-    List<ClassicRateLimitLabResult> selectRateLimitResult(@Param("bizKey") String bizKey,
-                                                          @Param("limit") int limit);
+    List<ClassicRateLimitLabResult> selectRateLimitResult(@Param("bizKey") String bizKey, @Param("limit") int limit);
 
 }

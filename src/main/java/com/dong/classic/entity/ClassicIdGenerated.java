@@ -3,6 +3,7 @@ package com.dong.classic.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 发号器生成记录。
  *

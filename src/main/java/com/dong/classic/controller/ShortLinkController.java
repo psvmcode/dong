@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+
 /**
  * 短链接。短码由发号器生成后做 Base62 编码，
  * 因此同一个原始链接每次生成的短码都不同，这是刻意设计，避免被批量遍历。
@@ -44,7 +45,7 @@ public class ShortLinkController {
     @PostMapping
     @Operation(summary = "生成短链，返回短码，可指定有效分钟数")
     public Result<String> create(@RequestParam
- @NotBlank @Size(max = 2048) String url,
+                                 @NotBlank @Size(max = 2048) String url,
                                  @RequestParam(defaultValue = "0") @Min(0) @Max(525600) long expireMinutes) {
         return Result.success(shortLinkService.create(url, expireMinutes));
     }
@@ -55,7 +56,7 @@ public class ShortLinkController {
     @PostMapping("/toggle")
     @Operation(summary = "启停短链，停用后立即拒绝跳转")
     public Result<Void> toggle(@RequestParam
- @NotBlank @Size(max = 128) String code, @RequestParam boolean enabled) {
+                               @NotBlank @Size(max = 128) String code, @RequestParam boolean enabled) {
         shortLinkService.toggle(code, enabled);
         return Result.success();
     }
@@ -75,7 +76,7 @@ public class ShortLinkController {
     @GetMapping("/resolve")
     @Operation(summary = "解析短码为原始地址，并累加点击数")
     public Result<String> resolve(@RequestParam
- @NotBlank @Size(max = 128) String code) {
+                                  @NotBlank @Size(max = 128) String code) {
         return Result.success(shortLinkService.resolve(code));
     }
 
@@ -85,7 +86,7 @@ public class ShortLinkController {
     @GetMapping("/detail")
     @Operation(summary = "查询短链详情")
     public Result<ShortLinkResponse> detail(@RequestParam
- @NotBlank @Size(max = 128) String code) {
+                                            @NotBlank @Size(max = 128) String code) {
         return Result.success(ShortLinkResponse.from(shortLinkService.findByCode(code)));
     }
 
@@ -95,7 +96,7 @@ public class ShortLinkController {
     @GetMapping("/hits")
     @Operation(summary = "查询短链被点击的次数")
     public Result<Long> hits(@RequestParam
- @NotBlank @Size(max = 128) String code) {
+                             @NotBlank @Size(max = 128) String code) {
         return Result.success(shortLinkService.hitCount(code));
     }
 
@@ -107,7 +108,7 @@ public class ShortLinkController {
     @GetMapping("/s/{code}")
     @Operation(summary = "短链跳转，用 302 而非 301，否则点击统计会失效")
     public ResponseEntity<Void> redirect(@PathVariable
- @NotBlank @Size(max = 128) String code) {
+                                         @NotBlank @Size(max = 128) String code) {
         String origin = shortLinkService.resolve(code);
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(origin)).build();
     }

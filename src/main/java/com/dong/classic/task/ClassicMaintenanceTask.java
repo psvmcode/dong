@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+
 /**
  * 经典场景的维护任务。
  *
@@ -70,11 +71,9 @@ public class ClassicMaintenanceTask {
         LocalDateTime threshold = LocalDateTime.now().minus(DELAY_GRACE);
         for (ClassicDelayTask task : delayTaskMapper.selectOverdue(threshold, DELAY_LIMIT)) {
             try {
-                delayQueueService.offer(task.getPayload(),
-                        Duration.between(LocalDateTime.now(), LocalDateTime.now().plusSeconds(1)));
+                delayQueueService.offer(task.getPayload(), Duration.between(LocalDateTime.now(), LocalDateTime.now().plusSeconds(1)));
                 delayTaskMapper.increaseRetry(task.getTaskNo());
-                log.warn("delay task re-offered taskNo={} retry={}",
-                        task.getTaskNo(), task.getRetryCount() + 1);
+                log.warn("delay task re-offered taskNo={} retry={}", task.getTaskNo(), task.getRetryCount() + 1);
             } catch (Exception ex) {
                 log.error("compensate delay task failed taskNo={}", task.getTaskNo(), ex);
             }

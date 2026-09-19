@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
 /**
  * 商品接口。它是缓存实验的载体，
  * findById 与 findByIdGuarded 构成一对可直接对比的读路径。
@@ -50,7 +51,7 @@ public class ProductController {
     @GetMapping("/{id}")
     @Operation(summary = "查询商品，依次经过 L1、L2 和数据库")
     public Result<ProductResponse> findById(@PathVariable
- @Positive Long id) {
+                                            @Positive Long id) {
         return Result.success(ProductResponse.from(productService.findById(id)));
     }
 
@@ -61,7 +62,7 @@ public class ProductController {
     @GetMapping("/{id}/guarded")
     @Operation(summary = "查询商品，id 不可能存在时由布隆过滤器提前拒绝")
     public Result<ProductResponse> findByIdGuarded(@PathVariable
- @Positive Long id) {
+                                                   @Positive Long id) {
         return Result.success(ProductResponse.from(productService.findByIdGuarded(id)));
     }
 
@@ -72,7 +73,7 @@ public class ProductController {
     @GetMapping
     @Operation(summary = "分页查询商品，有意不经过缓存")
     public Result<PageResult<ProductResponse>> findByPage(@RequestParam(defaultValue = "1")
- @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
+                                                          @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
                                                           @RequestParam(defaultValue = "20")
                                                           @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
         PageResult<com.dong.cache.entity.Product> page = productService.findByPage(PageRequest.of(pageNum, pageSize));
@@ -103,7 +104,7 @@ public class ProductController {
     @PutMapping("/{id}")
     @Operation(summary = "更新商品，先更新数据库再失效缓存")
     public Result<Void> update(@PathVariable
- @Positive Long id, @Valid @RequestBody ProductSaveRequest request) {
+                               @Positive Long id, @Valid @RequestBody ProductSaveRequest request) {
         productService.update(id, request);
         return Result.success();
     }
@@ -114,7 +115,7 @@ public class ProductController {
     @DeleteMapping("/{id}")
     @Operation(summary = "删除商品，并失效对应缓存")
     public Result<Void> delete(@PathVariable
- @Positive Long id) {
+                               @Positive Long id) {
         productService.delete(id);
         return Result.success();
     }

@@ -28,9 +28,9 @@ public class NearbyPlaceResponse {
     /**
      * 创建附近地点响应。
      *
-     * @param member    地点名称
-     * @param longitude 经度
-     * @param latitude  纬度
+     * @param member     地点名称
+     * @param longitude  经度
+     * @param latitude   纬度
      * @param distanceKm 距离（公里）
      * @return 附近地点响应
      */

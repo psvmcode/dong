@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Map;
+
 /**
  * 用户签到。底层用 Bitmap 存储，每个用户每月只占几条到几十条记录，
  * 一年下来一个用户也就几百字节，这是 Bitmap 相比记录表的最大优势。
@@ -40,7 +41,7 @@ public class SignInController {
     @PostMapping
     @Operation(summary = "签到，返回 false 表示当天已签过")
     public Result<Boolean> signIn(@RequestParam
- @NotBlank @Size(max = 128) String userId,
+                                  @NotBlank @Size(max = 128) String userId,
                                   @RequestParam(required = false)
                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return Result.success(signInService.signIn(userId, date == null ? LocalDate.now() : date));
@@ -52,7 +53,7 @@ public class SignInController {
     @GetMapping
     @Operation(summary = "查询指定日期是否已签到")
     public Result<Boolean> hasSigned(@RequestParam
- @NotBlank @Size(max = 128) String userId,
+                                     @NotBlank @Size(max = 128) String userId,
                                      @RequestParam(required = false)
                                      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return Result.success(signInService.hasSigned(userId, date == null ? LocalDate.now() : date));
@@ -64,7 +65,7 @@ public class SignInController {
     @GetMapping("/streak")
     @Operation(summary = "查询连续签到天数")
     public Result<Long> streak(@RequestParam
- @NotBlank @Size(max = 128) String userId,
+                               @NotBlank @Size(max = 128) String userId,
                                @RequestParam(required = false)
                                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return Result.success(signInService.continuousDays(userId, date == null ? LocalDate.now() : date));
@@ -76,7 +77,7 @@ public class SignInController {
     @GetMapping("/month")
     @Operation(summary = "查询当月累计签到天数")
     public Result<Long> monthCount(@RequestParam
- @NotBlank @Size(max = 128) String userId,
+                                   @NotBlank @Size(max = 128) String userId,
                                    @RequestParam(required = false)
                                    @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         return Result.success(signInService.countInMonth(userId, month == null ? YearMonth.now() : month));
@@ -88,7 +89,7 @@ public class SignInController {
     @GetMapping("/calendar")
     @Operation(summary = "查询当月签到日历")
     public Result<Map<String, Boolean>> calendar(@RequestParam
- @NotBlank @Size(max = 128) String userId,
+                                                 @NotBlank @Size(max = 128) String userId,
                                                  @RequestParam(required = false)
                                                  @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         return Result.success(signInService.monthCalendar(userId, month == null ? YearMonth.now() : month));

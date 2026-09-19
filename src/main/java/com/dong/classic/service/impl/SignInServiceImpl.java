@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 /**
  * 签到实现。基于 Bitmap，每月一个 key，
  * 每个用户每月只占极少存储，一年下来也就几百字节。
@@ -61,8 +62,7 @@ public class SignInServiceImpl implements SignInService {
      */
     private void persistSignIn(String userId, LocalDate date, int continuousDays, String source) {
         try {
-            com.dong.classic.entity.ClassicSigninRecord record =
-                    new com.dong.classic.entity.ClassicSigninRecord();
+            com.dong.classic.entity.ClassicSigninRecord record = new com.dong.classic.entity.ClassicSigninRecord();
             record.setUserId(userId);
             record.setSignDate(date);
             record.setContinuousDays(continuousDays);
@@ -199,8 +199,7 @@ public class SignInServiceImpl implements SignInService {
      * @return 位图
      */
     private RBitSet bitSetOf(String userId, YearMonth month) {
-        return redissonClient.getBitSet(SIGN + userId + ":" + month.getYear()
-                + String.format("%02d", month.getMonthValue()));
+        return redissonClient.getBitSet(SIGN + userId + ":" + month.getYear() + String.format("%02d", month.getMonthValue()));
     }
 
     /**

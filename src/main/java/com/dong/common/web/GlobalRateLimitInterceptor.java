@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.time.Duration;
+
 /**
  * 全局接口限流。
  *
@@ -74,8 +75,7 @@ public class GlobalRateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
         String key = PREFIX + clientIp(request);
-        RateLimitRule rule = new RateLimitRule(permits, Duration.ofSeconds(windowSeconds),
-                RateLimitAlgorithm.TOKEN_BUCKET);
+        RateLimitRule rule = new RateLimitRule(permits, Duration.ofSeconds(windowSeconds), RateLimitAlgorithm.TOKEN_BUCKET);
         if (!rateLimitManager.tryAcquire(key, rule, false)) {
             log.warn("global rate limit rejected ip={} path={}", clientIp(request), request.getRequestURI());
             throw new BusinessException(Constants.CODE_TOO_MANY_REQUESTS, Constants.MESSAGE_TOO_MANY_REQUESTS);

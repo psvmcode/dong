@@ -34,7 +34,6 @@ public interface RateLimitLabService {
      * 第二轮能区分算法：固定窗口只有跨窗口才放行，
      * 滑动窗口放行滑出窗口的那部分，令牌桶放行补充的令牌，漏桶放行漏出的水量。
      */
-    Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts,
-                                boolean distributed, long delayMillis);
+    Map<String, Object> compare(String bizKey, long limit, long windowSeconds, int attempts, boolean distributed, long delayMillis);
 
 }

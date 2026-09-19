@@ -3,6 +3,7 @@ package com.dong.classic.mapper;
 import com.dong.classic.entity.ShortLink;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
 /**
  * 短链接数据访问接口。
  */
@@ -33,7 +34,6 @@ public interface ShortLinkMapper {
     /**
      * 启停短链并设置过期时间。
      */
-    int updateStatus(@Param("code") String code, @Param("enabled") Integer enabled,
-                     @Param("expireTime") java.time.LocalDateTime expireTime);
+    int updateStatus(@Param("code") String code, @Param("enabled") Integer enabled, @Param("expireTime") java.time.LocalDateTime expireTime);
 
 }

@@ -3,6 +3,7 @@ package com.dong.classic.entity;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 /**
  * 分布式锁对照实验结果。
  *
