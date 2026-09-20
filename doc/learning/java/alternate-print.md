@@ -410,6 +410,120 @@ public synchronized void print(int parity) throws InterruptedException {
 
 ---
 
+## 反面剖析：一个看着更短、实则不对的写法
+
+网上流传很广的一版写法，比上面所有版本都短：
+
+```java
+static int count = 0;
+static final Object OBJECT = new Object();
+
+static class Printer implements Runnable {
+
+    @Override
+    public void run() {
+        while (count <= 100) {              // ← 检查在锁外
+            synchronized (OBJECT) {
+                System.out.println(Thread.currentThread().getName() + ":" + count++);
+                OBJECT.notify();            // ← 只叫醒一个
+                if (count <= 100) {         // 为了让程序能正常结束
+                    OBJECT.wait();
+                }
+            }
+        }
+    }
+
+}
+
+new Thread(new Printer(), "偶数线程").start();
+new Thread(new Printer(), "奇数线程").start();
+```
+
+思路是对的（一个 `Runnable`、打印完唤醒对方再等待），`if` 那个判断也是作者有意识地防止末尾挂住。
+但跑起来会发现两件事：
+
+**问题一：打印的是 0 到 100，共 101 个数。**
+`count` 从 0 开始，第一次打印的就是 0；循环到打印完 100 才停，自然多了一个。
+本地跑 300 轮，**无一例外都是 101 个**，`首=0，尾=100`。改成 `count = 1` 就对了。
+
+**问题二：线程名和实际打印的是反的。**
+实测输出：
+
+```
+总输出：100
+前 6 条：[偶数线程->1, 奇数线程->2, 偶数线程->3, 奇数线程->4, ...]
+偶数线程打印了奇数的次数：50
+奇数线程打印了偶数的次数：50
+```
+
+这个实现**根本不区分奇偶**，谁打印哪个数全看谁抢到锁，只是碰巧严格交替。
+所以「偶数线程」打的全是奇数。想要真正的奇偶分工，必须把奇偶作为分支条件写进去。
+
+**两个隐患（理论存在，本机没跑出来）**：
+
+1. `while (count <= 100)` 在锁外，`count++` 在锁内，而且 `count` 没有 `volatile`——
+   检查与自增不是原子的，线程可能拿着过期的检查结果进入临界区，多打印出一个 101。
+   本机用 `yield` 放大窗口也没复现（因为每个线程拿到锁后必定打印一次），
+   但这是典型的「检查与执行分离」，换个环境就可能暴雷。
+2. `notify()` 只唤醒一个等待者。这里侥幸不死（每个线程都是先打印再等待），
+   本机三个线程跑 100 轮也全部正常；但只要改成「可能多个线程同时在等」的结构，就会漏唤醒。
+
+另外 `e.printStackTrace()` 把中断吞了，正确做法是 `Thread.currentThread().interrupt()` 后退出。
+
+### 改成正确的最短版（保留原结构）
+
+```java
+static final int MAX = 100;
+
+static final Object LOCK = new Object();
+
+static int count = 1;
+
+static class Printer implements Runnable {
+
+    private final int parity;
+
+    Printer(int parity) {
+        this.parity = parity;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            synchronized (LOCK) {
+                while (count <= MAX && count % 2 != parity) {   // 判断挪进锁里
+                    try {
+                        LOCK.wait();
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+                if (count > MAX) {
+                    LOCK.notifyAll();                           // 退出前叫醒对方
+                    return;
+                }
+                System.out.println(Thread.currentThread().getName() + " 打印:" + count++);
+                LOCK.notifyAll();
+            }
+        }
+    }
+
+}
+```
+
+```java
+new Thread(new Printer(0), "偶数线程").start();
+new Thread(new Printer(1), "奇数线程").start();
+```
+
+实测两种启动顺序：**个数=100、严格 1 到 100、奇偶错位 0、两个线程都正常退出**。
+
+看出改动的三处：判断挪进 `synchronized`、`notify` 换 `notifyAll`、`wait` 用 `while` 包住。
+这正好对应开头说的三个坑——不是代码越短越好，是**该有的检查一处都不能少**。
+
+---
+
 ## 反面教材：不要自旋忙等
 
 ```java
