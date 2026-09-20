@@ -41,7 +41,11 @@ build/
 .Trashes
 
 ### local tooling ###
-.codebuddy/
+# .codebuddy 下只放行 skills（编码规范，需要跨机器共享）；
+# memory 里有服务器地址与凭据线索，仓库是 public，必须继续忽略
+.codebuddy/*
+!.codebuddy/skills/
+!.codebuddy/skills/**
 .workbuddy/
 
 ### secrets ###
