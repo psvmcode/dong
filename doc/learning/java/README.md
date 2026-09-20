@@ -16,7 +16,7 @@
 | [线程池](threadpool.md) | 七个参数、任务处理流程、为什么不用 Executors |
 | [ThreadLocal](threadlocal.md) | 泄漏的真实原因、线程池里数据串了 |
 | [ConcurrentHashMap](concurrenthashmap.md) | 分段锁到 CAS 的演进、读为什么不加锁 |
-| [两个线程交叉打印 1 到 100](alternate-print.md) | wait/notify、Condition、Semaphore、park 四种写法与三个坑 |
+| [两个线程交叉打印 1 到 100](alternate-print.md) | wait/notify、Condition、Semaphore、park 四种写法，外加只用一个方法的最短版 |
 
 ---
 

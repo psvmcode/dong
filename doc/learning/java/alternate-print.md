@@ -1,7 +1,8 @@
 # 两个线程严格交叉打印 1 到 100
 
-> 目标：看完能一口气写出四种正确写法，并说清三个必踩的坑——
+> 目标：看完能一口气写出几种正确写法，并说清几个必踩的坑——
 > 为什么判断条件必须用 `while`、为什么唤醒别人之后自己必须等、为什么打印和自增必须绑在一起。
+> 最后给了一个只用一个方法就搞定的最短版本。
 
 ---
 
@@ -318,6 +319,94 @@ threads[1].start();
 `Thread.start()` 有 happens-before 保证，所以两个线程读到的 `threads[1]` / `threads[0]` 一定已经赋值。
 
 **`park` 也会无缘无故返回**，条件判断照样得用 `while`——这一点和 `wait` 一样，别因为「底层」就放松警惕。
+
+---
+
+## 最短写法：一个方法同时打印奇数和偶数
+
+前面四种解法都要写 `printOdd` 和 `printEven` 两份几乎一模一样的代码。
+能不能只有一份？可以——**把「我是奇数还是偶数」变成入参**。
+
+用 Semaphore 写出来只要 9 行：
+
+```java
+public class AlternatePrinter {
+
+    /**
+     * 通行证数组，下标 0 给偶数线程，下标 1 给奇数线程。
+     * 奇数线程开局就持有一张，所以第一个打印出来的一定是 1。
+     */
+    private final Semaphore[] permits = {new Semaphore(0), new Semaphore(1)};
+
+    /**
+     * 当前待打印的数字。
+     */
+    private int current = 1;
+
+    /**
+     * 打印属于自己的那 50 个数。
+     *
+     * @param parity 奇数线程传 1，偶数线程传 0
+     */
+    public void print(int parity) throws InterruptedException {
+        for (int i = 0; i < 50; i++) {
+            permits[parity].acquire();
+            System.out.println(Thread.currentThread().getName() + " -> " + current);
+            current++;
+            permits[1 - parity].release();
+        }
+    }
+
+}
+```
+
+```java
+AlternatePrinter printer = new AlternatePrinter();
+new Thread(() -> printer.print(1), "odd ").start();
+new Thread(() -> printer.print(0), "even").start();
+```
+
+**省下来的代码都去哪了**：
+
+| 其它解法必须写的 | 这里由什么替代 |
+|---|---|
+| `while (current <= MAX)` 边界判断 | `for (int i = 0; i < 50; i++)`，每人恰好 50 个数，边界天然确定 |
+| 用 `while` 重新确认条件 | 通行证是硬授权，拿到就一定轮得到自己，没有虚假唤醒 |
+| 退出前再 `notifyAll` 一次 | 每人打完自己的 50 个就自然结束，不需要叫醒谁 |
+| `finally { lock.unlock(); }` | 压根没用锁，信号量自己管释放 |
+
+`current++` 也不用额外同步：同一时刻只有持有通行证的那个线程进得来。
+
+### 同样思路换成 synchronized 要写多少
+
+```java
+public synchronized void print(int parity) throws InterruptedException {
+    while (current <= MAX) {
+        while (current <= MAX && current % 2 != parity) {
+            wait();
+        }
+        if (current > MAX) {
+            break;
+        }
+        System.out.println(Thread.currentThread().getName() + " -> " + current);
+        current++;
+        notifyAll();
+    }
+    notifyAll();
+}
+```
+
+18 行。多出来的全是 `while` / `if` / `notifyAll`——这是 `wait/notify` 的固定开销。
+
+注意内层 `while` 必须带上 `current <= MAX`：否则最后被唤醒时 `current` 已经是 101，
+「轮到自己」的判断恰好成立，就会多打印出一个 101。
+
+### 什么时候不能用这个写法
+
+**前提是每个线程打印的次数事先确定**（这里恰好都是 50 次）。
+如果次数不确定——比如三个线程打印到某个外部条件才停——就得回到 `while` + 条件判断的版本。
+
+> 实测：单方法版两种写法、两种启动顺序共 4 组，输出都严格是 1 到 100，无多打、无漏打、无死锁。
 
 ---
 
