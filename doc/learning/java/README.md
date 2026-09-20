@@ -16,12 +16,14 @@
 | [线程池](threadpool.md) | 七个参数、任务处理流程、为什么不用 Executors |
 | [ThreadLocal](threadlocal.md) | 泄漏的真实原因、线程池里数据串了 |
 | [ConcurrentHashMap](concurrenthashmap.md) | 分段锁到 CAS 的演进、读为什么不加锁 |
+| [两个线程交叉打印 1 到 100](alternate-print.md) | wait/notify、Condition、Semaphore、park 四种写法与三个坑 |
 
 ---
 
 ## 建议阅读顺序
 
-`volatile` → `synchronized` → `cas` → `aqs` → `threadpool` → `threadlocal` → `concurrenthashmap`
+`volatile` → `synchronized` → `cas` → `aqs` → `threadpool` → `threadlocal` → `concurrenthashmap` → `alternate-print`
 
 前四篇递进：volatile 解决可见性 → synchronized 补上原子性 → CAS 是 synchronized 底层的轻量手段
 → AQS 用 CAS 搭起整个 JUC。后三篇相对独立，按需阅读。
+最后一篇是把前面几篇揉起来的练手题：一个场景、四种写法，写完再回头看锁与协作的区别会更清楚。
