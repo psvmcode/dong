@@ -41,11 +41,15 @@ build/
 .Trashes
 
 ### local tooling ###
-# .codebuddy 下只放行 skills（编码规范，需要跨机器共享）；
-# memory 里有服务器地址与凭据线索，仓库是 public，必须继续忽略
+# .codebuddy 只放行 skills（编码规范）与 2026-09 之后的 memory（跨会话上下文）；
+# 仓库是 public，往这两处写东西时不要带服务器 IP、密码等凭据
 .codebuddy/*
 !.codebuddy/skills/
 !.codebuddy/skills/**
+!.codebuddy/memory/
+!.codebuddy/memory/**
+# 2026-08 及更早的日志含明文密码与公网 IP，继续忽略
+.codebuddy/memory/2026-0[1-8]-*.md
 .workbuddy/
 
 ### secrets ###
