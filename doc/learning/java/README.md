@@ -20,6 +20,14 @@
 
 ---
 
+## 算法
+
+| 文档 | 主题 |
+|---|---|
+| [常用排序](sort.md) | 冒泡、选择、插入、快排、归并、堆排序的思路、复杂度与最简实现 |
+
+---
+
 ## 建议阅读顺序
 
 `volatile` → `synchronized` → `cas` → `aqs` → `threadpool` → `threadlocal` → `concurrenthashmap` → `alternate-print`
