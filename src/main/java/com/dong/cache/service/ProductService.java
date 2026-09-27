@@ -1,5 +1,6 @@
 package com.dong.cache.service;
 
+import com.dong.cache.dto.ProductReadResult;
 import com.dong.cache.dto.ProductSaveRequest;
 import com.dong.cache.entity.Product;
 import com.dong.common.result.PageRequest;
@@ -13,15 +14,16 @@ import java.util.List;
 public interface ProductService {
 
     /**
-     * 根据 id 查询。
+     * 根据 id 查询。数据不存在抛 1001，缓存与数据库都不可用抛 1005，
+     * 两者含义不同，不能合并成一种返回。
      */
-    Product findById(Long id);
+    ProductReadResult findById(Long id);
 
     /**
      * 同 findById，区别是先用布隆过滤器判断 id 是否可能存在，
      * 不存在就直接拒绝，连缓存和数据库都不查询。
      */
-    Product findByIdGuarded(Long id);
+    ProductReadResult findByIdGuarded(Long id);
 
     /**
      * 分页查询。

@@ -5,6 +5,10 @@ import java.util.concurrent.atomic.LongAdder;
 /**
  * 缓存命中统计。用 LongAdder 而不是 AtomicLong，
  * 因为命中统计是高频写、低频读的场景，LongAdder 的分段累加能显著降低竞争。
+ *
+ * <p>除了命中率，这里还刻意统计降级相关计数：
+ * 命中率只反映「缓存有没有帮上忙」，看不出「缓存挂了之后系统表现如何」。
+ * staleServed 和 degraded 才是判断降级策略是否真的生效的依据。
  */
 public class CacheStats {
 
@@ -19,6 +23,21 @@ public class CacheStats {
 
     // 真正回源查数据库的次数，这个值高说明缓存没起作用
     private final LongAdder rebuild = new LongAdder();
+
+    // 回源失败后用旧值兜底的次数，说明降级在起作用
+    private final LongAdder staleServed = new LongAdder();
+
+    // 回源失败且无旧值可用的次数，这些请求只能明确报错
+    private final LongAdder degraded = new LongAdder();
+
+    // 回源被频控拦下的次数，说明已经到了数据库能承受的上限
+    private final LongAdder rebuildRejected = new LongAdder();
+
+    // 没抢到重建锁而直接放弃的次数，属于正常让位，不是故障
+    private final LongAdder rebuildSkipped = new LongAdder();
+
+    // 熔断器打开期间被拦下的回源次数
+    private final LongAdder circuitBlocked = new LongAdder();
 
     /**
      * 记录 L1 命中。
@@ -56,6 +75,41 @@ public class CacheStats {
     }
 
     /**
+     * 记录用过期旧值兜底的次数。
+     */
+    public void recordStaleServed() {
+        staleServed.increment();
+    }
+
+    /**
+     * 记录无旧值可用、只能失败的次数。
+     */
+    public void recordDegraded() {
+        degraded.increment();
+    }
+
+    /**
+     * 记录回源被频控拒绝的次数。
+     */
+    public void recordRebuildRejected() {
+        rebuildRejected.increment();
+    }
+
+    /**
+     * 记录因未抢到重建锁而放弃回源的次数。
+     */
+    public void recordRebuildSkipped() {
+        rebuildSkipped.increment();
+    }
+
+    /**
+     * 记录被熔断器拦下的回源次数。
+     */
+    public void recordCircuitBlocked() {
+        circuitBlocked.increment();
+    }
+
+    /**
      * 重置所有统计计数。
      */
     public void reset() {
@@ -64,6 +118,11 @@ public class CacheStats {
         miss.reset();
         penetrationBlocked.reset();
         rebuild.reset();
+        staleServed.reset();
+        degraded.reset();
+        rebuildRejected.reset();
+        rebuildSkipped.reset();
+        circuitBlocked.reset();
     }
 
     /**
@@ -71,8 +130,11 @@ public class CacheStats {
      * 被拦截的穿透请求不计入分母，否则防护措施做得越好命中率反而越难看。
      */
     public CacheStatsSnapshot snapshot() {
-        long total = l1Hit.sum() + l2Hit.sum() + miss.sum();
-        return new CacheStatsSnapshot(l1Hit.sum(), l2Hit.sum(), miss.sum(), penetrationBlocked.sum(), rebuild.sum(), total == 0 ? 0.0 : (l1Hit.sum() + l2Hit.sum()) * 100.0 / total);
+        long hits = l1Hit.sum() + l2Hit.sum();
+        long total = hits + miss.sum();
+        return new CacheStatsSnapshot(l1Hit.sum(), l2Hit.sum(), miss.sum(), penetrationBlocked.sum(), rebuild.sum(),
+                staleServed.sum(), degraded.sum(), rebuildRejected.sum(), rebuildSkipped.sum(), circuitBlocked.sum(),
+                total == 0 ? 0.0 : hits * 100.0 / total);
     }
 
     /**
@@ -83,10 +145,16 @@ public class CacheStats {
      * @param miss               未命中数
      * @param penetrationBlocked 穿透拦截数
      * @param rebuild            回源重建数
+     * @param staleServed        旧值兜底数
+     * @param degraded           无值可降级数
+     * @param rebuildRejected    回源被频控拒绝数
+     * @param rebuildSkipped     回源让位数
+     * @param circuitBlocked     熔断拦截数
      * @param hitRatioPercent    命中率百分比
      */
     public record CacheStatsSnapshot(long l1Hit, long l2Hit, long miss, long penetrationBlocked, long rebuild,
-                                     double hitRatioPercent) {
+                                     long staleServed, long degraded, long rebuildRejected, long rebuildSkipped,
+                                     long circuitBlocked, double hitRatioPercent) {
     }
 
 }

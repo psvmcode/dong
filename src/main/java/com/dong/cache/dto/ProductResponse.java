@@ -46,12 +46,28 @@ public class ProductResponse {
     private LocalDateTime updateTime;
 
     /**
-     * 从实体转换为 DTO。
+     * 是否为降级返回的过期数据，true 时前端应提示数据可能不是最新的。
+     */
+    private boolean stale;
+
+    /**
+     * 从实体转换为 DTO，按正常读取处理。
      *
      * @param product 商品实体
      * @return 商品响应 DTO
      */
     public static ProductResponse from(Product product) {
+        return from(product, false);
+    }
+
+    /**
+     * 从实体转换为 DTO，并标注是否为降级数据。
+     *
+     * @param product 商品实体
+     * @param stale   是否为过期旧值
+     * @return 商品响应 DTO
+     */
+    public static ProductResponse from(Product product, boolean stale) {
         ProductResponse response = new ProductResponse();
         response.setId(product.getId());
         response.setName(product.getName());
@@ -60,6 +76,7 @@ public class ProductResponse {
         response.setStock(product.getStock());
         response.setStatus(product.getStatus() == null ? null : product.getStatus().name());
         response.setUpdateTime(product.getUpdateTime());
+        response.setStale(stale);
         return response;
     }
 
@@ -187,6 +204,24 @@ public class ProductResponse {
      */
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    /**
+     * 是否为降级返回的过期数据。
+     *
+     * @return 是否过期
+     */
+    public boolean isStale() {
+        return stale;
+    }
+
+    /**
+     * 设置是否为降级返回的过期数据。
+     *
+     * @param stale 是否过期
+     */
+    public void setStale(boolean stale) {
+        this.stale = stale;
     }
 
 }

@@ -7,6 +7,7 @@ import com.dong.common.constant.Constants;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
+import com.dong.cache.dto.ProductReadResult;
 import com.dong.cache.dto.ProductResponse;
 import com.dong.cache.dto.ProductSaveRequest;
 import com.dong.cache.service.ProductService;
@@ -47,12 +48,14 @@ public class ProductController {
 
     /**
      * 普通读路径，走完 L1、L2、回源三级。
+     * 下游不可用时不会硬凑数据：有旧值就带 stale 标记返回，没有就抛 1005。
      */
     @GetMapping("/{id}")
     @Operation(summary = "查询商品，依次经过 L1、L2 和数据库")
     public Result<ProductResponse> findById(@PathVariable
                                             @Positive Long id) {
-        return Result.success(ProductResponse.from(productService.findById(id)));
+        ProductReadResult result = productService.findById(id);
+        return noticeIfStale(Result.success(ProductResponse.from(result.product(), result.stale())), result.stale());
     }
 
     /**
@@ -63,7 +66,8 @@ public class ProductController {
     @Operation(summary = "查询商品，id 不可能存在时由布隆过滤器提前拒绝")
     public Result<ProductResponse> findByIdGuarded(@PathVariable
                                                    @Positive Long id) {
-        return Result.success(ProductResponse.from(productService.findByIdGuarded(id)));
+        ProductReadResult result = productService.findByIdGuarded(id);
+        return noticeIfStale(Result.success(ProductResponse.from(result.product(), result.stale())), result.stale());
     }
 
     /**
@@ -118,6 +122,21 @@ public class ProductController {
                                @Positive Long id) {
         productService.delete(id);
         return Result.success();
+    }
+
+    /**
+     * 降级时把提示写进响应消息。数据体里也有 stale 字段，
+     * 两处都标是为了让只看 message 的调用方也不会误以为拿到的是最新数据。
+     *
+     * @param result 原响应
+     * @param stale  是否为降级数据
+     * @return 补充提示后的响应
+     */
+    private Result<ProductResponse> noticeIfStale(Result<ProductResponse> result, boolean stale) {
+        if (stale) {
+            result.setMessage("success with stale data, upstream is temporarily unavailable");
+        }
+        return result;
     }
 
 }

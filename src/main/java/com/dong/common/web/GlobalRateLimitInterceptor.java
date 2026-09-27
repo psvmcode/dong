@@ -44,6 +44,11 @@ public class GlobalRateLimitInterceptor implements HandlerInterceptor {
     private final RateLimitManager rateLimitManager;
 
     /**
+     * 客户端 IP 解析器。
+     */
+    private final ClientIpResolver clientIpResolver;
+
+    /**
      * 是否开启全局限流，默认开启，可在配置里关掉。
      */
     @Value("${dong.global-rate-limit.enabled:true}")
@@ -74,33 +79,14 @@ public class GlobalRateLimitInterceptor implements HandlerInterceptor {
         if (!enabled) {
             return true;
         }
-        String key = PREFIX + clientIp(request);
+        String clientIp = clientIpResolver.resolve(request);
+        String key = PREFIX + clientIp;
         RateLimitRule rule = new RateLimitRule(permits, Duration.ofSeconds(windowSeconds), RateLimitAlgorithm.TOKEN_BUCKET);
         if (!rateLimitManager.tryAcquire(key, rule, false)) {
-            log.warn("global rate limit rejected ip={} path={}", clientIp(request), request.getRequestURI());
+            log.warn("global rate limit rejected ip={} path={}", clientIp, request.getRequestURI());
             throw new BusinessException(Constants.CODE_TOO_MANY_REQUESTS, Constants.MESSAGE_TOO_MANY_REQUESTS);
         }
         return true;
-    }
-
-    /**
-     * 取客户端 IP。反向代理下优先取 X-Forwarded-For 的第一段，
-     * 取不到再回落到 remoteAddr。注意这个头可以伪造，
-     * 生产环境应只在可信网关之后才信任它。
-     *
-     * @param request 当前请求
-     * @return 客户端 IP
-     */
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        String real = request.getHeader("X-Real-IP");
-        if (real != null && !real.isBlank()) {
-            return real.trim();
-        }
-        return request.getRemoteAddr();
     }
 
 }

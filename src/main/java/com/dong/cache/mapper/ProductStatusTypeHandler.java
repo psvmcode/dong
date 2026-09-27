@@ -60,9 +60,9 @@ public class ProductStatusTypeHandler extends BaseTypeHandler<ProductStatus> {
     }
 
     /**
-     * 从结果集中读取 code 并反解为枚举，NULL 则返回 null。
+     * 从存储过程输出参数中读取 code 并反解为枚举，NULL 则返回 null。
      *
-     * @param rs          结果集
+     * @param cs          存储过程语句
      * @param columnIndex 列索引
      * @return 枚举值或 null
      * @throws SQLException SQL 异常

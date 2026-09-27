@@ -1,5 +1,6 @@
 package com.dong.cache.service.impl;
 
+import com.dong.cache.dto.ProductReadResult;
 import com.dong.cache.dto.ProductSaveRequest;
 import com.dong.cache.entity.Product;
 import com.dong.cache.event.ProductChangedEvent;
@@ -10,8 +11,10 @@ import com.dong.common.exception.BusinessException;
 import com.dong.common.result.PageRequest;
 import com.dong.common.result.PageResult;
 import com.dong.framework.bloom.BloomFilterService;
+import com.dong.framework.cache.CacheResolution;
 import com.dong.framework.cache.CacheStats;
 import com.dong.framework.cache.MultiLevelCache;
+import com.dong.framework.lock.DistributedLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
@@ -28,6 +31,12 @@ import java.util.List;
  * <p>增删改都在事务提交后各发布一次商品变更事件，搜索模块据此把数据同步进 Elasticsearch。
  * 这里只发事件、不直接调同步服务：一是缓存模块不该反向依赖搜索模块，
  * 二是 ES 抖动时同步必然失败，不能让它牵连商品写入这条主流程。
+ *
+ * <p>读路径上有一个明确的取舍：不再保证「每次都返回数据」。
+ * 缓存和数据库都拿不到时抛 1005 让调用方明确失败，
+ * 只有在确实缓存过旧值时才返回 {@code stale} 标记的数据。
+ * 硬凑一个结果出来看着友好，实际是用错误数据掩盖故障，
+ * 而且会把故障期间的空值写进缓存，让故障结束后还得等标记过期。
  */
 @Slf4j
 @Service
@@ -37,6 +46,10 @@ public class ProductServiceImpl implements ProductService {
     private static final String CACHE_KEY_PREFIX = "product:";
 
     private static final String BLOOM_NAME = "lab:bloom:product";
+
+    private static final String WARM_UP_LOCK = "lab:cache:warm-up";
+
+    private static final Duration WARM_UP_LEASE = Duration.ofMinutes(5);
 
     private static final long BLOOM_EXPECTED = 1_000_000L;
 
@@ -66,6 +79,11 @@ public class ProductServiceImpl implements ProductService {
     private final CacheStats cacheStats;
 
     /**
+     * 分布式锁服务，用于预热防重入。
+     */
+    private final DistributedLockService distributedLockService;
+
+    /**
      * 商品变更事件发布器，由搜索模块在事务提交后消费。
      */
     private final ApplicationEventPublisher eventPublisher;
@@ -75,13 +93,17 @@ public class ProductServiceImpl implements ProductService {
      * 因此针对不存在 id 的重复请求仍会有一批落到回源逻辑上。
      */
     @Override
-    public Product findById(Long id) {
-        Product product = multiLevelCache.get(cacheKey(id), Product.class, PRODUCT_TTL,
+    public ProductReadResult findById(Long id) {
+        CacheResolution<Product> resolution = multiLevelCache.resolve(cacheKey(id), Product.class, PRODUCT_TTL,
                 () -> productMapper.selectById(id));
-        if (product == null) {
-            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "product " + id + " not found");
-        }
-        return product;
+        return switch (resolution) {
+            case CacheResolution.Fresh<Product> fresh -> ProductReadResult.fresh(fresh.value());
+            case CacheResolution.Stale<Product> stale -> ProductReadResult.stale(stale.value());
+            case CacheResolution.Absent<Product> absent ->
+                    throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "product " + id + " not found");
+            case CacheResolution.Unavailable<Product> unavailable ->
+                    throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "product " + id + " is temporarily unavailable, please retry later");
+        };
     }
 
     /**
@@ -89,9 +111,8 @@ public class ProductServiceImpl implements ProductService {
      * 这是防穿透更彻底的做法，代价是需要预热且有误判率。
      */
     @Override
-    public Product findByIdGuarded(Long id) {
-        RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
-        if (!filter.contains(String.valueOf(id))) {
+    public ProductReadResult findByIdGuarded(Long id) {
+        if (bloomRejects(id)) {
             cacheStats.recordPenetrationBlocked();
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "product " + id + " rejected by bloom filter");
         }
@@ -132,8 +153,7 @@ public class ProductServiceImpl implements ProductService {
     public Long create(ProductSaveRequest request) {
         Product product = request.toEntity();
         productMapper.insert(product);
-        RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
-        filter.add(String.valueOf(product.getId()));
+        addToBloom(product.getId());
         eventPublisher.publishEvent(new ProductChangedEvent(product.getId()));
         log.info("product created id={}", product.getId());
         return product.getId();
@@ -178,16 +198,67 @@ public class ProductServiceImpl implements ProductService {
     /**
      * 预热两步：先把商品写入缓存，再把所有 id 加入布隆过滤器。
      * 第二步不能省，否则过滤器为空，guarded 模式会拒绝所有请求。
+     *
+     * <p>预热要扫全表并逐条写缓存，并发触发只会互相拖慢，
+     * 因此整体加分布式锁串行掉，拿不到锁说明有一轮还在跑，直接报冲突。
      */
     @Override
     public int warmUp() {
+        return distributedLockService.execute(WARM_UP_LOCK, WARM_UP_LEASE, Duration.ofMillis(100), this::doWarmUp);
+    }
+
+    /**
+     * 执行预热。写缓存失败不影响返回值，缓存本来就是可以重建的副本。
+     *
+     * @return 预热商品数量
+     */
+    private int doWarmUp() {
         List<Product> products = productMapper.selectAll();
         products.forEach(product -> multiLevelCache.get(cacheKey(product.getId()), Product.class, PRODUCT_TTL,
                 () -> product));
-        RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
-        productMapper.selectAllIds().forEach(id -> filter.add(String.valueOf(id)));
+        try {
+            RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
+            productMapper.selectAllIds().forEach(id -> filter.add(String.valueOf(id)));
+        } catch (Exception ex) {
+            // 预热没写进过滤器，后果是 guarded 模式会误拒真实 id，
+            // 这比让整个预热失败要好，而且可以重跑一次修复
+            log.warn("bloom filter warm up failed, guarded reads may reject existing ids: {}", ex.getMessage());
+        }
         log.info("cache warmed up with {} products", products.size());
         return products.size();
+    }
+
+    /**
+     * 用布隆过滤器判断是否应直接拒绝。
+     * 过滤器依赖 Redis，它不可用时一律放行：
+     * 拒绝会让「Redis 抖一下」变成「所有商品都查不到」，典型的把中间件故障放大成业务不可用。
+     *
+     * @param id 商品 id
+     * @return 是否应拒绝
+     */
+    private boolean bloomRejects(Long id) {
+        try {
+            RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
+            return !filter.contains(String.valueOf(id));
+        } catch (Exception ex) {
+            log.warn("bloom filter unavailable, skipping guard for id={}: {}", id, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 把 id 加入布隆过滤器。失败只告警不回滚事务：
+     * 商品已经写进数据库，为了缓存索引牺牲主流程不值得，重跑预热即可补上。
+     *
+     * @param id 商品 id
+     */
+    private void addToBloom(Long id) {
+        try {
+            RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
+            filter.add(String.valueOf(id));
+        } catch (Exception ex) {
+            log.warn("bloom filter add failed for id={}: {}", id, ex.getMessage());
+        }
     }
 
     /**

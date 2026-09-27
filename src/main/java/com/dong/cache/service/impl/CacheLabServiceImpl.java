@@ -2,6 +2,7 @@ package com.dong.cache.service.impl;
 
 import com.dong.cache.service.CacheLabService;
 import com.dong.cache.service.ProductService;
+import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.framework.cache.CacheStats;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +34,17 @@ public class CacheLabServiceImpl implements CacheLabService {
     /**
      * 用不存在的 id 打量请求，对比两种防穿透手段的耗时与拦截效果。
      * id 取 9000000 到 9999999 之间，这个区间在数据库中一定不存在。
+     *
+     * <p>结果里的 unavailable 是防护生效的证据：回源被熔断或频控拦下时，
+     * 请求根本没打到数据库，返回的是 1005 而不是「查无此项」。
+     * 这个数不为零不代表实验失败，恰恰说明攻击被挡在了数据库外面。
      */
     @Override
     public Map<String, Object> penetration(int count, boolean guarded) {
         long before = cacheStats.snapshot().penetrationBlocked();
         long start = System.currentTimeMillis();
         int rejected = 0;
+        int unavailable = 0;
         for (int i = 0; i < count; i++) {
             long id = ThreadLocalRandom.current().nextLong(9_000_000L, 9_999_999L);
             try {
@@ -48,13 +54,18 @@ public class CacheLabServiceImpl implements CacheLabService {
                     productService.findById(id);
                 }
             } catch (BusinessException ex) {
-                rejected++;
+                if (ex.getCode() == Constants.CODE_DEPENDENCY_UNAVAILABLE) {
+                    unavailable++;
+                } else {
+                    rejected++;
+                }
             }
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("requests", count);
         result.put("rejectedOrAbsent", rejected);
+        result.put("unavailableOrThrottled", unavailable);
         result.put("elapsedMillis", System.currentTimeMillis() - start);
         result.put("penetrationBlockedDelta", cacheStats.snapshot().penetrationBlocked() - before);
         result.put("mode", guarded ? "bloom-filter" : "empty-marker");

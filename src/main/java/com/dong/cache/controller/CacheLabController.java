@@ -157,6 +157,9 @@ public class CacheLabController {
             detail.put("size", store.estimatedSize());
             result.put("l2-" + store.name(), detail);
         });
+        // 熔断状态是判断「慢」的原因的关键：OPEN 说明回源已被主动切断，
+        // 此时的耗时下降不是因为缓存变快了，而是请求根本没发出去
+        result.put("sourceBreakerState", multiLevelCache.sourceBreakerState());
         return Result.success(result);
     }
 

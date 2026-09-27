@@ -30,6 +30,11 @@
 - **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004
 
 ### 模块要点
+- **cache（2026-09-27 加固）**：主读路径是 `MultiLevelCache.resolve()`，返回四态
+  Fresh / Stale（回源失败用旧值兜底）/ Absent（空值或布隆判定）/ Unavailable（连旧值都没有，抛 1005）。
+  **回源失败绝不写空值标记**——那会把一次故障固化成「数据不存在」，是这里最严重的坑。
+  防护分层：IP 读限流 → 撞 id 扫描封禁 → L2 熔断 → 回源熔断 → 回源频控（**本地实现，不依赖 Redis**）→ 重建锁。
+  原则：Redis 挂了退化为无锁回源、布隆不可用一律放行，不把中间件故障放大成业务不可用
 - **search（ES）**：MySQL 权威、索引可丢弃重建，单向收敛。事件只带 id 消费时回查库；afterCommit 监听器必须 try/catch；
   对账两侧全量，超限抛 1007；运维类动作结束要 `refresh()`；价格比对只能用 `compareTo`。
   索引命名：`IndexNameResolver.resolve()` 返回**别名**，真实索引带版本号，改 mapping 只能重建（建 v(n+1)→reindex→切别名→删旧）。

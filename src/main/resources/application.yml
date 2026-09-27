@@ -145,10 +145,26 @@ dong:
     default-ttl: 10m
     null-value-ttl: 60s
     ttl-jitter-ratio: 0.1
+    # 逻辑过期后旧值再留这么久，期间回源失败可以拿它兜底，而不是直接报错
+    stale-grace: 5m
     rebuild-lease: 5s
     rebuild-wait: 1s
     double-delete-delay: 500ms
     invalidation-channel: dong:cache:invalidate
+    # 回源熔断：连续失败这么多次就暂停回源，把等待换成快速失败，给数据库恢复时间
+    breaker-enabled: true
+    breaker-failure-threshold: 5
+    breaker-open-duration: 10s
+    # 回源频控：Redis 整体不可用时，这是保护数据库的最后一道闸门
+    rebuild-global-limit-per-second: 200
+    rebuild-key-limit-per-second: 20
+    # 读防护：缓存是攻击面最集中的模块，配额比全局限流更紧，并额外识别撞 id 的扫描行为
+    guard-enabled: true
+    guard-read-limit-per-minute: 600
+    guard-heavy-limit-per-minute: 20
+    guard-scan-miss-threshold: 30
+    guard-scan-window-seconds: 60
+    guard-block-seconds: 60
 
   mq:
     active: rocketmq

@@ -18,6 +18,9 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>踩坑提醒：JDK 21 之后 Caffeine 反射访问内部字段会触发模块权限告警，
  * 因此这里只存 CacheEntry 包装对象，避免框架去猜测泛型类型。
+ *
+ * <p>本地缓存也保留旧值宽容期：Redis 和数据库同时不可用时，
+ * 进程内这份旧值是最后一道兜底，能挡住一部分请求不打向已经出问题的下游。
  */
 public class CaffeineCacheStore implements CacheStore {
 
@@ -27,12 +30,19 @@ public class CaffeineCacheStore implements CacheStore {
     private final Cache<String, CacheEntry> cache;
 
     /**
+     * 逻辑过期后仍保留旧值的宽容期。
+     */
+    private final Duration staleGrace;
+
+    /**
      * 构造本地缓存存储。
      *
-     * @param maxSize 最大条目数
+     * @param maxSize    最大条目数
+     * @param staleGrace 旧值宽容期
      */
-    public CaffeineCacheStore(long maxSize) {
+    public CaffeineCacheStore(long maxSize, Duration staleGrace) {
         this.cache = Caffeine.newBuilder().maximumSize(maxSize).expireAfter(new EntryExpiry()).recordStats().build();
+        this.staleGrace = staleGrace;
     }
 
     /**
@@ -46,9 +56,9 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     /**
-     * 三种结果必须区分清楚，不能只用 null 表示异常：
-     * Miss 是完全没查到、Empty 是查到空值标记、Hit 是真正命中。
-     * 混淆 Miss 和 Empty 会让防穿透统计失真。
+     * 四种结果必须区分清楚，不能只用 null 表示异常：
+     * Miss 是完全没查到、Empty 是查到空值标记、Hit 是真正命中、
+     * Stale 是逻辑已过期但还在，只能用于回源失败时兜底。
      *
      * @param key  缓存键
      * @param type 值类型
@@ -61,14 +71,17 @@ public class CaffeineCacheStore implements CacheStore {
         if (entry == null) {
             return new CacheLookup.Miss<>();
         }
-        if (entry.expired()) {
+        if (entry.discarded()) {
             cache.invalidate(key);
             return new CacheLookup.Miss<>();
         }
         if (entry.value() == CacheEmpty.INSTANCE) {
-            return new CacheLookup.Empty<>();
+            // 空值标记过期后必须当成 Miss：标记只说明「当时没有」，
+            // 数据可能已经被创建出来了，继续拦下去就永远查不到新数据
+            return entry.expired() ? new CacheLookup.Miss<>() : new CacheLookup.Empty<>();
         }
-        return new CacheLookup.Hit<>(convert(entry.value(), type));
+        T value = convert(entry.value(), type);
+        return entry.expired() ? new CacheLookup.Stale<>(value) : new CacheLookup.Hit<>(value);
     }
 
     /**
@@ -82,13 +95,14 @@ public class CaffeineCacheStore implements CacheStore {
     @Override
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
         CacheEntry entry = cache.getIfPresent(key);
-        if (entry == null || entry.expired()) {
+        if (entry == null || entry.discarded()) {
             return new CacheLookup.Miss<>();
         }
         if (entry.value() == CacheEmpty.INSTANCE) {
-            return new CacheLookup.Empty<>();
+            return entry.expired() ? new CacheLookup.Miss<>() : new CacheLookup.Empty<>();
         }
-        return new CacheLookup.Hit<>(JsonUtils.fromJson(JsonUtils.toJson(entry.value()), type));
+        T value = JsonUtils.fromJson(JsonUtils.toJson(entry.value()), type);
+        return entry.expired() ? new CacheLookup.Stale<>(value) : new CacheLookup.Hit<>(value);
     }
 
     /**
@@ -100,7 +114,7 @@ public class CaffeineCacheStore implements CacheStore {
      */
     @Override
     public void put(String key, Object value, Duration ttl) {
-        cache.put(key, CacheEntry.of(value, ttl));
+        cache.put(key, CacheEntry.of(value, ttl, staleGrace));
     }
 
     /**
@@ -176,14 +190,14 @@ public class CaffeineCacheStore implements CacheStore {
     }
 
     /**
-     * 按 entry 自身记录的过期时间计算，而不是全局固定 ttl。
-     * 这样每一条缓存都能有各自的生命周期，抖动策略才能生效。
+     * 物理寿命按丢弃时间算，而不是逻辑过期时间。
+     * 逻辑过期后条目还得留着，降级时才有旧值可用。
      */
     private static final class EntryExpiry implements Expiry<String, CacheEntry> {
 
         @Override
         public long expireAfterCreate(String key, CacheEntry value, long currentTime) {
-            return TimeUnit.MILLISECONDS.toNanos(Math.max(1, value.expireAtMillis() - System.currentTimeMillis()));
+            return TimeUnit.MILLISECONDS.toNanos(Math.max(1, value.discardAtMillis() - System.currentTimeMillis()));
         }
 
         @Override
