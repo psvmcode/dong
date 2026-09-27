@@ -1,6 +1,5 @@
 package com.dong.crossborder.controller;
 
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -11,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
+import com.dong.crossborder.dto.ReconDiffQueryRequest;
 import com.dong.crossborder.dto.ReconDiffResponse;
 import com.dong.crossborder.dto.SettlementBatchResponse;
 import com.dong.crossborder.enums.SettlementChannel;
@@ -19,10 +19,11 @@ import com.dong.crossborder.mapper.ReconDiffMapper;
 import com.dong.crossborder.service.SettlementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,7 +60,7 @@ public class CrossBorderSettlementController {
     /**
      * 查询全部渠道配置。停用的渠道展示出来但不参与路由。
      */
-    @GetMapping("/channels")
+    @PostMapping("/channels")
     @Operation(summary = "查询清算渠道配置，含时效、限额与费率")
     public Result<List<com.dong.crossborder.entity.ChannelConfig>> channels() {
         return Result.success(channelConfigService.all());
@@ -97,7 +98,7 @@ public class CrossBorderSettlementController {
     /**
      * 查询批次详情。
      */
-    @GetMapping("/batch/{batchNo}")
+    @PostMapping("/batch/{batchNo}")
     @Operation(summary = "查询清算批次详情")
     public Result<SettlementBatchResponse> findByBatchNo(@PathVariable @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(settlementService.findByBatchNo(batchNo));
@@ -106,7 +107,7 @@ public class CrossBorderSettlementController {
     /**
      * 查询全部批次。
      */
-    @GetMapping("/batch")
+    @PostMapping("/batch/list")
     @Operation(summary = "查询全部清算批次")
     public Result<List<SettlementBatchResponse>> findAll() {
         return Result.success(settlementService.findAll());
@@ -142,9 +143,10 @@ public class CrossBorderSettlementController {
     /**
      * 查询对账差异。长款短款会直接造成资金损失，必须当日处理。
      */
-    @GetMapping("/recon")
+    @PostMapping("/recon")
     @Operation(summary = "查询对账差异，可按批次过滤")
-    public Result<Map<String, Object>> recon(@RequestParam(required = false) @Size(max = 128) String batchNo) {
+    public Result<Map<String, Object>> recon(@Valid @RequestBody ReconDiffQueryRequest request) {
+        String batchNo = request.getBatchNo();
         List<ReconDiffResponse> diffs = (batchNo == null || batchNo.isBlank() ? reconDiffMapper.selectAll(100) : reconDiffMapper.selectByBatchNo(batchNo)).stream().map(ReconDiffResponse::from).toList();
         return Result.success(Map.of("count", diffs.size(), "unhandled", reconDiffMapper.countUnhandled(), "diffs", diffs));
     }
@@ -152,7 +154,7 @@ public class CrossBorderSettlementController {
     /**
      * 查询批次状态分布，便于观察清算进度。
      */
-    @GetMapping("/status")
+    @PostMapping("/status")
     @Operation(summary = "查询清算批次状态分布")
     public Result<Map<String, Object>> statusDistribution() {
         Map<String, Object> result = new java.util.LinkedHashMap<>();

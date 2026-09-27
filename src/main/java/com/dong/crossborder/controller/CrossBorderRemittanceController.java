@@ -1,16 +1,14 @@
 package com.dong.crossborder.controller;
 
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import com.dong.common.constant.Constants;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
+import com.dong.common.result.PageQuery;
 import com.dong.common.result.PageResult;
 import com.dong.common.result.Result;
 import com.dong.crossborder.dto.ComplianceRecordResponse;
 import com.dong.crossborder.dto.RemittanceCreateRequest;
+import com.dong.crossborder.dto.RemittanceQueryRequest;
 import com.dong.crossborder.dto.RemittanceResponse;
 import com.dong.crossborder.dto.ReviewDecisionRequest;
 import com.dong.crossborder.enums.RemittanceStatus;
@@ -20,7 +18,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -69,7 +66,7 @@ public class CrossBorderRemittanceController {
     /**
      * 按汇款单号查询。
      */
-    @GetMapping("/{remittanceNo}")
+    @PostMapping("/{remittanceNo}")
     @Operation(summary = "按汇款单号查询")
     public Result<RemittanceResponse> findByRemittanceNo(@PathVariable @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(remittanceService.findByRemittanceNo(remittanceNo));
@@ -78,7 +75,7 @@ public class CrossBorderRemittanceController {
     /**
      * 按幂等键查询，用于超时后确认是否已受理。
      */
-    @GetMapping("/by-idempotent/{idempotentKey}")
+    @PostMapping("/by-idempotent/{idempotentKey}")
     @Operation(summary = "按幂等键查询，用于超时重试后的确认")
     public Result<RemittanceResponse> findByIdempotentKey(@PathVariable @NotBlank @Size(max = 128) String idempotentKey) {
         return Result.success(remittanceService.findByIdempotentKey(idempotentKey));
@@ -87,16 +84,16 @@ public class CrossBorderRemittanceController {
     /**
      * 分页查询。
      */
-    @GetMapping
+    @PostMapping("/page")
     @Operation(summary = "分页查询汇款单，可按状态过滤")
-    public Result<PageResult<RemittanceResponse>> findByPage(@RequestParam(required = false) RemittanceStatus status, @RequestParam(defaultValue = "1") @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
-        return Result.success(remittanceService.findByPage(status, pageNum, pageSize));
+    public Result<PageResult<RemittanceResponse>> findByPage(@Valid @RequestBody RemittanceQueryRequest request) {
+        return Result.success(remittanceService.findByPage(request.getStatus(), request.getPageNum(), request.getPageSize()));
     }
 
     /**
      * 查询某笔汇款的合规检查记录，逐条留痕。
      */
-    @GetMapping("/{remittanceNo}/compliance")
+    @PostMapping("/{remittanceNo}/compliance")
     @Operation(summary = "查询汇款单的合规检查记录")
     public Result<List<ComplianceRecordResponse>> compliance(@PathVariable @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(complianceService.recordsOf(remittanceNo));
@@ -106,10 +103,10 @@ public class CrossBorderRemittanceController {
      * 待人工审核的汇款单列表。超过反洗钱阈值的大额汇款会挂起在这里，
      * 合规人员逐单核实来源与用途后放行或驳回。
      */
-    @GetMapping("/pending-review")
+    @PostMapping("/pending-review")
     @Operation(summary = "查询待人工审核的汇款单")
-    public Result<PageResult<RemittanceResponse>> pendingReview(@RequestParam(defaultValue = "1") @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
-        return Result.success(remittanceService.findByPage(RemittanceStatus.PENDING_REVIEW, pageNum, pageSize));
+    public Result<PageResult<RemittanceResponse>> pendingReview(@Valid @RequestBody PageQuery request) {
+        return Result.success(remittanceService.findByPage(RemittanceStatus.PENDING_REVIEW, request.getPageNum(), request.getPageSize()));
     }
 
     /**
@@ -145,7 +142,7 @@ public class CrossBorderRemittanceController {
      * 查询流转历史。状态字段只回答「现在是什么状态」，
      * 这里回答「它怎么变成这样的」，排查与审计都靠它。
      */
-    @GetMapping("/{remittanceNo}/events")
+    @PostMapping("/{remittanceNo}/events")
     @Operation(summary = "查询汇款单的完整状态流转历史")
     public Result<List<com.dong.crossborder.dto.RemittanceEventResponse>> events(@PathVariable @NotBlank @Size(max = 128) String remittanceNo) {
         return Result.success(eventService.history(remittanceNo));
@@ -164,7 +161,7 @@ public class CrossBorderRemittanceController {
     /**
      * 按批次查询汇款单。
      */
-    @GetMapping("/by-batch/{batchNo}")
+    @PostMapping("/by-batch/{batchNo}")
     @Operation(summary = "按清算批次查询汇款单")
     public Result<List<RemittanceResponse>> findByBatchNo(@PathVariable @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(remittanceService.findByBatchNo(batchNo));
@@ -173,7 +170,7 @@ public class CrossBorderRemittanceController {
     /**
      * 运行时统计，含各状态单量、幂等命中、合规拒绝与消息计数。
      */
-    @GetMapping("/runtime")
+    @PostMapping("/runtime")
     @Operation(summary = "查看汇款运行时统计")
     public Result<Map<String, Object>> runtime() {
         return Result.success(remittanceService.runtime());

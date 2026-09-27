@@ -1,8 +1,8 @@
 package com.dong.classic.controller;
 
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.dong.classic.dto.ShortLinkQueryRequest;
 import com.dong.classic.dto.ShortLinkResponse;
 import com.dong.classic.service.ShortLinkService;
 import com.dong.common.result.Result;
@@ -10,18 +10,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.net.URI;
 
 /**
  * 短链接。短码由发号器生成后做 Base62 编码，
@@ -73,44 +70,47 @@ public class ShortLinkController {
     /**
      * 解析短码得到原始地址，并累加点击数。
      */
-    @GetMapping("/resolve")
+    @PostMapping("/resolve")
     @Operation(summary = "解析短码为原始地址，并累加点击数")
-    public Result<String> resolve(@RequestParam
-                                  @NotBlank @Size(max = 128) String code) {
-        return Result.success(shortLinkService.resolve(code));
+    public Result<String> resolve(@Valid @RequestBody ShortLinkQueryRequest request) {
+        return Result.success(shortLinkService.resolve(request.getCode()));
     }
 
     /**
      * 查询短链详情。
      */
-    @GetMapping("/detail")
+    @PostMapping("/detail")
     @Operation(summary = "查询短链详情")
-    public Result<ShortLinkResponse> detail(@RequestParam
-                                            @NotBlank @Size(max = 128) String code) {
-        return Result.success(ShortLinkResponse.from(shortLinkService.findByCode(code)));
+    public Result<ShortLinkResponse> detail(@Valid @RequestBody ShortLinkQueryRequest request) {
+        return Result.success(ShortLinkResponse.from(shortLinkService.findByCode(request.getCode())));
     }
 
     /**
      * 查询点击次数。
      */
-    @GetMapping("/hits")
+    @PostMapping("/hits")
     @Operation(summary = "查询短链被点击的次数")
-    public Result<Long> hits(@RequestParam
-                             @NotBlank @Size(max = 128) String code) {
-        return Result.success(shortLinkService.hitCount(code));
+    public Result<Long> hits(@Valid @RequestBody ShortLinkQueryRequest request) {
+        return Result.success(shortLinkService.hitCount(request.getCode()));
     }
 
     /**
-     * 短链跳转。这里必须用 302 而不是 301：
-     * 301 是永久重定向，会被浏览器缓存，之后再访问就不再经过服务端，
-     * 点击统计会彻底失效。
+     * 短链跳转地址。这里返回原始地址而不是直接重定向：
+     * 全站统一为 POST 之后，浏览器地址栏发起的 GET 已经不再被接受，
+     * 跳转只能由调用方拿到地址后自行完成。
+     *
+     * <p>真要保留浏览器直接跳转，就必须给这个接口留一个 GET 口子，
+     * 并且必须用 302 而不是 301：301 会被浏览器缓存，
+     * 之后再访问就不再经过服务端，点击统计会彻底失效。
+     *
+     * @param code 短码
+     * @return 原始地址
      */
-    @GetMapping("/s/{code}")
-    @Operation(summary = "短链跳转，用 302 而非 301，否则点击统计会失效")
-    public ResponseEntity<Void> redirect(@PathVariable
-                                         @NotBlank @Size(max = 128) String code) {
-        String origin = shortLinkService.resolve(code);
-        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(origin)).build();
+    @PostMapping("/s/{code}")
+    @Operation(summary = "解析短码返回原始地址，由调用方完成跳转")
+    public Result<String> redirect(@PathVariable
+                                   @NotBlank @Size(max = 128) String code) {
+        return Result.success(shortLinkService.resolve(code));
     }
 
 }

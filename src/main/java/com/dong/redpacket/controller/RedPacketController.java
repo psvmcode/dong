@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
 import com.dong.redpacket.dto.GrabResultResponse;
+import com.dong.redpacket.dto.RedPacketQueryRequest;
 import com.dong.redpacket.dto.RedPacketResponse;
 import com.dong.redpacket.dto.RedPacketSendRequest;
 import com.dong.redpacket.entity.RedPacketRecord;
@@ -13,7 +14,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,28 +60,28 @@ public class RedPacketController {
     /**
      * 查询红包详情。
      */
-    @GetMapping
+    @PostMapping
     @Operation(summary = "查询红包详情")
-    public Result<RedPacketResponse> detail(@RequestParam @NotBlank @Size(max = 128) String packetNo) {
-        return Result.success(RedPacketResponse.from(redPacketService.findByPacketNo(packetNo)));
+    public Result<RedPacketResponse> detail(@Valid @RequestBody RedPacketQueryRequest request) {
+        return Result.success(RedPacketResponse.from(redPacketService.findByPacketNo(request.getPacketNo())));
     }
 
     /**
      * 查询领取记录。可用它核对金额是否精确守恒。
      */
-    @GetMapping("/records")
+    @PostMapping("/records")
     @Operation(summary = "查询红包领取记录")
-    public Result<List<RedPacketRecord>> records(@RequestParam @NotBlank @Size(max = 128) String packetNo) {
-        return Result.success(redPacketService.records(packetNo));
+    public Result<List<RedPacketRecord>> records(@Valid @RequestBody RedPacketQueryRequest request) {
+        return Result.success(redPacketService.records(request.getPacketNo()));
     }
 
     /**
      * 查询剩余份数与剩余金额。
      */
-    @GetMapping("/remain")
+    @PostMapping("/remain")
     @Operation(summary = "查询红包剩余份数与剩余金额")
-    public Result<java.util.Map<String, Object>> remain(@RequestParam @NotBlank @Size(max = 128) String packetNo) {
-        return Result.success(java.util.Map.of("remainCount", redPacketService.remainCount(packetNo), "remainAmount", redPacketService.remainAmount(packetNo)));
+    public Result<java.util.Map<String, Object>> remain(@Valid @RequestBody RedPacketQueryRequest request) {
+        return Result.success(java.util.Map.of("remainCount", redPacketService.remainCount(request.getPacketNo()), "remainAmount", redPacketService.remainAmount(request.getPacketNo())));
     }
 
     /**
@@ -96,7 +96,7 @@ public class RedPacketController {
     /**
      * 查看运行时状态，含限流拒绝数、降级次数与重建次数。
      */
-    @GetMapping("/runtime")
+    @PostMapping("/runtime")
     @Operation(summary = "查看抢红包运行时状态")
     public Result<java.util.Map<String, Object>> runtime() {
         return Result.success(redPacketService.runtime());

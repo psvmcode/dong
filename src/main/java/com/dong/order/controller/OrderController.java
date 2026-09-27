@@ -11,6 +11,7 @@ import com.dong.common.result.Result;
 import com.dong.order.dto.OrderBenchmarkResponse;
 import com.dong.order.dto.OrderCreateRequest;
 import com.dong.order.dto.OrderFireRequest;
+import com.dong.order.dto.OrderRecentQueryRequest;
 import com.dong.order.dto.OrderResponse;
 import com.dong.order.dto.OrderTransitionLogResponse;
 import com.dong.order.service.OrderService;
@@ -19,7 +20,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -69,7 +69,7 @@ public class OrderController {
     /**
      * 查询订单详情。
      */
-    @GetMapping("/{orderNo}")
+    @PostMapping("/{orderNo}")
     @Operation(summary = "查询订单详情")
     public Result<OrderResponse> detail(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.detail(orderNo));
@@ -78,7 +78,7 @@ public class OrderController {
     /**
      * 查询当前状态下可以触发哪些事件，前端可以据此决定显示哪些按钮。
      */
-    @GetMapping("/{orderNo}/available-events")
+    @PostMapping("/{orderNo}/available-events")
     @Operation(summary = "查询当前状态可触发的事件")
     public Result<List<String>> availableEvents(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.availableEvents(orderNo));
@@ -87,7 +87,7 @@ public class OrderController {
     /**
      * 查询状态流转日志，被拒绝的记录也在里面。
      */
-    @GetMapping("/{orderNo}/logs")
+    @PostMapping("/{orderNo}/logs")
     @Operation(summary = "查询订单状态流转日志")
     public Result<List<OrderTransitionLogResponse>> logs(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(orderService.logs(orderNo));
@@ -96,10 +96,10 @@ public class OrderController {
     /**
      * 查询最近的订单。
      */
-    @GetMapping
+    @PostMapping("/recent")
     @Operation(summary = "查询最近创建的订单")
-    public Result<List<OrderResponse>> recent(@RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
-        return Result.success(orderService.recent(limit));
+    public Result<List<OrderResponse>> recent(@Valid @RequestBody OrderRecentQueryRequest request) {
+        return Result.success(orderService.recent(request.getLimit()));
     }
 
     /**
@@ -114,7 +114,7 @@ public class OrderController {
     /**
      * 导出状态机图，PlantUML 语法，贴到支持 PlantUML 的编辑器里即可渲染。
      */
-    @GetMapping("/state-machine/plantuml")
+    @PostMapping("/state-machine/plantuml")
     @Operation(summary = "导出状态机图，PlantUML 语法")
     public Result<String> plantUml() {
         return Result.success(orderService.plantUml());

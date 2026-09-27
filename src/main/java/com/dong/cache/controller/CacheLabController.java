@@ -2,10 +2,9 @@ package com.dong.cache.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import com.dong.common.constant.Constants;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
+import com.dong.cache.dto.PenetrationQueryRequest;
+import com.dong.cache.dto.ProbeQueryRequest;
 import com.dong.cache.service.CacheLabService;
 import com.dong.cache.service.ProductService;
 import com.dong.common.result.Result;
@@ -15,11 +14,12 @@ import com.dong.framework.cache.MultiLevelCache;
 import com.dong.framework.cache.impl.RedisCacheStore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,7 +74,7 @@ public class CacheLabController {
      *
      * @return 缓存统计快照
      */
-    @GetMapping("/stats")
+    @PostMapping("/stats")
     @Operation(summary = "查看各层级缓存命中率")
     public Result<CacheStats.CacheStatsSnapshot> stats() {
         return Result.success(cacheStats.snapshot());
@@ -105,24 +105,19 @@ public class CacheLabController {
      * 对照实验入口。guarded 为 true 走布隆过滤器，false 只靠空值标记。
      * 对比返回的 elapsedMillis 即可看出两种手段的差距。
      */
-    @GetMapping("/penetration")
+    @PostMapping("/penetration")
     @Operation(summary = "缓存穿透实验，对比空值标记与布隆过滤器两种防护手段")
-    public Result<Map<String, Object>> penetration(@RequestParam(defaultValue = "2000")
-                                                   @Min(1) @Max(Constants.MAX_BATCH_SIZE) int count,
-                                                   @RequestParam(defaultValue = "false") boolean guarded) {
-        return Result.success(cacheLabService.penetration(count, guarded));
+    public Result<Map<String, Object>> penetration(@Valid @RequestBody PenetrationQueryRequest request) {
+        return Result.success(cacheLabService.penetration(request.getCount(), request.isGuarded()));
     }
 
     /**
      * 探测缓存 key，用于缓存穿透防护演练。
      */
-    @GetMapping("/probe")
+    @PostMapping("/probe")
     @Operation(summary = "读取缓存，完整走一遍 L1 到 L2 再到回源的链路")
-    public Result<String> probe(@RequestParam
-                                @NotBlank @Size(max = 128) String key,
-                                @RequestParam(defaultValue = "probe-value")
-                                @NotBlank @Size(max = 4096) String value) {
-        return Result.success(multiLevelCache.get(key, String.class, Duration.ofMinutes(5), () -> value));
+    public Result<String> probe(@Valid @RequestBody ProbeQueryRequest request) {
+        return Result.success(multiLevelCache.get(request.getKey(), String.class, Duration.ofMinutes(5), request::getValue));
     }
 
     /**
@@ -140,7 +135,7 @@ public class CacheLabController {
      * 用 ObjectProvider 而不是直接注入，因为 L1 和 L2 都可以独立关闭，
      * 关闭时容器里没有对应 bean，直接注入会启动失败。
      */
-    @GetMapping("/levels")
+    @PostMapping("/levels")
     @Operation(summary = "查看 L1 与 L2 的容量和命中明细")
     public Result<Map<String, Object>> levels() {
         Map<String, Object> result = new LinkedHashMap<>();

@@ -1,7 +1,17 @@
 package com.dong.search.dto;
 
+import com.dong.common.constant.Constants;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+
 /**
- * ProductSearchRequest。
+ * 检索请求。检索与聚合共用它，两边的过滤口径才不会走偏。
+ *
+ * <p>它同时是请求体，所以校验注解写在字段上而不是控制器参数上：
+ * 参数进了 JSON body 之后，方法签名上的约束就管不到内容了。
  */
 public class ProductSearchRequest {
 
@@ -34,33 +44,41 @@ public class ProductSearchRequest {
      * 搜索关键字。走 multi_match，name 权重 3 倍、description 权重 1 倍，并带 fuzzy 容错。
      * 不传则不过滤，配合价格区间可以只做筛选不做全文检索。
      */
+    @Size(max = 256)
     private String keyword;
 
     /**
      * 分类过滤。走 term 精确匹配而不是分词，因为 category 是 keyword 类型，
      * 用 match 查 keyword 字段只会匹配到整个值。
      */
+    @Size(max = 128)
     private String category;
 
     /**
      * 价格下限，含边界。与 maxPrice 一起构成 range 过滤，只传一个就是单边区间。
      */
+    @PositiveOrZero
     private Double minPrice;
 
     /**
      * 价格上限，含边界。
      */
+    @PositiveOrZero
     private Double maxPrice;
 
     /**
      * 页码，从 1 开始。它参与 from 的计算：from=(pageNum-1)*pageSize，
      * 所以页码乘以页大小一旦超过 ES 的一万条上限会被直接拒绝，深翻页请走 /deep。
      */
+    @Min(1)
+    @Max(Constants.MAX_PAGE_NUM)
     private int pageNum = 1;
 
     /**
      * 每页条数。
      */
+    @Min(1)
+    @Max(Constants.MAX_PAGE_SIZE)
     private int pageSize = 20;
 
     /**
@@ -69,6 +87,7 @@ public class ProductSearchRequest {
      * <p>一旦按价格或时间排序，_score 就不再有意义（相当于关掉相关性排序），
      * 这是有代价的取舍：排序稳定了，但「最匹配」这件事没了。
      */
+    @Pattern(regexp = SORT_PATTERN)
     private String sort = SORT_RELEVANCE;
 
     /**

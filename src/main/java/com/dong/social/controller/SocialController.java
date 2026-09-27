@@ -2,18 +2,21 @@ package com.dong.social.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import com.dong.common.constant.Constants;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
+import com.dong.social.dto.CommonFollowQueryRequest;
 import com.dong.social.dto.FeedResponse;
+import com.dong.social.dto.FollowQueryRequest;
+import com.dong.social.dto.SocialUserQueryRequest;
+import com.dong.social.dto.TimelinePullQueryRequest;
+import com.dong.social.dto.TimelinePushQueryRequest;
 import com.dong.social.service.SocialService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -64,46 +67,46 @@ public class SocialController {
     /**
      * 判断是否已关注。
      */
-    @GetMapping("/is-following")
+    @PostMapping("/is-following")
     @Operation(summary = "判断是否已关注某个用户")
-    public Result<Boolean> isFollowing(@RequestParam Long followerId, @RequestParam Long followeeId) {
-        return Result.success(socialService.isFollowing(followerId, followeeId));
+    public Result<Boolean> isFollowing(@Valid @RequestBody FollowQueryRequest request) {
+        return Result.success(socialService.isFollowing(request.getFollowerId(), request.getFolloweeId()));
     }
 
     /**
      * 查询关注列表。
      */
-    @GetMapping("/followees")
+    @PostMapping("/followees")
     @Operation(summary = "查询某个用户关注的人")
-    public Result<List<Long>> followees(@RequestParam Long followerId) {
-        return Result.success(socialService.followees(followerId));
+    public Result<List<Long>> followees(@Valid @RequestBody SocialUserQueryRequest request) {
+        return Result.success(socialService.followees(request.getUserId()));
     }
 
     /**
      * 查询粉丝列表。
      */
-    @GetMapping("/followers")
+    @PostMapping("/followers")
     @Operation(summary = "查询某个用户的粉丝")
-    public Result<List<Long>> followers(@RequestParam Long followeeId) {
-        return Result.success(socialService.followers(followeeId));
+    public Result<List<Long>> followers(@Valid @RequestBody SocialUserQueryRequest request) {
+        return Result.success(socialService.followers(request.getUserId()));
     }
 
     /**
      * 查询关注数与粉丝数。
      */
-    @GetMapping("/counts")
+    @PostMapping("/counts")
     @Operation(summary = "查询关注数与粉丝数")
-    public Result<Map<String, Long>> counts(@RequestParam Long userId) {
-        return Result.success(socialService.counts(userId));
+    public Result<Map<String, Long>> counts(@Valid @RequestBody SocialUserQueryRequest request) {
+        return Result.success(socialService.counts(request.getUserId()));
     }
 
     /**
      * 共同关注，即两个用户关注集合的交集。
      */
-    @GetMapping("/common-followees")
+    @PostMapping("/common-followees")
     @Operation(summary = "查询两个用户的共同关注")
-    public Result<List<Long>> commonFollowees(@RequestParam Long firstUserId, @RequestParam Long secondUserId) {
-        return Result.success(socialService.commonFollowees(firstUserId, secondUserId));
+    public Result<List<Long>> commonFollowees(@Valid @RequestBody CommonFollowQueryRequest request) {
+        return Result.success(socialService.commonFollowees(request.getFirstUserId(), request.getSecondUserId()));
     }
 
     /**
@@ -118,19 +121,19 @@ public class SocialController {
     /**
      * 推模式时间线。发动态时已写给所有粉丝，这里直接读准备好的结果。
      */
-    @GetMapping("/timeline/push")
+    @PostMapping("/timeline/push")
     @Operation(summary = "推模式时间线，直接读取已准备好的结果")
-    public Result<List<FeedResponse>> timelinePush(@RequestParam Long userId, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int size) {
-        return Result.success(socialService.timelinePush(userId, size));
+    public Result<List<FeedResponse>> timelinePush(@Valid @RequestBody TimelinePushQueryRequest request) {
+        return Result.success(socialService.timelinePush(request.getUserId(), request.getSize()));
     }
 
     /**
      * 拉模式时间线。读的时候才聚合所有关注者的动态。
      */
-    @GetMapping("/timeline/pull")
+    @PostMapping("/timeline/pull")
     @Operation(summary = "拉模式时间线，读时聚合所有关注者的动态")
-    public Result<List<FeedResponse>> timelinePull(@RequestParam Long userId, @RequestParam(defaultValue = "1") @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
-        return Result.success(socialService.timelinePull(userId, pageNum, pageSize));
+    public Result<List<FeedResponse>> timelinePull(@Valid @RequestBody TimelinePullQueryRequest request) {
+        return Result.success(socialService.timelinePull(request.getUserId(), request.getPageNum(), request.getPageSize()));
     }
 
     /**
@@ -145,10 +148,10 @@ public class SocialController {
     /**
      * 关系总览。
      */
-    @GetMapping("/summary")
+    @PostMapping("/summary")
     @Operation(summary = "查询用户关系总览")
-    public Result<Map<String, Object>> summary(@RequestParam Long userId) {
-        return Result.success(socialService.relationSummary(userId));
+    public Result<Map<String, Object>> summary(@Valid @RequestBody SocialUserQueryRequest request) {
+        return Result.success(socialService.relationSummary(request.getUserId()));
     }
 
 }

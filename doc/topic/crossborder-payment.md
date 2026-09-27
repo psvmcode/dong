@@ -183,7 +183,7 @@ Alice 提交汇款申请，要带上：
 
 > 为什么要拆成两步？因为真实渠道的这两步之间隔着几分钟到两天。**"清算中"就是那笔悬在渠道手里、付款方已扣而收款方未收的在途资金**。把它单独表达出来，出问题时才说得清钱卡在哪一环。
 >
-> 本项目没有真实的渠道往返，两步紧挨着执行，所以"清算中"只停留毫秒级——想观察它，要看 `GET /remittance/runtime` 里的 `settlingEntered`（累计进入过清算中的笔数），各状态的**瞬时**数量永远是 0。
+> 本项目没有真实的渠道往返，两步紧挨着执行，所以"清算中"只停留毫秒级——想观察它，要看 `POST /remittance/runtime` 里的 `settlingEntered`（累计进入过清算中的笔数），各状态的**瞬时**数量永远是 0。
 
 ---
 
@@ -481,7 +481,7 @@ bidRate = 0.13965035   askRate = 0.14006993
 
 #### 报价的本质：一张只能使用一次的承诺券
 
-先纠正一个容易误解的说法：**报价可以被查询无数次，只是"锁定"只能成功一次**。`GET /fx/quote/{quoteNo}` 想查多少次都行，只有 `FxQuoteService.lock()` 是一次性的。
+先纠正一个容易误解的说法：**报价可以被查询无数次，只是"锁定"只能成功一次**。`POST /fx/{quoteNo}` 想查多少次都行，只有 `FxQuoteService.lock()` 是一次性的。
 
 报价就是**一张有时效的汇率承诺券**，字段含义如下：
 
@@ -633,7 +633,7 @@ where quote_no = #{quoteNo}
 - **推进到 `SETTLING` 时不碰钱**，所以这一步失败不需要回滚任何账务。
 - **定时器扫描必须同时覆盖 `FUNDS_DEBITED` 和 `SETTLING`**。只扫前者的话，消息已投递但入账没跑完的单子会被永久漏掉——钱已出账却永远等不到确认。
 
-`SETTLING` 在本项目里只停留毫秒级（没有真实渠道往返），**各状态的瞬时数量永远是 0**。要观察它，看 `GET /remittance/runtime` 里的 `settlingEntered`——那是累计进入过清算中的笔数。
+`SETTLING` 在本项目里只停留毫秒级（没有真实渠道往返），**各状态的瞬时数量永远是 0**。要观察它，看 `POST /remittance/runtime` 里的 `settlingEntered`——那是累计进入过清算中的笔数。
 
 **一条最重要的设计原则：失败一律走退款，绝不回退。**
 
@@ -727,7 +727,7 @@ return 0
 {"underLineCount":3,"payerAccountId":9,"totalAmount":27000.00,"totalCount":3}
 ```
 
-第 3 笔触发告警，`GET /risk/aml/flagged` 能查到命中账户。
+第 3 笔触发告警，`POST /risk/aml/flagged` 能查到命中账户。
 
 ---
 
@@ -840,7 +840,7 @@ curl -X POST $B/remittance -H 'Content-Type: application/json' \
   -d '{"idempotentKey":"demo-2","payerAccountNo":"CB...","payeeAccountNo":"CB...","sourceAmount":60000}'
 
 # 6. 查待审核列表 → 审核放行
-curl $B/remittance/pending-review
+curl -X POST $B/remittance/pending-review -H 'Content-Type: application/json' -d '{}'
 curl -X POST "$B/remittance/RM.../review/approve" -H 'Content-Type: application/json' \
   -d '{"reviewer":"compliance-dong","note":"material verified"}'
 
@@ -849,7 +849,7 @@ curl -X POST "$B/remittance/RM.../review/approve" -H 'Content-Type: application/
 
 # 8. 冻结收款账户 → 查事件历史 → 重复冻结应报冲突
 curl -X POST "$B/accounts/CB.../freeze?reason=aml investigation&operator=risk-team"
-curl "$B/accounts/CB.../events"
+curl -X POST "$B/accounts/CB.../events"
 curl -X POST "$B/accounts/CB.../freeze?reason=dup&operator=risk-team"   # → code=1002 冲突
 curl -X POST "$B/accounts/CB.../unfreeze?reason=closed&operator=risk-team"
 
@@ -858,21 +858,21 @@ curl -X POST "$B/settlement/close-overdue"
 curl -X POST "$B/recon/SB...?errorRate=0.2"
 
 # 10. 资金自检：用流水反推余额，与实际余额比对
-curl "$B/accounts/CB.../diff?initial=100000"
+curl -X POST "$B/accounts/CB.../diff" -H 'Content-Type: application/json' -d '{"initial":100000}'
 # → {"diff":0.00,"consistent":true} 表示账实相符
 
 # 11. 风控观察
-curl "$B/risk/route?amount=20000&urgent=false"        # 渠道路由评分
-curl "$B/risk/aml/profile?payerAccountId=7"           # 当日交易画像
-curl "$B/risk/aml/flagged"                            # 命中拆分嫌疑的账户
-curl "$B/risk/fx-exposure"                            # 汇率敞口
+curl -X POST "$B/risk/route" -H 'Content-Type: application/json' -d '{"amount":20000,"urgent":false}'   # 渠道路由评分
+curl -X POST "$B/risk/aml/profile" -H 'Content-Type: application/json' -d '{"payerAccountId":7}'        # 当日交易画像
+curl -X POST "$B/risk/aml/flagged"                                                                     # 命中拆分嫌疑的账户
+curl -X POST "$B/risk/fx-exposure"                                                                     # 汇率敞口
 
 # 12. 手动清算兜底：把已扣款的单子收进批次再清算（抢在消息消费之前才看得到效果）
 curl -X POST "$B/settlement/batch/SB.../collect?limit=10"
 curl -X POST "$B/settlement/batch/SB.../settle"
 
 # 13. 运行时统计
-curl $B/remittance/runtime
+curl -X POST $B/remittance/runtime
 # settlingEntered 是累计进入过「清算中」的笔数，瞬时状态数永远看不到
 ```
 
@@ -903,7 +903,7 @@ curl $B/remittance/runtime
 
 ### 10.1 汇率敞口几乎总是空的
 
-敞口统计的是 `QUOTE_LOCKED / FUNDS_DEBITED / SETTLING` 三种状态的单子。由于实时清算链路在毫秒级完成，汇款单在这三个状态停留的时间极短，所以 `GET /risk/fx-exposure` 通常返回空数组。
+敞口统计的是 `QUOTE_LOCKED / FUNDS_DEBITED / SETTLING` 三种状态的单子。由于实时清算链路在毫秒级完成，汇款单在这三个状态停留的时间极短，所以 `POST /risk/fx-exposure` 通常返回空数组。
 
 实测（连跑 4 笔汇款后）：
 
@@ -911,7 +911,7 @@ curl $B/remittance/runtime
 {"pairCount":0,"totalNotional":0,"totalFloatingPnl":0,"alertPairs":0,"rows":[]}
 ```
 
-注意 `SETTLING` 是**真的会被写入的**（`CrossBorderLedgerService.markSettling()`），只是停留时间短到抓不住。想确认它确实经过，看 `GET /remittance/runtime` 的 `settlingEntered`：
+注意 `SETTLING` 是**真的会被写入的**（`CrossBorderLedgerService.markSettling()`），只是停留时间短到抓不住。想确认它确实经过，看 `POST /remittance/runtime` 的 `settlingEntered`：
 
 ```json
 {"FUNDS_DEBITED":0,"SETTLING":0,"SETTLED":18,"messageSent":2,"settlingEntered":2}

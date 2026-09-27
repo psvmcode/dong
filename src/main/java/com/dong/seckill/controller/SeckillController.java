@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -88,7 +87,7 @@ public class SeckillController {
     /**
      * 查询 Redis 中的剩余库存。
      */
-    @GetMapping("/activities/{id}/stock")
+    @PostMapping("/activities/{id}/stock")
     @Operation(summary = "查询 Redis 中的剩余库存")
     public Result<Integer> stock(@PathVariable @Positive Long id) {
         return Result.success(seckillService.stockOf(id));
@@ -97,7 +96,7 @@ public class SeckillController {
     /**
      * 查询全部活动。
      */
-    @GetMapping("/activities")
+    @PostMapping("/activities/list")
     @Operation(summary = "查询全部秒杀活动")
     public Result<List<SeckillActivityResponse>> activities() {
         List<SeckillActivity> activities = seckillService.activities();
@@ -107,7 +106,7 @@ public class SeckillController {
     /**
      * 按订单号查询订单。
      */
-    @GetMapping("/orders/{orderNo}")
+    @PostMapping("/orders/{orderNo}")
     @Operation(summary = "按订单号查询秒杀订单")
     public Result<SeckillOrderResponse> order(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         return Result.success(SeckillOrderResponse.from(seckillService.order(orderNo)));
@@ -136,7 +135,7 @@ public class SeckillController {
     /**
      * 查看运行时状态，含售罄标记与消息通道情况。
      */
-    @GetMapping("/runtime")
+    @PostMapping("/runtime")
     @Operation(summary = "查看秒杀运行时状态")
     public Result<Map<String, Object>> runtime() {
         Map<String, Object> runtime = new LinkedHashMap<>(seckillService.runtime());

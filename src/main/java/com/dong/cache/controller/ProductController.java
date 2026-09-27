@@ -1,17 +1,12 @@
 package com.dong.cache.controller;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Positive;
-import com.dong.common.constant.Constants;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
 import com.dong.cache.dto.ProductReadResult;
 import com.dong.cache.dto.ProductResponse;
 import com.dong.cache.dto.ProductSaveRequest;
 import com.dong.cache.service.ProductService;
-import com.dong.common.result.PageRequest;
+import com.dong.common.result.PageQuery;
 import com.dong.common.result.PageResult;
 import com.dong.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,13 +14,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -50,7 +43,7 @@ public class ProductController {
      * 普通读路径，走完 L1、L2、回源三级。
      * 下游不可用时不会硬凑数据：有旧值就带 stale 标记返回，没有就抛 1005。
      */
-    @GetMapping("/{id}")
+    @PostMapping("/{id}")
     @Operation(summary = "查询商品，依次经过 L1、L2 和数据库")
     public Result<ProductResponse> findById(@PathVariable
                                             @Positive Long id) {
@@ -62,7 +55,7 @@ public class ProductController {
      * 布隆过滤版读路径。与上一个接口形成对照，
      * 用同一个不存在的 id 分别请求，可以直观看到耗时差异。
      */
-    @GetMapping("/{id}/guarded")
+    @PostMapping("/{id}/guarded")
     @Operation(summary = "查询商品，id 不可能存在时由布隆过滤器提前拒绝")
     public Result<ProductResponse> findByIdGuarded(@PathVariable
                                                    @Positive Long id) {
@@ -74,20 +67,17 @@ public class ProductController {
      * 分页查询刻意不经过缓存。列表查询的组合太多，缓存命中率低，
      * 强行缓存只会带来更高的失效成本。
      */
-    @GetMapping
+    @PostMapping("/page")
     @Operation(summary = "分页查询商品，有意不经过缓存")
-    public Result<PageResult<ProductResponse>> findByPage(@RequestParam(defaultValue = "1")
-                                                          @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
-                                                          @RequestParam(defaultValue = "20")
-                                                          @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
-        PageResult<com.dong.cache.entity.Product> page = productService.findByPage(PageRequest.of(pageNum, pageSize));
+    public Result<PageResult<ProductResponse>> findByPage(@Valid @RequestBody PageQuery request) {
+        PageResult<com.dong.cache.entity.Product> page = productService.findByPage(request.toPageRequest());
         return Result.success(page.map(ProductResponse::from));
     }
 
     /**
      * 全量列表，供预热等场景使用，同样不走缓存。
      */
-    @GetMapping("/all")
+    @PostMapping("/all")
     @Operation(summary = "查询全部商品，不经过缓存")
     public Result<List<ProductResponse>> findAll() {
         return Result.success(productService.findAll().stream().map(ProductResponse::from).toList());

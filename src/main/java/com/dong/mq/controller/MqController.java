@@ -7,15 +7,17 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.result.Result;
+import com.dong.mq.dto.MqLogQueryRequest;
 import com.dong.mq.entity.MqMessageLog;
 import com.dong.mq.handler.DemoOrderMessageHandler;
 import com.dong.mq.service.MqConsumeService;
 import com.dong.mq.service.MqProduceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -91,7 +93,7 @@ public class MqController {
     /**
      * 查看当前生效的传输实现。
      */
-    @GetMapping("/status")
+    @PostMapping("/status")
     @Operation(summary = "查看当前生效的消息传输实现")
     public Result<Map<String, Object>> status() {
         return Result.success(mqProduceService.status());
@@ -100,17 +102,17 @@ public class MqController {
     /**
      * 查看投递日志。
      */
-    @GetMapping("/logs")
+    @PostMapping("/logs")
     @Operation(summary = "查看消息投递日志")
-    public Result<List<MqMessageLog>> logs(@RequestParam(defaultValue = "20") @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int limit) {
-        return Result.success(mqConsumeService.recent(limit));
+    public Result<List<MqMessageLog>> logs(@Valid @RequestBody MqLogQueryRequest request) {
+        return Result.success(mqConsumeService.recent(request.getLimit()));
     }
 
     /**
      * 查看消费统计。duplicated 计数来自消息日志的唯一索引，
      * 可以验证重复投递是否被幂等拦截。
      */
-    @GetMapping("/stats")
+    @PostMapping("/stats")
     @Operation(summary = "查看消费统计，含重复投递计数")
     public Result<Map<String, Object>> stats() {
         return Result.success(mqConsumeService.stats());

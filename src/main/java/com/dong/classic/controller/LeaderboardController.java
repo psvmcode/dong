@@ -2,19 +2,21 @@ package com.dong.classic.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import com.dong.common.constant.Constants;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
+import com.dong.classic.dto.LeaderboardAroundQueryRequest;
+import com.dong.classic.dto.LeaderboardMemberQueryRequest;
+import com.dong.classic.dto.LeaderboardQueryRequest;
+import com.dong.classic.dto.LeaderboardTopQueryRequest;
 import com.dong.classic.dto.RankItemResponse;
 import com.dong.classic.service.LeaderboardService;
 import com.dong.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,61 +70,46 @@ public class LeaderboardController {
     /**
      * 取前 N 名。分数相同时按成员字典序排列，这是 ZSet 的默认行为。
      */
-    @GetMapping("/top")
+    @PostMapping("/top")
     @Operation(summary = "查询排行榜前 N 名")
-    public Result<List<RankItemResponse>> top(@RequestParam(defaultValue = "default")
-                                              @NotBlank @Size(max = 128) String board,
-                                              @RequestParam(defaultValue = "10")
-                                              @Min(1) @Max(Constants.MAX_QUERY_LIMIT) int size) {
-        return Result.success(leaderboardService.top(board, size));
+    public Result<List<RankItemResponse>> top(@Valid @RequestBody LeaderboardTopQueryRequest request) {
+        return Result.success(leaderboardService.top(request.getBoard(), request.getSize()));
     }
 
     /**
      * 查询名次，从 0 开始计数。
      */
-    @GetMapping("/rank")
+    @PostMapping("/rank")
     @Operation(summary = "查询某个成员的名次，从 0 开始")
-    public Result<Long> rank(@RequestParam(defaultValue = "default")
-                             @NotBlank @Size(max = 128) String board,
-                             @RequestParam
-                             @NotBlank @Size(max = 128) String member) {
-        return Result.success(leaderboardService.rankOf(board, member));
+    public Result<Long> rank(@Valid @RequestBody LeaderboardMemberQueryRequest request) {
+        return Result.success(leaderboardService.rankOf(request.getBoard(), request.getMember()));
     }
 
     /**
      * 查询分数。成员不存在时返回 null，调用方需要自行处理。
      */
-    @GetMapping("/score")
+    @PostMapping("/score")
     @Operation(summary = "查询某个成员的分数")
-    public Result<Double> score(@RequestParam(defaultValue = "default")
-                                @NotBlank @Size(max = 128) String board,
-                                @RequestParam
-                                @NotBlank @Size(max = 128) String member) {
-        return Result.success(leaderboardService.scoreOf(board, member));
+    public Result<Double> score(@Valid @RequestBody LeaderboardMemberQueryRequest request) {
+        return Result.success(leaderboardService.scoreOf(request.getBoard(), request.getMember()));
     }
 
     /**
      * 查询某个成员前后各若干名，用于展示"我的位置"这类视图。
      */
-    @GetMapping("/around")
+    @PostMapping("/around")
     @Operation(summary = "查询某个成员前后指定范围内的排名")
-    public Result<List<RankItemResponse>> around(@RequestParam(defaultValue = "default")
-                                                 @NotBlank @Size(max = 128) String board,
-                                                 @RequestParam
-                                                 @NotBlank @Size(max = 128) String member,
-                                                 @RequestParam(defaultValue = "2")
-                                                 @Min(1) @Max(100) int range) {
-        return Result.success(leaderboardService.around(board, member, range));
+    public Result<List<RankItemResponse>> around(@Valid @RequestBody LeaderboardAroundQueryRequest request) {
+        return Result.success(leaderboardService.around(request.getBoard(), request.getMember(), request.getRange()));
     }
 
     /**
      * 总人数。
      */
-    @GetMapping("/size")
+    @PostMapping("/size")
     @Operation(summary = "查询排行榜总人数")
-    public Result<Long> size(@RequestParam(defaultValue = "default")
-                             @NotBlank @Size(max = 128) String board) {
-        return Result.success(leaderboardService.size(board));
+    public Result<Long> size(@Valid @RequestBody LeaderboardQueryRequest request) {
+        return Result.success(leaderboardService.size(request.getBoard()));
     }
 
     /**

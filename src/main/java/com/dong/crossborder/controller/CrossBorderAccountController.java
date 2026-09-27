@@ -1,9 +1,5 @@
 package com.dong.crossborder.controller;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
@@ -11,6 +7,7 @@ import com.dong.common.result.Result;
 import com.dong.crossborder.dto.AccountCreateRequest;
 import com.dong.crossborder.dto.AccountEventResponse;
 import com.dong.crossborder.dto.AccountResponse;
+import com.dong.crossborder.dto.BalanceDiffQueryRequest;
 import com.dong.crossborder.service.ComplianceService;
 import com.dong.crossborder.service.CrossBorderAccountService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,7 +15,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -62,7 +58,7 @@ public class CrossBorderAccountController {
     /**
      * 按账号查询。
      */
-    @GetMapping("/accounts/{accountNo}")
+    @PostMapping("/accounts/{accountNo}")
     @Operation(summary = "按账号查询账户，含可用余额")
     public Result<AccountResponse> findByAccountNo(@PathVariable @NotBlank @Size(max = 128) String accountNo) {
         return Result.success(accountService.findByAccountNo(accountNo));
@@ -71,7 +67,7 @@ public class CrossBorderAccountController {
     /**
      * 查询全部账户。
      */
-    @GetMapping("/accounts")
+    @PostMapping("/accounts/list")
     @Operation(summary = "查询全部跨境账户")
     public Result<List<AccountResponse>> findAll() {
         return Result.success(accountService.findAll());
@@ -80,11 +76,11 @@ public class CrossBorderAccountController {
     /**
      * 校验余额与流水是否一致。差额应为 0，不为 0 说明记账有遗漏。
      */
-    @GetMapping("/accounts/{accountNo}/diff")
+    @PostMapping("/accounts/{accountNo}/diff")
     @Operation(summary = "校验账户余额与流水的差额，入参必须是精确小数，不能用浮点")
-    public Result<Map<String, Object>> balanceDiff(@PathVariable @NotBlank @Size(max = 128) String accountNo, @RequestParam(defaultValue = "0") @Digits(integer = 16, fraction = 2) java.math.BigDecimal initial) {
+    public Result<Map<String, Object>> balanceDiff(@PathVariable @NotBlank @Size(max = 128) String accountNo, @Valid @RequestBody BalanceDiffQueryRequest request) {
         AccountResponse account = accountService.findByAccountNo(accountNo);
-        java.math.BigDecimal diff = accountService.balanceDiff(account.getId(), initial);
+        java.math.BigDecimal diff = accountService.balanceDiff(account.getId(), request.getInitial());
         return Result.success(Map.of("accountNo", accountNo, "balance", account.getBalance(), "diff", diff, "consistent", diff.compareTo(java.math.BigDecimal.ZERO) == 0));
     }
 
@@ -110,7 +106,7 @@ public class CrossBorderAccountController {
     /**
      * 查询账户事件历史。谁在什么时间因为什么冻结或解冻了账户，逐条可查。
      */
-    @GetMapping("/accounts/{accountNo}/events")
+    @PostMapping("/accounts/{accountNo}/events")
     @Operation(summary = "查询账户冻结/解冻事件历史")
     public Result<List<AccountEventResponse>> events(@PathVariable @NotBlank @Size(max = 128) String accountNo) {
         return Result.success(accountService.events(accountNo));
@@ -139,7 +135,7 @@ public class CrossBorderAccountController {
     /**
      * 查询名单大小。
      */
-    @GetMapping("/sanction/count")
+    @PostMapping("/sanction/count")
     @Operation(summary = "查询制裁名单大小")
     public Result<Long> sanctionCount() {
         return Result.success(complianceService.sanctionCount());

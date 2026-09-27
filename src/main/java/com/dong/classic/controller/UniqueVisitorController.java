@@ -3,14 +3,17 @@ package com.dong.classic.controller;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
+import com.dong.classic.dto.UvCountQueryRequest;
+import com.dong.classic.dto.UvRangeQueryRequest;
 import com.dong.classic.service.UniqueVisitorService;
 import com.dong.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,26 +54,20 @@ public class UniqueVisitorController {
     /**
      * 查询指定日期的独立访客数。
      */
-    @GetMapping("/count")
+    @PostMapping("/count")
     @Operation(summary = "查询指定日期的独立访客数")
-    public Result<Long> count(@RequestParam(defaultValue = "home")
-                              @NotBlank @Size(max = 128) String page,
-                              @RequestParam(required = false)
-                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return Result.success(uniqueVisitorService.count(page, date == null ? LocalDate.now() : date));
+    public Result<Long> count(@Valid @RequestBody UvCountQueryRequest request) {
+        return Result.success(uniqueVisitorService.count(request.getPage(), request.getDate() == null ? LocalDate.now() : request.getDate()));
     }
 
     /**
      * 查询日期区间的独立访客数。合并多个 HyperLogLog 得到的去重结果，
      * 而不是简单相加，否则同一个人会被重复计数。
      */
-    @GetMapping("/range")
+    @PostMapping("/range")
     @Operation(summary = "查询日期区间的独立访客数，自动去重")
-    public Result<Long> countBetween(@RequestParam(defaultValue = "home")
-                                     @NotBlank @Size(max = 128) String page,
-                                     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                                     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return Result.success(uniqueVisitorService.countBetween(page, from, to));
+    public Result<Long> countBetween(@Valid @RequestBody UvRangeQueryRequest request) {
+        return Result.success(uniqueVisitorService.countBetween(request.getPage(), request.getFrom(), request.getTo()));
     }
 
 }

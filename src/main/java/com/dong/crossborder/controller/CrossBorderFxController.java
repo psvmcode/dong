@@ -1,9 +1,9 @@
 package com.dong.crossborder.controller;
 
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.dong.common.result.Result;
+import com.dong.crossborder.dto.CurrencyPairQueryRequest;
 import com.dong.crossborder.dto.FxQuoteResponse;
 import com.dong.crossborder.dto.FxRateResponse;
 import com.dong.crossborder.service.FxQuoteService;
@@ -14,11 +14,12 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,7 +56,7 @@ public class CrossBorderFxController {
     /**
      * 查询报价详情与剩余有效期。
      */
-    @GetMapping("/{quoteNo}")
+    @PostMapping("/{quoteNo}")
     @Operation(summary = "查询报价详情与剩余有效期")
     public Result<FxQuoteResponse> findByQuoteNo(@PathVariable @NotBlank @Size(max = 128) String quoteNo) {
         return Result.success(fxQuoteService.findByQuoteNo(quoteNo));
@@ -64,26 +65,26 @@ public class CrossBorderFxController {
     /**
      * 查询某货币对的可用报价。
      */
-    @GetMapping("/available")
+    @PostMapping("/available")
     @Operation(summary = "查询某货币对的可用报价")
-    public Result<List<FxQuoteResponse>> available(@RequestParam @NotBlank @Size(max = 128) String sourceCurrency, @RequestParam @NotBlank @Size(max = 128) String targetCurrency) {
-        return Result.success(fxQuoteService.available(sourceCurrency + "/" + targetCurrency));
+    public Result<List<FxQuoteResponse>> available(@Valid @RequestBody CurrencyPairQueryRequest request) {
+        return Result.success(fxQuoteService.available(request.getSourceCurrency() + "/" + request.getTargetCurrency()));
     }
 
     /**
      * 当前中间价。高频读取，走 30 秒缓存。
      */
-    @GetMapping("/rate")
+    @PostMapping("/rate/current")
     @Operation(summary = "查询当前中间价，走缓存")
-    public Result<Map<String, Object>> currentRate(@RequestParam @NotBlank @Size(max = 128) String sourceCurrency, @RequestParam @NotBlank @Size(max = 128) String targetCurrency) {
-        BigDecimal rate = fxQuoteService.currentRate(sourceCurrency, targetCurrency);
-        return Result.success(Map.of("currencyPair", sourceCurrency + "/" + targetCurrency, "midRate", rate, "fee50kSwift", fxQuoteService.fee(new BigDecimal("50000"), com.dong.crossborder.enums.SettlementChannel.SWIFT), "fee50kCips", fxQuoteService.fee(new BigDecimal("50000"), com.dong.crossborder.enums.SettlementChannel.CIPS)));
+    public Result<Map<String, Object>> currentRate(@Valid @RequestBody CurrencyPairQueryRequest request) {
+        BigDecimal rate = fxQuoteService.currentRate(request.getSourceCurrency(), request.getTargetCurrency());
+        return Result.success(Map.of("currencyPair", request.getSourceCurrency() + "/" + request.getTargetCurrency(), "midRate", rate, "fee50kSwift", fxQuoteService.fee(new BigDecimal("50000"), com.dong.crossborder.enums.SettlementChannel.SWIFT), "fee50kCips", fxQuoteService.fee(new BigDecimal("50000"), com.dong.crossborder.enums.SettlementChannel.CIPS)));
     }
 
     /**
      * 查询全部牌价。牌价落库后才能回答「这笔成交时用的是什么价」。
      */
-    @GetMapping("/rates")
+    @PostMapping("/rates")
     @Operation(summary = "查询全部币种牌价")
     public Result<List<FxRateResponse>> rates() {
         return Result.success(fxQuoteService.allRates());

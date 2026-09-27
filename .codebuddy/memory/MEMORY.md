@@ -25,6 +25,10 @@
   ⚠️ 库里已存在的容器不会重跑初始化脚本，**新增表要单独在远程库执行**（用 Java 单文件 + JDBC）
 - **注释**：`com.dong.*` 允许并鼓励中文注释（写意图/原理/坑点）；**成员顺序**：Javadoc → 注解 → 声明；
   **注解与类型声明之间不留空行**，但方法/字段前的空行必须保留
+- **接口方法（2026-09-27 起）**：全站业务接口一律 **POST，禁止 GET**；查询参数走 JSON body 并新建查询 DTO，
+  `@PathVariable` 保留在 URL 上；分页 DTO 继承 `com.dong.common.result.PageQuery`。
+  actuator 与 Knife4j 由框架提供，保持 GET 不变。
+  注意改 POST 后同路径会与已有 POST 撞车（`/accounts`、`/fx/rate`、`/settlement/batch`、`/activities` 等都要加 `/list` 之类后缀）
 - **参数校验**：`@NotBlank` = 必填 → 可选参数只能用 `@Size`（对 null 放行），不能与 `defaultValue=""` 并存；
   **拒绝取值越界**（负数、超长、超大批量），**允许空结果查询**
 - **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004

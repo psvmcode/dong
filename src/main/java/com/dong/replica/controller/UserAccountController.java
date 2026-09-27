@@ -6,14 +6,16 @@ import org.springframework.validation.annotation.Validated;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.Result;
+import com.dong.replica.dto.AccountQueryRequest;
 import com.dong.replica.entity.UserAccount;
 import com.dong.replica.service.UserAccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,16 +54,16 @@ public class UserAccountController {
     /**
      * 按用户 id 查询账户。
      */
-    @GetMapping
+    @PostMapping("/detail")
     @Operation(summary = "按用户 id 查询账户")
-    public Result<UserAccount> findByUserId(@RequestParam Long userId) {
-        return Result.success(requireService().findByUserId(userId));
+    public Result<UserAccount> findByUserId(@Valid @RequestBody AccountQueryRequest request) {
+        return Result.success(requireService().findByUserId(request.getUserId()));
     }
 
     /**
      * 查询全部账户。
      */
-    @GetMapping("/all")
+    @PostMapping("/all")
     @Operation(summary = "查询全部账户")
     public Result<List<UserAccount>> findAll() {
         return Result.success(requireService().findAll());
@@ -80,10 +82,10 @@ public class UserAccountController {
     /**
      * 连读两次观察是否有延迟。读写分离场景下这个接口能暴露主从延迟问题。
      */
-    @GetMapping("/consistency")
+    @PostMapping("/consistency")
     @Operation(summary = "连续读取两次，观察是否存在延迟")
-    public Result<Map<String, Object>> consistency(@RequestParam Long userId) {
-        return Result.success(requireService().consistencyCheck(userId));
+    public Result<Map<String, Object>> consistency(@Valid @RequestBody AccountQueryRequest request) {
+        return Result.success(requireService().consistencyCheck(request.getUserId()));
     }
 
     /**

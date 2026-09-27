@@ -1,11 +1,10 @@
 package com.dong.crossborder.controller;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.dong.common.result.Result;
+import com.dong.crossborder.dto.ChannelStatementQueryRequest;
 import com.dong.crossborder.dto.ReconReportResponse;
 import com.dong.crossborder.enums.ReconDiffType;
 import com.dong.crossborder.service.ReconciliationService;
@@ -13,11 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -60,16 +60,16 @@ public class CrossBorderReconController {
     /**
      * 模拟渠道回单。可用于人工核对或调试对账逻辑。
      */
-    @GetMapping("/{batchNo}/channel-statement")
+    @PostMapping("/{batchNo}/channel-statement")
     @Operation(summary = "模拟渠道回单，可注入差错率")
-    public Result<List<Map<String, Object>>> channelStatement(@PathVariable @NotBlank @Size(max = 128) String batchNo, @RequestParam(defaultValue = "0.0") @DecimalMin("0") @DecimalMax("1") double errorRate) {
-        return Result.success(reconciliationService.generateChannelStatement(batchNo, errorRate));
+    public Result<List<Map<String, Object>>> channelStatement(@PathVariable @NotBlank @Size(max = 128) String batchNo, @Valid @RequestBody ChannelStatementQueryRequest request) {
+        return Result.success(reconciliationService.generateChannelStatement(batchNo, request.getErrorRate()));
     }
 
     /**
      * 查询某批次的对账报告。
      */
-    @GetMapping("/{batchNo}/report")
+    @PostMapping("/{batchNo}/report")
     @Operation(summary = "查询对账报告")
     public Result<ReconReportResponse> report(@PathVariable @NotBlank @Size(max = 128) String batchNo) {
         return Result.success(reconciliationService.report(batchNo));
@@ -97,7 +97,7 @@ public class CrossBorderReconController {
     /**
      * 对账总览。含未处理差异总数与按类型分布。
      */
-    @GetMapping("/overview")
+    @PostMapping("/overview")
     @Operation(summary = "查询对账总览")
     public Result<Map<String, Object>> overview() {
         return Result.success(reconciliationService.overview());

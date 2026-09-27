@@ -68,14 +68,15 @@ public class CacheGuardInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 判断是否重量级请求。写操作与全量、预热、压测类接口都按重接口对待：
-     * 它们单次成本远高于一次普通读，配额必须单独收紧。
+     * 判断是否重量级请求。判定只能看路径与 PUT、DELETE 这类明确的方法，
+     * 不能沿用「非 GET 即重量级」：接口全部改成 POST 之后，
+     * 读写都走同一个方法，那样判定会把所有读请求也拖进重接口配额。
      *
      * @param request 当前请求
      * @return 是否重量级
      */
     private boolean isHeavy(HttpServletRequest request) {
-        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
         String uri = request.getRequestURI();

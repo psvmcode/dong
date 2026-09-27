@@ -423,7 +423,7 @@ CREATED → QUOTE_LOCKED → FUNDS_DEBITED → SETTLING → SETTLED
 
 ### 6.2 需要盯的指标
 
-- `GET /remittance/runtime` 中各状态数量：**已扣款与清算中的数量应长期为 0**，不为 0 说明有卡单
+- `POST /remittance/runtime` 中各状态数量：**已扣款与清算中的数量应长期为 0**，不为 0 说明有卡单
 - `settlingEntered`：累计进入清算中的笔数（瞬时状态数看不到，看累计）
 - 日志中 `stuck remittance detected` / `compensation abandoned` / `reconciliation diff found`：出现即为异常
 

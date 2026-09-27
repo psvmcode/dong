@@ -3,14 +3,17 @@ package com.dong.classic.controller;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
+import com.dong.classic.dto.SignInMonthQueryRequest;
+import com.dong.classic.dto.SignInQueryRequest;
 import com.dong.classic.service.SignInService;
 import com.dong.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,49 +53,37 @@ public class SignInController {
     /**
      * 查询指定日期是否已签到。
      */
-    @GetMapping
+    @PostMapping("/status")
     @Operation(summary = "查询指定日期是否已签到")
-    public Result<Boolean> hasSigned(@RequestParam
-                                     @NotBlank @Size(max = 128) String userId,
-                                     @RequestParam(required = false)
-                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return Result.success(signInService.hasSigned(userId, date == null ? LocalDate.now() : date));
+    public Result<Boolean> hasSigned(@Valid @RequestBody SignInQueryRequest request) {
+        return Result.success(signInService.hasSigned(request.getUserId(), request.getDate() == null ? LocalDate.now() : request.getDate()));
     }
 
     /**
      * 连续签到天数，从指定日期往前推算，中断即止。
      */
-    @GetMapping("/streak")
+    @PostMapping("/streak")
     @Operation(summary = "查询连续签到天数")
-    public Result<Long> streak(@RequestParam
-                               @NotBlank @Size(max = 128) String userId,
-                               @RequestParam(required = false)
-                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return Result.success(signInService.continuousDays(userId, date == null ? LocalDate.now() : date));
+    public Result<Long> streak(@Valid @RequestBody SignInQueryRequest request) {
+        return Result.success(signInService.continuousDays(request.getUserId(), request.getDate() == null ? LocalDate.now() : request.getDate()));
     }
 
     /**
      * 当月累计签到天数。
      */
-    @GetMapping("/month")
+    @PostMapping("/month")
     @Operation(summary = "查询当月累计签到天数")
-    public Result<Long> monthCount(@RequestParam
-                                   @NotBlank @Size(max = 128) String userId,
-                                   @RequestParam(required = false)
-                                   @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
-        return Result.success(signInService.countInMonth(userId, month == null ? YearMonth.now() : month));
+    public Result<Long> monthCount(@Valid @RequestBody SignInMonthQueryRequest request) {
+        return Result.success(signInService.countInMonth(request.getUserId(), request.getMonth() == null ? YearMonth.now() : request.getMonth()));
     }
 
     /**
      * 当月签到日历，返回每一天是否签到的映射。
      */
-    @GetMapping("/calendar")
+    @PostMapping("/calendar")
     @Operation(summary = "查询当月签到日历")
-    public Result<Map<String, Boolean>> calendar(@RequestParam
-                                                 @NotBlank @Size(max = 128) String userId,
-                                                 @RequestParam(required = false)
-                                                 @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
-        return Result.success(signInService.monthCalendar(userId, month == null ? YearMonth.now() : month));
+    public Result<Map<String, Boolean>> calendar(@Valid @RequestBody SignInMonthQueryRequest request) {
+        return Result.success(signInService.monthCalendar(request.getUserId(), request.getMonth() == null ? YearMonth.now() : request.getMonth()));
     }
 
 }

@@ -1,25 +1,25 @@
 package com.dong.crossborder.controller;
 
 import com.dong.common.result.Result;
+import com.dong.crossborder.dto.PayerAccountQueryRequest;
+import com.dong.crossborder.dto.RouteQueryRequest;
 import com.dong.crossborder.service.AmlMonitor;
 import com.dong.crossborder.service.ChannelRouter;
 import com.dong.crossborder.service.ComplianceService;
 import com.dong.crossborder.service.FxExposureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -59,26 +59,26 @@ public class CrossBorderRiskController {
     /**
      * 查看指定金额下全部渠道的评分与推荐结果。
      */
-    @GetMapping("/route")
+    @PostMapping("/route")
     @Operation(summary = "渠道路由试算，返回各渠道评分与推荐渠道")
-    public Result<Map<String, Object>> route(@RequestParam @DecimalMin("0.01") @Digits(integer = 16, fraction = 2) BigDecimal amount, @RequestParam(defaultValue = "false") boolean urgent) {
-        ChannelRouter.RouteDecision decision = channelRouter.route(amount, urgent);
-        return Result.success(Map.of("recommended", decision.channel(), "estimatedFee", decision.estimatedFee(), "reasons", decision.reasons(), "scores", channelRouter.scoreAll(amount, urgent)));
+    public Result<Map<String, Object>> route(@Valid @RequestBody RouteQueryRequest request) {
+        ChannelRouter.RouteDecision decision = channelRouter.route(request.getAmount(), request.isUrgent());
+        return Result.success(Map.of("recommended", decision.channel(), "estimatedFee", decision.estimatedFee(), "reasons", decision.reasons(), "scores", channelRouter.scoreAll(request.getAmount(), request.isUrgent())));
     }
 
     /**
      * 查询某付款人的当日交易画像，含贴线笔数与金额明细。
      */
-    @GetMapping("/aml/profile")
+    @PostMapping("/aml/profile")
     @Operation(summary = "查询付款人当日交易画像")
-    public Result<Map<String, Object>> amlProfile(@RequestParam @Positive Long payerAccountId) {
-        return Result.success(amlMonitor.structuringProfile(payerAccountId));
+    public Result<Map<String, Object>> amlProfile(@Valid @RequestBody PayerAccountQueryRequest request) {
+        return Result.success(amlMonitor.structuringProfile(request.getPayerAccountId()));
     }
 
     /**
      * 命中拆分模式的账户列表。
      */
-    @GetMapping("/aml/flagged")
+    @PostMapping("/aml/flagged")
     @Operation(summary = "查询命中拆分交易嫌疑的账户")
     public Result<List<Map<String, Object>>> flagged() {
         return Result.success(amlMonitor.flaggedAccounts());
@@ -108,7 +108,7 @@ public class CrossBorderRiskController {
     /**
      * 汇率敞口。按货币对展示未清算锁定量与浮动盈亏，超线提示平盘。
      */
-    @GetMapping("/fx-exposure")
+    @PostMapping("/fx-exposure")
     @Operation(summary = "查询汇率敞口，含浮动盈亏与预警")
     public Result<Map<String, Object>> fxExposure() {
         return Result.success(fxExposureService.summary());

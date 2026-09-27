@@ -1,13 +1,11 @@
 package com.dong.doc.controller;
 
-import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.validation.annotation.Validated;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.PageResult;
 import com.dong.common.result.Result;
+import com.dong.doc.dto.OperationLogQueryRequest;
 import com.dong.doc.dto.OperationLogRequest;
 import com.dong.doc.entity.OperationLogDocument;
 import com.dong.doc.service.OperationLogService;
@@ -16,11 +14,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,7 +39,7 @@ public class OperationLogController {
     /**
      * 写入一条日志。detail 字段是任意对象，不同业务可以写入完全不同的结构。
      */
-    @PostMapping
+    @PostMapping("/save")
     @Operation(summary = "写入一条无 schema 的操作日志")
     public Result<String> save(@Valid @RequestBody OperationLogRequest request) {
         return Result.success(requireService().save(request));
@@ -52,21 +48,16 @@ public class OperationLogController {
     /**
      * 按业务类型分页查询。
      */
-    @GetMapping
+    @PostMapping("/page")
     @Operation(summary = "按业务类型分页查询操作日志")
-    public Result<PageResult<OperationLogDocument>> findByPage(@RequestParam(required = false)
-                                                               @Size(max = 128) String bizType,
-                                                               @RequestParam(defaultValue = "1")
-                                                               @Min(1) @Max(Constants.MAX_PAGE_NUM) int pageNum,
-                                                               @RequestParam(defaultValue = "20")
-                                                               @Min(1) @Max(Constants.MAX_PAGE_SIZE) int pageSize) {
-        return Result.success(requireService().findByPage(bizType, pageNum, pageSize));
+    public Result<PageResult<OperationLogDocument>> findByPage(@Valid @RequestBody OperationLogQueryRequest request) {
+        return Result.success(requireService().findByPage(request.getBizType(), request.getPageNum(), request.getPageSize()));
     }
 
     /**
      * 查询日志总条数。
      */
-    @GetMapping("/count")
+    @PostMapping("/count")
     @Operation(summary = "查询操作日志总条数")
     public Result<Long> count() {
         return Result.success(requireService().count());

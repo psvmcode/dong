@@ -350,7 +350,8 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--dong.elasticsearch.enabled=fa
 curl -X POST "http://127.0.0.1:8090/api/classic/short-link?url=https%3A%2F%2Fexample.com&expireMinutes=60"
 
 # 点击几次后查看点击数
-curl "http://127.0.0.1:8090/api/classic/short-link/hits?code={短码}"
+curl -X POST "http://127.0.0.1:8090/api/classic/short-link/hits" -H 'Content-Type: application/json' \
+  -d '{"code":"{短码}"}'
 
 # 手工触发回写，再看数据库的 short_url.hit_count
 curl -X POST "http://127.0.0.1:8090/api/classic/short-link/flush-hits"

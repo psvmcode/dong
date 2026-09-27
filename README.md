@@ -309,27 +309,30 @@ L1 的 TTL 上限被限制在 60 秒，且所有失效都会通过 Redis 发布�
 | 场景 | 数据结构 | 接口 |
 |---|---|---|
 | 排行榜 | ZSet | `POST /api/classic/rank/submit?board=game&member=alice&score=100` |
-| 排行榜查询 | ZSet | `GET /api/classic/rank/top?board=game&size=10` |
+| 排行榜查询 | ZSet | `POST /api/classic/rank/top`（body: board、size） |
 | 周榜结算 | ZSet | `POST /api/classic/rank/settle-weekly?board=game` |
 | UV 统计 | HyperLogLog | `POST /api/classic/uv/record?page=home&visitorId=u1` |
-| UV 区间合并 | HyperLogLog | `GET /api/classic/uv/range?page=home&from=2026-08-01&to=2026-08-07` |
+| UV 区间合并 | HyperLogLog | `POST /api/classic/uv/range`（body: page、from、to） |
 | 签到日历 | Bitmap | `POST /api/classic/sign?userId=u1` |
-| 连续签到 | Bitmap | `GET /api/classic/sign/streak?userId=u1` |
-| 月签到日历 | Bitmap | `GET /api/classic/sign/calendar?userId=u1&month=2026-08` |
+| 连续签到 | Bitmap | `POST /api/classic/sign/streak`（body: userId、date） |
+| 月签到日历 | Bitmap | `POST /api/classic/sign/calendar`（body: userId、month） |
 | 短链生成 | String + Snowflake | `POST /api/classic/short-link?url=https://example.com` |
-| 短链跳转 | String | `GET /api/classic/short-link/s/{code}`（302 重定向） |
-| 短链统计 | String | `GET /api/classic/short-link/hits?code=xxx` |
-| 附近的人 | GEO | `GET /api/classic/geo/nearby?longitude=116.40&latitude=39.90&radiusKm=5` |
-| 距离计算 | GEO | `GET /api/classic/geo/distance?first=a&second=b` |
+| 短链跳转 | String | `POST /api/classic/short-link/s/{code}`（返回原始地址，由调用方跳转） |
+| 短链统计 | String | `POST /api/classic/short-link/hits`（body: code） |
+| 附近的人 | GEO | `POST /api/classic/geo/nearby`（body: city、经纬度、radiusKm、limit） |
+| 距离计算 | GEO | `POST /api/classic/geo/distance`（body: city、first、second） |
 | 延迟队列 | RDelayedQueue | `POST /api/classic/delay-queue/offer?payload=order-1&delaySeconds=5` |
-| 发号器 | Snowflake / 号段 / INCR / UUID | `GET /api/classic/id?strategy=snowflake&count=1000` |
-| 限流 | 四种算法 | `GET /api/classic/limiter/compare?limit=10&attempts=30&gapMillis=3500` |
-| 分布式锁 | Redisson RLock | `GET /api/classic/lock/with-lock?threads=8&loops=10` |
+| 发号器 | Snowflake / 号段 / INCR / UUID | `POST /api/classic/id`（body: strategy、count） |
+| 限流 | 四种算法 | `POST /api/classic/limiter/compare`（body: limit、windowSeconds、attempts、gapMillis） |
+| 分布式锁 | Redisson RLock | `POST /api/classic/lock/with-lock`（body: threads、loops） |
+
+> 全站接口统一为 POST。写操作仍可用 query 参数，查询类参数一律走 JSON body，分页参数见 `PageQuery`。
 
 **限流算法对比**：
 
 ```bash
-curl 'http://127.0.0.1:8090/api/classic/limiter/compare?limit=10&windowSeconds=6&attempts=30&distributed=true&gapMillis=3500'
+curl -X POST 'http://127.0.0.1:8090/api/classic/limiter/compare' -H 'Content-Type: application/json' \
+  -d '{"bizKey":"demo","limit":10,"windowSeconds":6,"attempts":30,"distributed":true,"gapMillis":3500}'
 ```
 
 `gapMillis` 表示两轮突发之间的等待时间，是看出算法差异的关键。
@@ -641,38 +644,38 @@ curl -X POST 'http://127.0.0.1:8090/api/replica/accounts/transfer?fromUserId=1&t
 | 接口 | 说明 |
 |---|---|
 | `POST /remittance` | 发起汇款，body 含幂等键、双方账号、金额、可选渠道与报价号 |
-| `GET /remittance/{remittanceNo}` | 按汇款单号查询 |
-| `GET /remittance/by-idempotent/{idempotentKey}` | 按幂等键查询，超时重试后确认是否已受理 |
-| `GET /remittance?status=&pageNum=&pageSize=` | 分页查询，可按状态过滤 |
-| `GET /remittance/pending-review` | 待人工审核的汇款单列表 |
+| `POST /remittance/{remittanceNo}` | 按汇款单号查询 |
+| `POST /remittance/by-idempotent/{idempotentKey}` | 按幂等键查询，超时重试后确认是否已受理 |
+| `POST /remittance/page` | 分页查询，body 含 status、pageNum、pageSize |
+| `POST /remittance/pending-review` | 待人工审核的汇款单列表，body 为分页参数 |
 | `POST /remittance/{remittanceNo}/review/approve` | 审核放行，body `{reviewer, note}`，继续锁汇扣款清算 |
 | `POST /remittance/{remittanceNo}/review/reject` | 审核驳回，终态并释放日限额占用 |
-| `GET /remittance/{remittanceNo}/compliance` | 该单的全量合规检查记录（四道自动 + 人工复核） |
-| `GET /remittance/by-batch/{batchNo}` | 按清算批次查询单子 |
-| `GET /remittance/runtime` | 运行时统计：各状态单量、幂等命中、审核计数、消息计数 |
+| `POST /remittance/{remittanceNo}/compliance` | 该单的全量合规检查记录（四道自动 + 人工复核） |
+| `POST /remittance/by-batch/{batchNo}` | 按清算批次查询单子 |
+| `POST /remittance/runtime` | 运行时统计：各状态单量、幂等命中、审核计数、消息计数 |
 
 **账户 `/api/crossborder`（11 个）**
 
 | 接口 | 说明 |
 |---|---|
 | `POST /accounts` | 开户，kycLevel 决定可汇额度 |
-| `GET /accounts/{accountNo}` | 查账户，含可用余额（余额减冻结） |
-| `GET /accounts` | 全部账户 |
+| `POST /accounts/{accountNo}` | 查账户，含可用余额（余额减冻结） |
+| `POST /accounts/list` | 全部账户 |
 | `POST /accounts/{accountNo}/freeze?reason=&operator=` | 冻结账户，事件落库留痕 |
 | `POST /accounts/{accountNo}/unfreeze?reason=&operator=` | 解冻账户，同样留痕 |
-| `GET /accounts/{accountNo}/events` | 冻结/解冻事件历史，按时间正序 |
-| `GET /accounts/{accountNo}/diff?initial=` | 校验余额与流水差额，应为 0 |
+| `POST /accounts/{accountNo}/events` | 冻结/解冻事件历史，按时间正序 |
+| `POST /accounts/{accountNo}/diff` | 校验余额与流水差额，body 含 initial，应为 0 |
 | `POST /sanction?ownerName=` | 加入制裁名单 |
 | `DELETE /sanction?ownerName=` | 移出制裁名单 |
-| `GET /sanction/count` | 名单大小 |
+| `POST /sanction/count` | 名单大小 |
 
-**汇率 `/api/crossborder/fx`（5 个）**：`POST /fx/quote` 询价、`GET /fx/{quoteNo}` 查报价、`GET /fx/available` 可用报价、`GET /fx/rate` 当前牌价、`POST /fx/expire` 批量作废过期报价。
+**汇率 `/api/crossborder/fx`（5 个）**：`POST /fx/quote` 询价、`POST /fx/{quoteNo}` 查报价、`POST /fx/available` 可用报价（body 为货币对）、`POST /fx/rate/current` 当前牌价、`POST /fx/expire` 批量作废过期报价。
 
-**清算 `/api/crossborder/settlement`（7 个）**：`POST /settlement/batch` 建批次、按批次号查询、`POST /settlement/batch/{batchNo}/collect` 收集进批、`POST /settlement/batch/{batchNo}/settle` 批次清算入账、`POST /settlement/close-overdue` 关闭超时批次、`GET /settlement/recon` 对账入口、`GET /settlement/status` 状态分布。
+**清算 `/api/crossborder/settlement`（7 个）**：`POST /settlement/batch` 建批次、按批次号查询、`POST /settlement/batch/{batchNo}/collect` 收集进批、`POST /settlement/batch/{batchNo}/settle` 批次清算入账、`POST /settlement/close-overdue` 关闭超时批次、`POST /settlement/recon` 对账入口（body 可选 batchNo）、`POST /settlement/status` 状态分布。
 
-**风控 `/api/crossborder/risk`（6 个）**：渠道路由试算 `GET /risk/route`、AML 客户画像、可疑名单、重置、日额度重置、汇率敞口 `GET /risk/fx-exposure`。
+**风控 `/api/crossborder/risk`（6 个）**：渠道路由试算 `POST /risk/route`（body 含 amount、urgent）、AML 客户画像 `POST /risk/aml/profile`、可疑名单 `POST /risk/aml/flagged`、重置、日额度重置、汇率敞口 `POST /risk/fx-exposure`。
 
-**对账 `/api/crossborder/recon`（6 个）**：`POST /recon/{batchNo}` 执行对账、渠道回单查询、对账报告、`POST /recon/diff/{id}` 处理单条差异、`POST /recon/{batchNo}/handle-all` 批量处理、`GET /recon/overview` 总览。
+**对账 `/api/crossborder/recon`（6 个）**：`POST /recon/{batchNo}` 执行对账、渠道回单查询、对账报告、`POST /recon/diff/{id}` 处理单条差异、`POST /recon/{batchNo}/handle-all` 批量处理、`POST /recon/overview` 总览。
 
 **典型调用序列**：
 
