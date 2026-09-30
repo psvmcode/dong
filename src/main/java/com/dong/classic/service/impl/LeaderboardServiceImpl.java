@@ -14,6 +14,7 @@ import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.redisson.api.RBatch;
 import java.util.Locale;
 
 /**
@@ -185,8 +186,16 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     public Long settleWeekly(String board, LocalDate date) {
         RScoredSortedSet<String> weekly = redissonClient.getScoredSortedSet(weeklyKeyOf(board, date));
         RScoredSortedSet<String> history = redissonClient.getScoredSortedSet(HISTORY + board);
-        for (ScoredEntry<String> entry : weekly.entryRange(0, -1)) {
-            history.addScore(entry.getValue(), entry.getScore());
+        Collection<ScoredEntry<String>> entries = weekly.entryRange(0, -1);
+        if (entries != null && !entries.isEmpty()) {
+            // 合并进一次 pipeline，榜单有多少人就省多少次往返。
+            // 这里必须用 addScore 的批量版而不是 addAll：结算是累加，
+            // addAll 的语义是覆盖，会把上周的历史分抹掉
+            RBatch redisBatch = redissonClient.createBatch();
+            for (ScoredEntry<String> entry : entries) {
+                redisBatch.<String>getScoredSortedSet(HISTORY + board).addScoreAsync(entry.getValue(), entry.getScore());
+            }
+            redisBatch.execute();
         }
         long size = history.size();
         log.info("weekly board settled board={} historySize={}", board, size);

@@ -11,11 +11,16 @@ import com.dong.framework.redis.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RAtomicLong;
+import org.redisson.api.RBatch;
+import org.redisson.api.RFuture;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 短链接实现。短码由发号器生成后做 Base62 编码，
@@ -205,8 +210,19 @@ public class ShortLinkServiceImpl implements ShortLinkService {
     public int flushHitCount() {
         int flushed = 0;
         try {
-            for (ShortLink link : shortLinkMapper.selectAll(FLUSH_LIMIT)) {
-                long current = redissonClient.getAtomicLong(HIT_COUNTER + link.getCode()).get();
+            List<ShortLink> links = shortLinkMapper.selectAll(FLUSH_LIMIT);
+            if (links.isEmpty()) {
+                return 0;
+            }
+            // 逐个读计数器就是逐次往返，合并成一次 pipeline 后再统一取值
+            RBatch redisBatch = redissonClient.createBatch();
+            Map<String, RFuture<Long>> pending = new LinkedHashMap<>();
+            for (ShortLink link : links) {
+                pending.put(link.getCode(), redisBatch.getAtomicLong(HIT_COUNTER + link.getCode()).getAsync());
+            }
+            redisBatch.execute();
+            for (ShortLink link : links) {
+                long current = pending.get(link.getCode()).join();
                 if (current <= 0) {
                     continue;
                 }
@@ -235,8 +251,11 @@ public class ShortLinkServiceImpl implements ShortLinkService {
     private void countHit(String code) {
         try {
             RAtomicLong counter = redissonClient.getAtomicLong(HIT_COUNTER + code);
-            counter.incrementAndGet();
-            counter.expire(CACHE_TTL);
+            // ttl 只在计数器刚建立时设一次：跳转是最热的路径，
+            // 每次都重设一个固定七天的过期时间只是白搭一次往返
+            if (counter.incrementAndGet() == 1) {
+                counter.expire(CACHE_TTL);
+            }
         } catch (Exception ex) {
             // 计数失败不能让跳转失败，跳转才是主流程
             log.warn("count hit failed code={}", code, ex);

@@ -2,8 +2,8 @@ package com.dong.framework.cache.impl;
 
 import com.dong.common.util.JsonUtils;
 import com.dong.framework.cache.CacheCircuitBreaker;
-import com.dong.framework.cache.CacheEntry;
 import com.dong.framework.cache.CacheLookup;
+import com.dong.framework.cache.CacheRecord;
 import com.dong.framework.cache.CacheStore;
 import com.dong.framework.redis.RedisService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -92,7 +92,7 @@ public class RedisCacheStore implements CacheStore {
      */
     @Override
     public <T> CacheLookup<T> lookup(String key, Class<T> type) {
-        return read(prefixed(key), value -> JsonUtils.fromJson(JsonUtils.toJson(value), type));
+        return read(prefixed(key), json -> JsonUtils.fromJson(json, type));
     }
 
     /**
@@ -105,7 +105,7 @@ public class RedisCacheStore implements CacheStore {
      */
     @Override
     public <T> CacheLookup<T> lookup(String key, TypeReference<T> type) {
-        return read(prefixed(key), value -> JsonUtils.fromJson(JsonUtils.toJson(value), type));
+        return read(prefixed(key), json -> JsonUtils.fromJson(json, type));
     }
 
     /**
@@ -122,7 +122,8 @@ public class RedisCacheStore implements CacheStore {
         }
         try {
             Duration logicalTtl = jitter(ttl);
-            redisService.set(prefixed(key), JsonUtils.toJson(CacheEntry.of(value, logicalTtl, staleGrace)), logicalTtl.plus(staleGrace));
+            CacheRecord record = CacheRecord.of(JsonUtils.toJson(value), logicalTtl, staleGrace);
+            redisService.set(prefixed(key), JsonUtils.toJson(record), logicalTtl.plus(staleGrace));
             breaker.recordSuccess();
         } catch (Exception ex) {
             breaker.recordFailure();
@@ -185,7 +186,7 @@ public class RedisCacheStore implements CacheStore {
      * 读取并解码。熔断打开时直接返回 Miss，让上层走回源，
      * 这比陪着一个已经故障的依赖等超时要好得多。
      */
-    private <T> CacheLookup<T> read(String redisKey, Function<Object, T> decoder) {
+    private <T> CacheLookup<T> read(String redisKey, Function<String, T> decoder) {
         if (!breaker.allowRequest()) {
             return new CacheLookup.Miss<>();
         }
@@ -198,33 +199,39 @@ public class RedisCacheStore implements CacheStore {
             return new CacheLookup.Miss<>();
         }
         breaker.recordSuccess();
-        return decode(raw, decoder);
+        try {
+            return decode(raw, decoder);
+        } catch (Exception ex) {
+            // 值解析不了只可能是格式对不上，按未命中处理，缓存本来就是可重建的副本
+            log.warn("l2 cache decode failed, treated as miss: {}", ex.getMessage());
+            return new CacheLookup.Miss<>();
+        }
     }
 
     /**
      * 解码 Redis 返回值，区分命中、旧值、空值与未命中。
      *
      * @param raw     原始字符串
-     * @param decoder 解码函数
+     * @param decoder 解码函数，入参是值的原始 JSON
      * @param <T>     值类型
      * @return 缓存查找结果
      */
-    private <T> CacheLookup<T> decode(String raw, Function<Object, T> decoder) {
+    private <T> CacheLookup<T> decode(String raw, Function<String, T> decoder) {
         if (raw == null) {
             return new CacheLookup.Miss<>();
         }
         if (EMPTY_MARKER.equals(raw)) {
             return new CacheLookup.Empty<>();
         }
-        CacheEntry entry = JsonUtils.fromJson(raw, CacheEntry.class);
-        if (entry == null || entry.value() == null || entry.discarded()) {
+        CacheRecord record = JsonUtils.fromJson(raw, CacheRecord.class);
+        if (record == null || record.value() == null || record.discarded()) {
             return new CacheLookup.Miss<>();
         }
-        T value = decoder.apply(entry.value());
+        T value = decoder.apply(record.value());
         if (value == null) {
             return new CacheLookup.Miss<>();
         }
-        return entry.expired() ? new CacheLookup.Stale<>(value) : new CacheLookup.Hit<>(value);
+        return record.expired() ? new CacheLookup.Stale<>(value) : new CacheLookup.Hit<>(value);
     }
 
     /**

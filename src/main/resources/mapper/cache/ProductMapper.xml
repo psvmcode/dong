@@ -37,6 +37,15 @@
         order by id asc
     </select>
 
+    <!-- 全量接口在 SQL 层封顶，避免先把整张表读进内存 -->
+    <select id="selectTop" resultMap="productMap">
+        select
+        <include refid="columns"/>
+        from product
+        order by id asc
+        limit #{limit}
+    </select>
+
     <!-- 分页查询，手写 limit -->
     <select id="selectByPage" resultMap="productMap">
         select

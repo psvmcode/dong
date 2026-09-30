@@ -45,6 +45,9 @@ public class CacheReadGuard {
 
     private static final long LOCAL_MAX_KEYS = 100_000L;
 
+    // 放行表的有效期，见 localClear 的说明
+    private static final long CLEAR_WINDOW_MILLIS = 10_000L;
+
     /**
      * 限流管理器。
      */
@@ -102,6 +105,16 @@ public class CacheReadGuard {
     private final Cache<String, Long> localBlock = Caffeine.newBuilder().expireAfterAccess(LOCAL_IDLE_EVICTION).maximumSize(LOCAL_MAX_KEYS).build();
 
     /**
+     * 本地放行表，值为免查 Redis 的截止时间戳。
+     *
+     * <p>封禁检查挂在缓存模块的每一个读请求上，而绝大多数请求根本没被封禁，
+     * 每次都为它们发一次 EXISTS 是纯空转。这里记住「最近确认过未被封禁」的 IP，
+     * 短时间内不再回查 Redis。窗口取十秒：被封禁的判定最多晚十秒生效，
+     * 而封禁本身就是六十秒级的惩罚，这点延迟不影响防护效果。
+     */
+    private final Cache<String, Long> localClear = Caffeine.newBuilder().expireAfterAccess(LOCAL_IDLE_EVICTION).maximumSize(LOCAL_MAX_KEYS).build();
+
+    /**
      * 普通读限流。令牌桶允许一定突发，正常浏览不会被误伤。
      *
      * @param clientIp 客户端 IP
@@ -129,10 +142,16 @@ public class CacheReadGuard {
         if (!enabled) {
             return;
         }
+        long now = System.currentTimeMillis();
+        Long clearUntil = localClear.getIfPresent(clientIp);
+        if (clearUntil != null && clearUntil > now) {
+            return;
+        }
         try {
             if (redisService.hasKey(BLOCK_PREFIX + clientIp)) {
                 throw blocked(clientIp);
             }
+            localClear.put(clientIp, now + CLEAR_WINDOW_MILLIS);
             return;
         } catch (BusinessException ex) {
             throw ex;
@@ -140,7 +159,7 @@ public class CacheReadGuard {
             log.warn("cache guard block check degraded to local: {}", ex.getMessage());
         }
         Long until = localBlock.getIfPresent(clientIp);
-        if (until != null && until > System.currentTimeMillis()) {
+        if (until != null && until > now) {
             throw blocked(clientIp);
         }
     }
@@ -207,6 +226,8 @@ public class CacheReadGuard {
      * @param clientIp 客户端 IP
      */
     private void block(String clientIp) {
+        // 刚判定为扫描就必须立刻失效放行表，否则本轮封禁要等窗口过去才生效
+        localClear.invalidate(clientIp);
         try {
             redisService.set(BLOCK_PREFIX + clientIp, String.valueOf(System.currentTimeMillis()), Duration.ofSeconds(blockSeconds));
         } catch (Exception ex) {

@@ -68,7 +68,7 @@ public class ChannelRouterImpl implements ChannelRouter {
                 reasons.add(channel + " excluded, amount exceeds per tx limit " + config.getPerTxLimit());
                 continue;
             }
-            BigDecimal fee = fxQuoteService.fee(sourceAmount, channel);
+            BigDecimal fee = feeOf(config, sourceAmount);
             BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes()).multiply(weight).setScale(2, RoundingMode.HALF_UP);
             BigDecimal score = fee.add(etaCost);
             reasons.add(channel + " fee=" + fee + " etaCost=" + etaCost + " score=" + score);
@@ -97,11 +97,19 @@ public class ChannelRouterImpl implements ChannelRouter {
             SettlementChannel channel = SettlementChannel.of(config.getChannel());
             // 停用渠道展示出来但标记为不合格，便于运营看到熔断状态
             boolean qualified = config.getEnabled() == 1 && sourceAmount.compareTo(config.getPerTxLimit()) <= 0;
-            BigDecimal fee = fxQuoteService.fee(sourceAmount, channel);
+            BigDecimal fee = feeOf(config, sourceAmount);
             BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes()).multiply(weight).setScale(2, RoundingMode.HALF_UP);
             scores.put(channel.name(), Map.of("qualified", qualified, "enabled", config.getEnabled() == 1, "fee", fee, "etaMinutes", config.getEtaMinutes(), "etaCost", etaCost, "score", fee.add(etaCost), "perTxLimit", config.getPerTxLimit()));
         }
         return scores;
+    }
+
+    /**
+     * 按渠道配置算手续费。费率与固定费已经随渠道列表一起查回来了，
+     * 这里直接用，不再按渠道号回表——否则一次路由就是 1+N 次查询。
+     */
+    private BigDecimal feeOf(ChannelConfig config, BigDecimal sourceAmount) {
+        return config.getFixedFee().add(sourceAmount.multiply(config.getRateFee())).setScale(2, RoundingMode.HALF_UP);
     }
 
 }

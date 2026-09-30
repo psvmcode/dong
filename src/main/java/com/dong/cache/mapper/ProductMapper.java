@@ -28,6 +28,15 @@ public interface ProductMapper {
     List<Product> selectAll();
 
     /**
+     * 查询前若干条记录。全量接口必须在 SQL 里封顶，
+     * 先全表捞进内存再截断的话，内存会在截断之前就先吃满。
+     *
+     * @param limit 最大条数
+     * @return 商品列表
+     */
+    List<Product> selectTop(@Param("limit") int limit);
+
+    /**
      * 分页查询记录。
      *
      * @param offset 偏移量

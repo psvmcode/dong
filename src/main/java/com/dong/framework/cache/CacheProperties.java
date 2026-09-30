@@ -46,9 +46,11 @@ public class CacheProperties {
     private Duration rebuildLease = Duration.ofSeconds(5);
 
     /**
-     * 缓存重建等待时间。
+     * 缓存重建等待时间。刻意给得很短：拿不到锁说明已有线程在重建，
+     * 本线程本就该立刻退让去用旧值，而不是陪着等。
+     * 等满一秒在读路径上是最贵的单项，冷 key 突发时会把线程全挂住。
      */
-    private Duration rebuildWait = Duration.ofSeconds(1);
+    private Duration rebuildWait = Duration.ofMillis(100);
 
     /**
      * 双删延迟时间。

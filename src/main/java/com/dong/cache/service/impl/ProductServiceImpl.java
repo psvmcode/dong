@@ -89,6 +89,11 @@ public class ProductServiceImpl implements ProductService {
     private final ApplicationEventPublisher eventPublisher;
 
     /**
+     * 布隆过滤器实例，惰性初始化后复用。
+     */
+    private volatile RBloomFilter<String> productBloom;
+
+    /**
      * 走完整多级缓存链路。防穿透只靠缓存空值标记，
      * 因此针对不存在 id 的重复请求仍会有一批落到回源逻辑上。
      */
@@ -133,15 +138,9 @@ public class ProductServiceImpl implements ProductService {
      */
     @Override
     public List<Product> findAll() {
-        List<Product> all = productMapper.selectAll();
-        // 这个接口没有分页，数据量一旦超出预期就会把内存吃光。
-        // 全量接口必须设上限：宁可截断并告警，也不能让一次查询拖垮整个服务。
-        if (all.size() > Constants.MAX_BATCH_SIZE) {
-            log.warn("findAll exceeds safe limit, truncated: {} > {}",
-                    all.size(), Constants.MAX_BATCH_SIZE);
-            return all.subList(0, Constants.MAX_BATCH_SIZE);
-        }
-        return all;
+        // 封顶交给 SQL 而不是捞回来再截：ResultSet 和 List 会先吃满内存，
+        // 等截断发生时该吃的内存已经吃下去了
+        return productMapper.selectTop(Constants.MAX_BATCH_SIZE);
     }
 
     /**
@@ -217,7 +216,7 @@ public class ProductServiceImpl implements ProductService {
         products.forEach(product -> multiLevelCache.get(cacheKey(product.getId()), Product.class, PRODUCT_TTL,
                 () -> product));
         try {
-            RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
+            RBloomFilter<String> filter = bloomFilter();
             productMapper.selectAllIds().forEach(id -> filter.add(String.valueOf(id)));
         } catch (Exception ex) {
             // 预热没写进过滤器，后果是 guarded 模式会误拒真实 id，
@@ -238,12 +237,28 @@ public class ProductServiceImpl implements ProductService {
      */
     private boolean bloomRejects(Long id) {
         try {
-            RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
-            return !filter.contains(String.valueOf(id));
+            return !bloomFilter().contains(String.valueOf(id));
         } catch (Exception ex) {
             log.warn("bloom filter unavailable, skipping guard for id={}: {}", id, ex.getMessage());
             return false;
         }
+    }
+
+    /**
+     * 取布隆过滤器，实例只初始化一次。
+     * 必须缓存的原因：Redisson 的 tryInit 不是本地幂等判断，每次都会向 Redis 发命令。
+     * 不缓存的话，这个本该「比查缓存更便宜」的前置拦截，
+     * 每次反而要两次 Redis 往返，比它要保护的查询还贵。
+     *
+     * @return 布隆过滤器
+     */
+    private RBloomFilter<String> bloomFilter() {
+        RBloomFilter<String> filter = productBloom;
+        if (filter == null) {
+            filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
+            productBloom = filter;
+        }
+        return filter;
     }
 
     /**
@@ -254,8 +269,7 @@ public class ProductServiceImpl implements ProductService {
      */
     private void addToBloom(Long id) {
         try {
-            RBloomFilter<String> filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
-            filter.add(String.valueOf(id));
+            bloomFilter().add(String.valueOf(id));
         } catch (Exception ex) {
             log.warn("bloom filter add failed for id={}: {}", id, ex.getMessage());
         }

@@ -26,6 +26,16 @@
         where feed_id = #{feedId}
     </select>
 
+    <!-- 按动态 id 列表批量查动态，推模式时间线读取 -->
+    <select id="selectByFeedIds" resultMap="feedMap">
+        select id, feed_id, author_id, content, like_count, create_time
+        from social_feed
+        where feed_id in
+        <foreach collection="feedIds" item="feedId" open="(" separator="," close=")">
+            #{feedId}
+        </foreach>
+    </select>
+
     <!-- 查作者的动态 -->
     <select id="selectByAuthor" resultMap="feedMap">
         select id, feed_id, author_id, content, like_count, create_time

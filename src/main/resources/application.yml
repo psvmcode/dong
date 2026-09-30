@@ -148,7 +148,8 @@ dong:
     # 逻辑过期后旧值再留这么久，期间回源失败可以拿它兜底，而不是直接报错
     stale-grace: 5m
     rebuild-lease: 5s
-    rebuild-wait: 1s
+    # 拿不到重建锁就立刻退让，靠旧值兜底；等满时间在读路径上是最贵的单项
+    rebuild-wait: 100ms
     double-delete-delay: 500ms
     invalidation-channel: dong:cache:invalidate
     # 回源熔断：连续失败这么多次就暂停回源，把等待换成快速失败，给数据库恢复时间

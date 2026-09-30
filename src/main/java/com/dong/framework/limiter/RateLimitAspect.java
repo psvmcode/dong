@@ -11,6 +11,7 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * {@code @RateLimited} 注解切面。在方法执行前尝试获取配额，
@@ -35,6 +38,10 @@ public class RateLimitAspect {
     private static final ExpressionParser PARSER = new SpelExpressionParser();
 
     private static final ParameterNameDiscoverer NAME_DISCOVERER = new DefaultParameterNameDiscoverer();
+
+    // 表达式种类有限但每次请求都要解析，解析结果必须复用：
+    // SpEL 的 parseExpression 比一次限流判定本身还贵
+    private static final ConcurrentMap<String, Expression> EXPRESSION_CACHE = new ConcurrentHashMap<>();
 
     /**
      * 限流管理器。
@@ -83,7 +90,7 @@ public class RateLimitAspect {
                 context.setVariable(parameterNames[i], args[i]);
             }
         }
-        return PARSER.parseExpression(expression).getValue(context, String.class);
+        return EXPRESSION_CACHE.computeIfAbsent(expression, PARSER::parseExpression).getValue(context, String.class);
     }
 
 }

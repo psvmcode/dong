@@ -23,6 +23,12 @@ public interface SocialFeedMapper {
     SocialFeed selectByFeedId(@Param("feedId") Long feedId);
 
     /**
+     * 按动态 id 列表批量查询。推模式时间线一次要取几十条动态，
+     * 逐条回表会把一次读放大成几十次查询。
+     */
+    List<SocialFeed> selectByFeedIds(@Param("feedIds") List<Long> feedIds);
+
+    /**
      * 按 Authors 查询记录。
      */
     List<SocialFeed> selectByAuthors(@Param("authorIds") List<Long> authorIds, @Param("offset") int offset, @Param("size") int size);
