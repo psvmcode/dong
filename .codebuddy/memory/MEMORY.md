@@ -34,7 +34,7 @@
 - **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004
 
 ### 模块要点
-- **agent（2026-10-02 设计，代码未落地）**：`doc/scenario/agent.md`，第 13 个实验场景「Agent 工程实验室」，
+- **agent（2026-10-02 设计 + P0 落地，P1~P3 待做）**：`doc/scenario/agent.md`，第 13 个实验场景「Agent 工程实验室」，
   对标 WorkBuddy，接口 `/api/agent`，页面 `static/agent/index.html`。
   定位是**把 LLM 应用的工程问题做成对照实验**（E1~E8），不是做办公助手。
   硬约束：零新增 Maven 依赖（JDK HttpClient 读模型流 + SseEmitter 推页面，不引 webflux / Spring AI）；
