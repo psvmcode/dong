@@ -117,7 +117,7 @@ com.dong.agent/
 │   ├── AgentRunListener.java      运行回调（同步 / SSE 两种实现）
 │   ├── llm/                       LlmClient 接口
 │   │   └── impl/                  OpenAiCompatibleLlmClient、MockLlmClient
-│   └── tool/                      AgentTool 接口、ToolRegistry、各工具实现
+│   └── tool/                      AgentTool 接口、ToolRegistry、ToolArguments、ToolJson、各工具实现
 └── task/                          AgentRunCleanupTask，回收卡死的运行
 ```
 
@@ -280,6 +280,10 @@ public record ToolResult(boolean success, String payload, String errorMessage, l
 
 `side-effect-confirm-required` 默认 `true`。关掉它等于让模型可以无人看管地改数据，
 只在跑自动化实验时才关，且必须显式配置。
+
+L1 工具的确认不是「拒绝」也不是「放行」，而是**挂起运行 → 页面确认 → 从原处继续**，
+挂起态必须落库（对应 `agent_run.status` 的 5 等待确认）。
+完整流程与超时处理见 [`../../topic/agent-tool-protocol.md`](../../topic/agent-tool-protocol.md) 第四节。
 
 ### 4.3 首批工具清单
 
@@ -542,7 +546,7 @@ create table if not exists agent_run
     client_token      varchar(64)     default null                             comment '幂等键，未传为 null',
     prompt            text                                                     comment '用户输入',
     answer            text                                                     comment '最终回答，被闸门终止时为空',
-    status            tinyint         not null default 1                       comment '状态：1 运行中 2 已完成 3 失败 4 已取消',
+    status            tinyint         not null default 1                       comment '状态：1 运行中 2 已完成 3 失败 4 已取消 5 等待确认',
     finish_reason     varchar(32)     not null default ''                      comment '结束原因：STOP MAX_STEPS MAX_TOOL_CALLS TIMEOUT TOKEN_BUDGET TOOL_FAILURE CANCELLED ERROR',
     steps             int             not null default 0                       comment '实际执行步数',
     tool_calls        int             not null default 0                       comment '工具调用次数',
@@ -626,6 +630,8 @@ dong:
       http-fetch-enabled: false # 打开前先确认 SSRF 防护生效
       mysql-probe-enabled: false
       side-effect-confirm-required: true
+      # 挂起等确认的上限，超时按取消处理而不是按拒绝，见专题文档 4.2
+      side-effect-confirm-timeout: 5m
     lab:
       # 回收卡死运行：进程重启后残留的 RUNNING 记录靠它收尾
       cleanup-enabled: true
