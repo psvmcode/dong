@@ -34,6 +34,16 @@
 - **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004
 
 ### 模块要点
+- **agent（2026-10-02 设计，代码未落地）**：`doc/scenario/agent.md`，第 13 个实验场景「Agent 工程实验室」，
+  对标 WorkBuddy，接口 `/api/agent`，页面 `static/agent/index.html`。
+  定位是**把 LLM 应用的工程问题做成对照实验**（E1~E8），不是做办公助手。
+  硬约束：零新增 Maven 依赖（JDK HttpClient 读模型流 + SseEmitter 推页面，不引 webflux / Spring AI）；
+  工具实现进 `support/tool` 并**直调 service，不 HTTP 回打自己的接口**；
+  五道停止闸门 + 每运行必有 `finish_reason`；实验默认跑 `mock` provider；
+  不提供任意 SQL / 命令 / 文件读写，`http.fetch` 与 `mysql.probe` 默认关闭。
+  最大风险：**SSE 长期占用 tomcat 线程（max 200）会拖垮全站** → 并发上限 1003 + 墙钟超时 + cleanup 任务。
+  页面禁用 `EventSource`（仅 GET），用 `fetch` + `ReadableStream` 解析 SSE。
+  幂等键 `client_token` 必须 nullable（唯一索引允许多 null，只许一个空串）
 - **cache（2026-09-27 加固）**：主读路径是 `MultiLevelCache.resolve()`，返回四态
   Fresh / Stale（回源失败用旧值兜底）/ Absent（空值或布隆判定）/ Unavailable（连旧值都没有，抛 1005）。
   **回源失败绝不写空值标记**——那会把一次故障固化成「数据不存在」，是这里最严重的坑。
