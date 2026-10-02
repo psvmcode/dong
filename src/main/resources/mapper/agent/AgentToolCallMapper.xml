@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0/EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.agent.mapper.AgentToolCallMapper">
+    <!-- 失败也记，否则无法量化被吞掉的那些失败 -->
+
+    <resultMap id="toolCallMap" type="com.dong.agent.entity.AgentToolCall">
+        <id column="id" property="id"/>
+        <result column="run_no" property="runNo"/>
+        <result column="session_no" property="sessionNo"/>
+        <result column="step_no" property="stepNo"/>
+        <result column="tool_name" property="toolName"/>
+        <result column="arguments" property="arguments"/>
+        <result column="result" property="result"/>
+        <result column="status" property="status"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="risk" property="risk" javaType="com.dong.agent.enums.ToolRisk"/>
+        <result column="elapsed_millis" property="elapsedMillis"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="toolCallColumns">
+        id, run_no, session_no, step_no, tool_name, arguments, result, status, error_message, risk,
+        elapsed_millis, create_time
+    </sql>
+
+    <!-- 插入工具调用记录 -->
+    <insert id="insert" parameterType="com.dong.agent.entity.AgentToolCall"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into agent_tool_call (run_no, session_no, step_no, tool_name, arguments, result, status,
+        error_message, risk, elapsed_millis)
+        values (#{runNo}, #{sessionNo}, #{stepNo}, #{toolName}, #{arguments}, #{result}, #{status},
+        #{errorMessage}, #{risk}, #{elapsedMillis})
+    </insert>
+
+    <!-- 按运行号查询轨迹 -->
+    <select id="selectByRunNo" resultMap="toolCallMap">
+        select
+        <include refid="toolCallColumns"/>
+        from agent_tool_call
+        where run_no = #{runNo}
+        order by step_no asc, id asc
+    </select>
+
+    <!-- 删除会话下的全部工具调用记录 -->
+    <delete id="deleteBySessionNo">
+        delete from agent_tool_call
+        where session_no = #{sessionNo}
+    </delete>
+
+</mapper>

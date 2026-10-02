@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0/EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.agent.mapper.AgentRunMapper">
+    <!-- 每次运行都必须有 finish_reason，没有「不知道为什么停了」这种状态 -->
+
+    <resultMap id="runMap" type="com.dong.agent.entity.AgentRun">
+        <id column="id" property="id"/>
+        <result column="run_no" property="runNo"/>
+        <result column="session_no" property="sessionNo"/>
+        <result column="client_token" property="clientToken"/>
+        <result column="prompt" property="prompt"/>
+        <result column="answer" property="answer"/>
+        <result column="status" property="status" javaType="com.dong.agent.enums.RunStatus"/>
+        <result column="finish_reason" property="finishReason" javaType="com.dong.agent.enums.FinishReason"/>
+        <result column="steps" property="steps"/>
+        <result column="tool_calls" property="toolCalls"/>
+        <result column="prompt_tokens" property="promptTokens"/>
+        <result column="completion_tokens" property="completionTokens"/>
+        <result column="elapsed_millis" property="elapsedMillis"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="runColumns">
+        id, run_no, session_no, client_token, prompt, answer, status, finish_reason, steps, tool_calls,
+        prompt_tokens, completion_tokens, elapsed_millis, error_message, create_time, update_time
+    </sql>
+
+    <!-- 插入运行记录。只写创建时已知的字段，统计值与结束原因由收尾更新写入，
+         插入时传 null 会撞上非空约束 -->
+    <insert id="insert" parameterType="com.dong.agent.entity.AgentRun"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into agent_run (run_no, session_no, client_token, prompt, status)
+        values (#{runNo}, #{sessionNo}, #{clientToken}, #{prompt}, #{status})
+    </insert>
+
+    <!-- 按运行号查询 -->
+    <select id="selectByRunNo" resultMap="runMap">
+        select
+        <include refid="runColumns"/>
+        from agent_run
+        where run_no = #{runNo}
+    </select>
+
+    <!-- 按幂等键查询，重复提交时据此返回原单 -->
+    <select id="selectByClientToken" resultMap="runMap">
+        select
+        <include refid="runColumns"/>
+        from agent_run
+        where client_token = #{clientToken}
+    </select>
+
+    <!-- 分页查询运行，最近的在前 -->
+    <select id="selectByPage" resultMap="runMap">
+        select
+        <include refid="runColumns"/>
+        from agent_run
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计运行总数 -->
+    <select id="countAll" resultType="java.lang.Long">
+        select count(*) from agent_run
+    </select>
+
+    <!-- 收尾更新，状态与结束原因一起写 -->
+    <update id="updateFinish" parameterType="com.dong.agent.entity.AgentRun">
+        update agent_run
+        set status = #{status},
+        finish_reason = #{finishReason},
+        answer = #{answer},
+        steps = #{steps},
+        tool_calls = #{toolCalls},
+        prompt_tokens = #{promptTokens},
+        completion_tokens = #{completionTokens},
+        elapsed_millis = #{elapsedMillis},
+        error_message = #{errorMessage},
+        update_time = now()
+        where run_no = #{runNo}
+    </update>
+
+    <!-- 单独更新状态，取消与挂起用 -->
+    <update id="updateStatus">
+        update agent_run
+        set status = #{status},
+        update_time = now()
+        where run_no = #{runNo}
+    </update>
+
+    <!-- 卡死的运行：状态仍是运行中，且更新时间早于给定时间点 -->
+    <select id="selectStuck" resultMap="runMap">
+        select
+        <include refid="runColumns"/>
+        from agent_run
+        where status = 1
+        and update_time &lt; #{before}
+        order by id asc
+        limit #{limit}
+    </select>
+
+    <!-- 按结束原因统计分布 -->
+    <select id="countByFinishReason" resultType="java.lang.Long">
+        select count(*) from agent_run
+        where finish_reason = #{finishReason}
+    </select>
+
+</mapper>

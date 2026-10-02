@@ -11,7 +11,7 @@
 | 章节 | 内容 |
 |---|---|
 | [一、项目定位](#一项目定位) | 这不是脚手架，是一组对照实验 |
-| [二、能力速览](#二能力速览) | 十二个场景一张表看完 |
+| [二、能力速览](#二能力速览) | 十三个场景一张表看完 |
 | [三、快速开始](#三快速开始) | 三步跑起来 |
 | [四、目录结构与分层](#四目录结构与分层) | 限界上下文 + 传统分层 |
 | [五、场景详解](#五场景详解) | 每个场景的问题、解法、验证命令 |
@@ -60,6 +60,7 @@
 | 多数据源 | `/api/replica` | MariaDB | 第二数据源、独立事务管理器 | 一致性检查通过 |
 | 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、人工审核、冻结、异步清算、对账 | 金额精确到分，余额流水一致 |
 | 订单状态机 | `/api/order` | MySQL + COLA StateMachine | 守卫、内部迁移、条件分支回退、乐观锁并发 | 16 线程抢推，仅 1 次成功 |
+| Agent 工程实验室 | `/api/agent` | MySQL + LLM（OpenAI 兼容） | 工具调用循环、五道停止闸门、轨迹落库、SSE 流式、幂等 | mock 跑通一轮：2 步、1 次工具调用、`finish_reason=STOP` |
 
 > 全站接口统一为 POST：写操作仍可用 query 参数，查询类参数一律走 JSON body，分页参数见 `PageQuery`。
 
@@ -118,7 +119,7 @@ src/main/java/com/dong/
 │   ├── bloom/       Redisson 布隆过滤器
 │   └── mq/          MessageProducer 接口与 MqFacade 路由
 ├── cache/ classic/ seckill/ redpacket/ social/
-├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/
+├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/ agent/
 └── 上下文内部：controller / service + impl / mapper / entity / dto / enums / support / task / handler
 
 db/schema.sql        建表语句，唯一权威源

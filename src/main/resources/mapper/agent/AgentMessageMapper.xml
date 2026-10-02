@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0/EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.agent.mapper.AgentMessageMapper">
+    <!-- assistant 与 tool 消息一并记录，是轨迹可回放的前提 -->
+
+    <resultMap id="messageMap" type="com.dong.agent.entity.AgentMessage">
+        <id column="id" property="id"/>
+        <result column="session_no" property="sessionNo"/>
+        <result column="run_no" property="runNo"/>
+        <result column="seq" property="seq"/>
+        <result column="role" property="role" javaType="com.dong.agent.enums.MessageRole"/>
+        <result column="content" property="content"/>
+        <result column="tool_name" property="toolName"/>
+        <result column="tool_call_id" property="toolCallId"/>
+        <result column="truncated" property="truncated"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="messageColumns">
+        id, session_no, run_no, seq, role, content, tool_name, tool_call_id, truncated, create_time
+    </sql>
+
+    <!-- 插入消息 -->
+    <insert id="insert" parameterType="com.dong.agent.entity.AgentMessage"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into agent_message (session_no, run_no, seq, role, content, tool_name, tool_call_id, truncated)
+        values (#{sessionNo}, #{runNo}, #{seq}, #{role}, #{content}, #{toolName}, #{toolCallId}, #{truncated})
+    </insert>
+
+    <!-- 按会话分页查询，按序号升序保证可回放 -->
+    <select id="selectBySession" resultMap="messageMap">
+        select
+        <include refid="messageColumns"/>
+        from agent_message
+        where session_no = #{sessionNo}
+        order by seq asc, id asc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计会话下的消息数 -->
+    <select id="countBySession" resultType="java.lang.Long">
+        select count(*) from agent_message
+        where session_no = #{sessionNo}
+    </select>
+
+    <!-- 当前最大序号，无消息时返回 0 -->
+    <select id="selectMaxSeq" resultType="java.lang.Integer">
+        select ifnull(max(seq), 0) from agent_message
+        where session_no = #{sessionNo}
+    </select>
+
+    <!-- 按运行号查询全部消息 -->
+    <select id="selectByRunNo" resultMap="messageMap">
+        select
+        <include refid="messageColumns"/>
+        from agent_message
+        where run_no = #{runNo}
+        order by seq asc, id asc
+    </select>
+
+    <!-- 删除会话下的全部消息 -->
+    <delete id="deleteBySessionNo">
+        delete from agent_message
+        where session_no = #{sessionNo}
+    </delete>
+
+</mapper>

@@ -657,3 +657,114 @@ create table if not exists trade_order_transition_log
 ) engine = innodb
   default charset = utf8mb4
   comment = '状态流转日志。成功与失败都记，是并发实验可量化验证的依据';
+
+-- 会话只管上下文，一次执行的过程在 agent_run 与 agent_message 里
+create table if not exists agent_session
+(
+    id            bigint unsigned not null auto_increment                  comment '主键',
+    session_no    varchar(32)     not null                                 comment '会话号',
+    title         varchar(128)    not null default ''                      comment '会话标题，首轮由模型生成，失败则截取首句',
+    model         varchar(64)     not null default ''                      comment '使用的模型标识',
+    status        tinyint         not null default 1                       comment '状态：1 活跃 2 归档',
+    message_count int             not null default 0                       comment '累计消息数，含工具消息',
+    run_count     int             not null default 0                       comment '累计运行次数',
+    summary       varchar(2000)   not null default ''                      comment '窗口之外的历史摘要，生成失败时为空',
+    create_time   datetime        not null default current_timestamp       comment '创建时间',
+    update_time   datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_session_no (session_no)                                       comment '会话号唯一',
+    key idx_status_update (status, update_time)                                 comment '按状态与时间查列表'
+) engine = innodb
+  default charset = utf8mb4
+  comment = 'Agent 会话。一次会话可以跑多次运行，运行结束后仍可继续追问';
+
+-- assistant 与 tool 消息一并记录，是轨迹可回放的前提
+create table if not exists agent_message
+(
+    id           bigint unsigned not null auto_increment                  comment '主键',
+    session_no   varchar(32)     not null                                 comment '所属会话号',
+    run_no       varchar(32)     not null default ''                      comment '所属运行号，系统消息为空',
+    seq          int             not null default 0                       comment '会话内序号，用于按序回放',
+    role         varchar(16)     not null default ''                      comment '角色：system user assistant tool',
+    content      text                                                     comment '消息内容，工具消息存工具返回的原始结果',
+    tool_name    varchar(64)     not null default ''                      comment '工具名，仅 tool 消息有值',
+    tool_call_id varchar(64)     not null default ''                      comment '工具调用 id，回填消息时据此匹配',
+    truncated    tinyint         not null default 0                       comment '内容是否被截断：1 是 0 否',
+    create_time  datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    key idx_session_seq (session_no, seq)                                       comment '按会话回放',
+    key idx_run (run_no)                                                        comment '按运行查消息'
+) engine = innodb
+  default charset = utf8mb4
+  comment = 'Agent 消息。工具调用也记成消息，回放时才能还原模型当时看到了什么';
+
+-- 与消息分开是因为要按工具维度统计耗时与失败率
+create table if not exists agent_tool_call
+(
+    id             bigint unsigned not null auto_increment                  comment '主键',
+    run_no         varchar(32)     not null                                 comment '所属运行号',
+    session_no     varchar(32)     not null                                 comment '所属会话号',
+    step_no        int             not null default 0                       comment '第几步调用的',
+    tool_name      varchar(64)     not null default ''                      comment '工具名',
+    arguments      text                                                     comment '入参 JSON',
+    result         text                                                     comment '返回结果，失败时为空',
+    status         tinyint         not null default 0                       comment '结果：1 成功 0 失败',
+    error_message  varchar(512)    not null default ''                      comment '失败原因，成功时为空',
+    risk           tinyint         not null default 1                       comment '危险等级：1 只读 2 有副作用',
+    elapsed_millis int             not null default 0                       comment '耗时，单位毫秒',
+    create_time    datetime        not null default current_timestamp       comment '调用时间',
+    primary key (id),
+    key idx_run (run_no)                                                        comment '按运行查轨迹',
+    key idx_tool_status (tool_name, status)                                     comment '按工具统计失败率'
+) engine = innodb
+  default charset = utf8mb4
+  comment = 'Agent 工具调用记录。失败也记，否则无法量化被吞掉的那些失败';
+
+-- null 不受唯一约束，因此未传幂等键的运行互不冲突
+create table if not exists agent_run
+(
+    id                bigint unsigned not null auto_increment                  comment '主键',
+    run_no            varchar(32)     not null                                 comment '运行号',
+    session_no        varchar(32)     not null                                 comment '所属会话号',
+    client_token      varchar(64)     default null                             comment '幂等键，未传为 null',
+    prompt            text                                                     comment '用户输入',
+    answer            text                                                     comment '最终回答，被闸门终止时为空',
+    status            tinyint         not null default 1                       comment '状态：1 运行中 2 已完成 3 失败 4 已取消 5 等待确认',
+    finish_reason     varchar(32)     not null default ''                      comment '结束原因：STOP MAX_STEPS MAX_TOOL_CALLS TIMEOUT TOKEN_BUDGET TOOL_FAILURE CANCELLED ERROR',
+    steps             int             not null default 0                       comment '实际执行步数',
+    tool_calls        int             not null default 0                       comment '工具调用次数',
+    prompt_tokens     int             not null default 0                       comment '提示 token，粗估',
+    completion_tokens int             not null default 0                       comment '生成 token，粗估',
+    elapsed_millis    int             not null default 0                       comment '总耗时，单位毫秒',
+    error_message     varchar(512)    not null default ''                      comment '失败原因，成功时为空',
+    create_time       datetime        not null default current_timestamp       comment '创建时间',
+    update_time       datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_run_no (run_no)                                               comment '运行号唯一',
+    unique key uk_client_token (client_token)                                   comment '幂等键唯一，null 不受约束',
+    key idx_session (session_no)                                                comment '按会话查运行',
+    key idx_finish (finish_reason)                                              comment '按结束原因统计分布'
+) engine = innodb
+  default charset = utf8mb4
+  comment = 'Agent 运行。每次运行必须有 finish_reason，没有不知道为什么停了这种状态';
+
+create table if not exists agent_lab_result
+(
+    id                bigint unsigned not null auto_increment                  comment '主键',
+    experiment        varchar(64)     not null                                 comment '实验编号，如 E2',
+    mode              varchar(32)     not null                                 comment '模式，如 serial parallel',
+    round             int             not null default 1                       comment '第几轮，同参数多跑几轮看波动',
+    provider          varchar(32)     not null default 'mock'                  comment '模型提供方：mock openai',
+    success           tinyint         not null default 0                       comment '是否达成预期：1 是 0 否',
+    steps             int             not null default 0                       comment '步数',
+    tool_calls        int             not null default 0                       comment '工具调用次数',
+    prompt_tokens     int             not null default 0                       comment '提示 token',
+    completion_tokens int             not null default 0                       comment '生成 token',
+    elapsed_millis    int             not null default 0                       comment '耗时，单位毫秒',
+    detail            varchar(2000)   not null default ''                      comment '实验特有指标的 JSON，如加速比、答对率',
+    create_time       datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    key idx_experiment_mode (experiment, mode)                                  comment '按实验与模式对比'
+) engine = innodb
+  default charset = utf8mb4
+  comment = 'Agent 对照实验结果。默认跑 mock 模型，保证可复现、离线可跑、不烧钱';

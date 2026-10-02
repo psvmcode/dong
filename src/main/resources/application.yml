@@ -198,6 +198,42 @@ dong:
     timeout-task-enabled: true
     payment-timeout-minutes: 15
 
+  agent:
+    # 默认关闭：Agent 是可选模块，缺 key 时不能让整个应用起不来（见场景文档 14.3）
+    enabled: false
+    # 并发运行上限。SSE 会长期占用 tomcat 工作线程，这是保护宿主应用的关键闸门
+    max-concurrent-runs: 8
+    max-steps: 12
+    max-tool-calls-per-run: 24
+    max-same-tool-calls: 3
+    max-continuous-failures: 3
+    run-timeout: 120s
+    tool-timeout: 15s
+    max-tool-result-chars: 8000
+    history-window: 20
+    token-budget: 120000
+    tool-pool-size: 16
+    tool-queue-capacity: 64
+    llm:
+      provider: mock            # mock | openai
+      base-url: ${LAB_AGENT_BASE_URL:https://api.deepseek.com/v1}
+      api-key: ${LAB_AGENT_API_KEY:}
+      model: deepseek-chat
+      temperature: 0.2
+      connect-timeout: 10s
+      read-timeout: 60s
+      max-retries: 2
+    tools:
+      http-fetch-enabled: false # 打开前先确认 SSRF 防护生效
+      mysql-probe-enabled: false
+      side-effect-confirm-required: true
+      # 挂起等确认的上限，超时按取消处理而不是按拒绝
+      side-effect-confirm-timeout: 5m
+    lab:
+      cleanup-enabled: true
+      cleanup-interval-ms: 300000
+      cleanup-stuck-after: 600s
+
   redpacket:
     # 单用户每分钟最多抢多少次，挡的是脚本刷，与全局按 IP 限流互补
     grab-limit-enabled: true

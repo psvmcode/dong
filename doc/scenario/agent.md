@@ -1,10 +1,13 @@
 # 网页版 Agent（Agent 工程实验室）
 
-> **状态：设计中，代码未落地。** 本文是 `com.dong.agent` 模块的设计文档，写于实现之前，
-> 用于先把「做什么、不做什么、为什么这么做」定死，再按第十二节的分期落地。
-> 文中出现的类名、接口路径、配置前缀都是落地时要严格遵守的约定，不是示意。
+> **状态：P0 已落地，P1~P3 待实施。** 本文是 `com.dong.agent` 模块的设计文档，
+> 先把「做什么、不做什么、为什么这么做」定死，再按第十二节的分期落地；
+> 文中出现的类名、接口路径、配置前缀都是落地时严格遵守的约定，不是示意。
+>
+> P0 实测（mock 模型，见第十三节）：问「现在几点了」→ 2 步、1 次工具调用、
+> `finish_reason=STOP`；SSE 事件流、幂等重放（1006）、工具试运行均已验证通过。
 
-配套代码（待建）`src/main/java/com/dong/agent/`，接口前缀 `/api/agent`，页面 `/agent/index.html`。
+配套代码 `src/main/java/com/dong/agent/`，接口前缀 `/api/agent`，页面 `/agent/index.html`。
 建表语句见 [`../../db/schema.sql`](../../db/schema.sql) 中 `agent_*` 开头的表。
 
 ---
@@ -725,7 +728,7 @@ Agent 尤其如此——它很擅长把「没查到」说成「查到了，是�
 
 | 阶段 | 内容 | 验收标准 |
 |---|---|---|
-| **P0 骨架** | DDL + 实体 / Mapper（登记 `@MapperScan`）+ 配置开关 + `tools` 清单接口 + 会话 CRUD + MockLlmClient + 静态页面 | 用 mock 模型跑通一轮完整对话，页面能看到流式输出与工具轨迹 |
+| **P0 骨架**（已完成） | DDL + 实体 / Mapper（登记 `@MapperScan`）+ 配置开关 + `tools` 清单接口 + 会话 CRUD + MockLlmClient + 静态页面 | 用 mock 模型跑通一轮完整对话，页面能看到流式输出与工具轨迹 |
 | **P1 真模型** | OpenAiCompatibleLlmClient（流式）+ AgentRunEngine（循环 / 闸门 / 并行）+ 通用工具 4 个 + 场景工具按 4.3 分批接入 + SSE 接口 + 取消 | 真实模型下能正确调用 `classic.limiter_compare` 并基于结果作答 |
 | **P2 实验** | 八组对照实验 + `runs/stats` + `lab/results` + 页面实验面板 | E1~E8 都能跑出可对比的数字，默认走 mock |
 | **P3 加固** | 幂等、并发上限、SSRF / SQL 防护、摘要、清理任务、可观测 | 断线重连不重复执行；关掉开关返回 1004；并发打满时其它模块接口不受影响 |

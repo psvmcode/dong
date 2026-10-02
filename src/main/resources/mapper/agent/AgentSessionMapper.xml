@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0/EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.agent.mapper.AgentSessionMapper">
+    <!-- 会话只承载上下文，计数用累加更新，避免并发运行互相覆盖 -->
+
+    <resultMap id="sessionMap" type="com.dong.agent.entity.AgentSession">
+        <id column="id" property="id"/>
+        <result column="session_no" property="sessionNo"/>
+        <result column="title" property="title"/>
+        <result column="model" property="model"/>
+        <result column="status" property="status" javaType="com.dong.agent.enums.SessionStatus"/>
+        <result column="message_count" property="messageCount"/>
+        <result column="run_count" property="runCount"/>
+        <result column="summary" property="summary"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="sessionColumns">
+        id, session_no, title, model, status, message_count, run_count, summary, create_time, update_time
+    </sql>
+
+    <!-- 插入会话，会话号唯一索引兜底防重 -->
+    <insert id="insert" parameterType="com.dong.agent.entity.AgentSession"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into agent_session (session_no, title, model, status, message_count, run_count, summary)
+        values (#{sessionNo}, #{title}, #{model}, #{status}, #{messageCount}, #{runCount}, #{summary})
+    </insert>
+
+    <!-- 按会话号查询 -->
+    <select id="selectBySessionNo" resultMap="sessionMap">
+        select
+        <include refid="sessionColumns"/>
+        from agent_session
+        where session_no = #{sessionNo}
+    </select>
+
+    <!-- 分页查询会话，最近更新的在前 -->
+    <select id="selectByPage" resultMap="sessionMap">
+        select
+        <include refid="sessionColumns"/>
+        from agent_session
+        order by update_time desc, id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计会话总数 -->
+    <select id="countAll" resultType="java.lang.Long">
+        select count(*) from agent_session
+    </select>
+
+    <!-- 累加消息数与运行数 -->
+    <update id="increaseCounters">
+        update agent_session
+        set message_count = message_count + #{messageDelta},
+        run_count = run_count + #{runDelta},
+        update_time = now()
+        where session_no = #{sessionNo}
+    </update>
+
+    <!-- 更新会话摘要 -->
+    <update id="updateSummary">
+        update agent_session
+        set summary = #{summary},
+        update_time = now()
+        where session_no = #{sessionNo}
+    </update>
+
+    <!-- 更新会话标题，首轮运行结束后补上 -->
+    <update id="updateTitle">
+        update agent_session
+        set title = #{title},
+        update_time = now()
+        where session_no = #{sessionNo}
+    </update>
+
+    <!-- 更新会话状态 -->
+    <update id="updateStatus">
+        update agent_session
+        set status = #{status},
+        update_time = now()
+        where session_no = #{sessionNo}
+    </update>
+
+    <!-- 删除会话 -->
+    <delete id="deleteBySessionNo">
+        delete from agent_session
+        where session_no = #{sessionNo}
+    </delete>
+
+</mapper>
