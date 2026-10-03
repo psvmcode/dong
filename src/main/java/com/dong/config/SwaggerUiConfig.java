@@ -12,7 +12,11 @@ import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Swagger UI 与 Knife4j 地址打印配置类。
+ * Swagger UI 与 Knife4j 配置类，并在启动完成后统一打印各入口地址。
+ *
+ * <p>地址集中在一处打印，避免多个监听器各自输出一段、顺序还不固定。
+ * Agent 实验室的链接带启用状态后缀：它默认关闭，只打印链接而不说明当前不可用，
+ * 会让人以为打开就能用。
  */
 @Slf4j
 @Configuration
@@ -55,18 +59,21 @@ public class SwaggerUiConfig implements WebMvcConfigurer {
     }
 
     /**
-     * 应用启动后打印 Swagger UI、Knife4j 与 Actuator 访问地址。
+     * 应用启动后打印 Agent 实验室、Swagger UI、Knife4j 与 Actuator 访问地址。
      */
     @EventListener(ApplicationReadyEvent.class)
     public void logEndpoints() {
         String port = environment.getProperty("local.server.port", "8090");
         String host = "http://127.0.0.1:" + port;
+        boolean agentEnabled = Boolean.TRUE.equals(environment.getProperty("dong.agent.enabled", Boolean.class, false));
         log.info("------------------------------------------------------------");
         log.info("knife4j ui    {}", host + "/doc.html");
         log.info("swagger ui    {}", host + "/swagger-ui/index.html");
         log.info("swagger short {}", host + "/swagger-ui.html");
         log.info("openapi json  {}", host + "/v3/api-docs");
         log.info("actuator      {}", host + "/actuator/health");
+        log.info("agent lab     {}{}", host + "/agent/index.html",
+                agentEnabled ? "" : "  (disabled, set dong.agent.enabled=true)");
         log.info("------------------------------------------------------------");
         if (getClass().getResource(WEBJAR_CSS) == null) {
             log.warn("swagger ui webjar {} is missing, update the version in static/swagger-ui/index.html", WEBJAR_VERSION);
