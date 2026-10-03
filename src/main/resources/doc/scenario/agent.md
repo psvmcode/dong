@@ -478,8 +478,8 @@ curl -N -X POST http://127.0.0.1:8090/api/agent/runs/stream \
 
 ## 八、数据模型
 
-新增表全部位于主库 `dong_lab`，追加在 `db/schema.sql` 末尾（`use dong_lab;` 之后）。
-改完**必须**跑 `./deploy/gen-initdb.sh`，禁止手改 `deploy/initdb*`。
+新增表全部位于主库 `dong_lab`，追加在 `src/main/resources/db/schema.sql` 末尾（`use dong_lab;` 之后）。
+改完**必须**跑 `./src/main/resources/deploy/gen-initdb.sh`，禁止手改 `src/main/resources/deploy/initdb*`。
 
 ```sql
 -- 会话。一次会话可以跑多次运行，运行结束后仍可继续追问
@@ -646,7 +646,7 @@ dong:
       cleanup-stuck-after: 600s
 ```
 
-`deploy/.env`（已被 git 忽略，模板见 `deploy/.env.example`）追加：
+`src/main/resources/deploy/.env`（已被 git 忽略，模板见 `src/main/resources/deploy/.env.example`）追加：
 
 ```properties
 LAB_AGENT_BASE_URL=https://api.deepseek.com/v1
@@ -743,12 +743,12 @@ Agent 尤其如此——它很擅长把「没查到」说成「查到了，是�
 
 | 位置 | 改动 |
 |---|---|
-| `db/schema.sql` | 追加五张 `agent_*` 表（主库段） |
-| `deploy/gen-initdb.sh` | 加表后必须重跑 |
-| `deploy/.env.example` | 追加 `LAB_AGENT_BASE_URL`、`LAB_AGENT_API_KEY` |
+| `src/main/resources/db/schema.sql` | 追加五张 `agent_*` 表（主库段） |
+| `src/main/resources/deploy/gen-initdb.sh` | 加表后必须重跑 |
+| `src/main/resources/deploy/.env.example` | 追加 `LAB_AGENT_BASE_URL`、`LAB_AGENT_API_KEY` |
 | `config/PrimaryMybatisConfig` | `@MapperScan` 补 `com.dong.agent.mapper` |
 | `README.md` | 能力速览表加一行、目录结构加 `agent` 包 |
-| `doc/scenario/README.md` | 文档清单加一条 |
+| `src/main/resources/doc/scenario/README.md` | 文档清单加一条 |
 
 ---
 

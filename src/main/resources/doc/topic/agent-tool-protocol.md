@@ -199,7 +199,7 @@ tool: {tool_call_id: c2, content: "..."}
 
 > 落地同步项：这套流程需要一个「等待确认」的运行状态。
 > `agent_run.status` 的取值需从「1 运行中 2 已完成 3 失败 4 已取消」
-> 扩展为再加上 **5 等待确认**，同步更新 `db/schema.sql` 的字段注释与 `RunStatus` 枚举。
+> 扩展为再加上 **5 等待确认**，同步更新 `src/main/resources/db/schema.sql` 的字段注释与 `RunStatus` 枚举。
 
 ### 4.3 确认不是免责声明
 

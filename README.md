@@ -21,7 +21,7 @@
 | [九、踩过的坑](#九踩过的坑) | 真实问题与解法 |
 | [十、编码规范](#十编码规范) | dong-standards |
 
-深度内容不在本文，按方向进入：[场景文档](doc/scenario/README.md)（按业务场景）、[专题文档](doc/topic/README.md)（按主题纵向深挖）、[知识点学习](doc/learning/README.md)（脱离本项目的通用整理）。
+深度内容不在本文，按方向进入：[场景文档](src/main/resources/doc/scenario/README.md)（按业务场景）、[专题文档](src/main/resources/doc/topic/README.md)（按主题纵向深挖）、[知识点学习](src/main/resources/doc/learning/README.md)（脱离本项目的通用整理）。
 
 ---
 
@@ -70,14 +70,14 @@
 
 **不在本地运行任何中间件**，全部连云服务器，开发机只跑应用进程本身。
 
-### 凭据：deploy/.env
+### 凭据：src/main/resources/deploy/.env
 
-账号密码集中在一个文件，已被 git 忽略（模板见 `deploy/.env.example`）：
+账号密码集中在一个文件，已被 git 忽略（模板见 `src/main/resources/deploy/.env.example`）：
 
 ```bash
-cat deploy/.env                  # 查看，访达按 Cmd+Shift+. 显示隐藏文件
-git check-ignore -v deploy/.env  # 有输出即已被忽略
-cp deploy/.env.example deploy/.env && chmod 600 deploy/.env   # 首次创建
+cat src/main/resources/deploy/.env                  # 查看，访达按 Cmd+Shift+. 显示隐藏文件
+git check-ignore -v src/main/resources/deploy/.env  # 有输出即已被忽略
+cp src/main/resources/deploy/.env.example src/main/resources/deploy/.env && chmod 600 src/main/resources/deploy/.env   # 首次创建
 ```
 
 `application.yml` 通过 `spring.config.import` 自动读它，**无需手动 source**。变量缺失时应用直接启动失败并提示 `Could not resolve placeholder 'LAB_XXX'`，不会静默回落到本地——避免「以为连的是线上、实际连到本地脏数据」。
@@ -95,9 +95,9 @@ curl http://127.0.0.1:8090/actuator/health           # 返回 UP 即成功
 
 ### 建表
 
-云服务器的 MySQL / MariaDB 由 `deploy/initdb`、`deploy/initdb-replica` 在首次启动时自动建表。
+云服务器的 MySQL / MariaDB 由 `src/main/resources/deploy/initdb`、`src/main/resources/deploy/initdb-replica` 在首次启动时自动建表。
 
-**这两个目录是 `db/schema.sql` 的生成物，禁止手工编辑**：加表只改 `db/schema.sql`，再执行 `./deploy/gen-initdb.sh`。容器侧的 `/docker-entrypoint-initdb.d` 只在数据目录为空时执行一次，所以生成物必须剥掉 `create database` 与 `use`。
+**这两个目录是 `src/main/resources/db/schema.sql` 的生成物，禁止手工编辑**：加表只改 `src/main/resources/db/schema.sql`，再执行 `./src/main/resources/deploy/gen-initdb.sh`。容器侧的 `/docker-entrypoint-initdb.d` 只在数据目录为空时执行一次，所以生成物必须剥掉 `create database` 与 `use`。
 
 这个缺口平时测不出来——现有容器早已初始化过，脚本不会再跑，只有删掉 volume 全新部署时才暴露为"表不存在"。
 
@@ -122,8 +122,10 @@ src/main/java/com/dong/
 ├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/ agent/
 └── 上下文内部：controller / service + impl / mapper / entity / dto / enums / support / task / handler
 
-db/schema.sql        建表语句，唯一权威源
-deploy/              Docker Compose 编排与启停脚本
+src/main/resources/
+├── db/schema.sql        建表语句，唯一权威源
+├── deploy/              Docker Compose 编排与启停脚本
+└── doc/                 场景、专题、知识点文档
 ```
 
 **配置只有一份** `application.yml`，没有按环境拆分的 profile：与部署位置无关的策略写在文件里，连接串与账号一律走 `${LAB_*}` 环境变量，文件内不含任何明文凭据。
@@ -131,7 +133,7 @@ deploy/              Docker Compose 编排与启停脚本
 ```yaml
 spring:
   config:
-    import: optional:file:./deploy/.env[.properties]
+    import: optional:file:./src/main/resources/deploy/.env[.properties]
 ```
 
 `[.properties]` 后缀必需：Spring Boot 3.4.5 没有内置 dotenv 加载器，无法凭 `.env` 这个隐藏文件名判断格式。
@@ -210,7 +212,7 @@ curl -X POST http://127.0.0.1:8090/api/cache/lab/stats   # 命中率、staleServ
 | 限流 | 四种算法 | `POST /limiter/try`、`/limiter/compare` |
 | 分布式锁 | Redisson RLock | `POST /lock/with-lock`、`/lock/without-lock` |
 
-前缀均为 `/api/classic`。完整参数见 [经典场景说明](doc/scenario/classic.md)。
+前缀均为 `/api/classic`。完整参数见 [经典场景说明](src/main/resources/doc/scenario/classic.md)。
 
 **限流四算法对比**：只打一轮突发区分不出算法（窗口内都最多放行 `limit` 个），差异在配额如何恢复，所以要看第二轮。
 
@@ -348,7 +350,7 @@ curl -X POST http://127.0.0.1:8090/api/tcc/order -H 'Content-Type: application/j
 
 ### 5.11 跨境支付（crossborder）
 
-> 完整业务场景、技术场景与接口清单见 [`doc/scenario/crossborder.md`](doc/scenario/crossborder.md)，原理与风控判定见 [`doc/topic/crossborder-payment.md`](doc/topic/crossborder-payment.md)。
+> 完整业务场景、技术场景与接口清单见 [`doc/scenario/crossborder.md`](src/main/resources/doc/scenario/crossborder.md)，原理与风控判定见 [`doc/topic/crossborder-payment.md`](src/main/resources/doc/topic/crossborder-payment.md)。
 
 这是最贴近真实业务的一个场景，一笔汇款要过九个环节，每个环节都有对应的工程问题：
 
@@ -461,7 +463,7 @@ dong:
 ├── .env                  密码与公网地址（不进版本库）
 ├── setup-env.sh          服务器上交互式生成 .env
 ├── print-env.sh          本地执行，打印可粘贴到服务器的命令
-├── gen-initdb.sh         从 db/schema.sql 生成下面两个目录，加表后必须跑
+├── gen-initdb.sh         从仓库的 src/main/resources/db/schema.sql 生成下面两个目录，加表后必须跑
 ├── initdb/               主库建表 SQL（生成物，勿手改）
 ├── initdb-replica/       从库建表 SQL（生成物，勿手改）
 ├── elasticsearch/        含 IK 插件的 Dockerfile
@@ -469,7 +471,9 @@ dong:
 └── lab.sh                启停脚本
 ```
 
-仓库不保存密码，`cd /opt/dong-lab && ./setup-env.sh` 交互式生成（密码不回显，文件权限 600）。若服务器只能粘贴命令不能传文件，可在本地跑 `deploy/print-env.sh`，它会打印一段可直接执行的命令。
+上面这套文件在仓库里位于 `src/main/resources/deploy/`，部署时整目录拷到 `/opt/dong-lab/`（服务器上是扁平结构，不再有 `deploy/` 这一层）。
+
+仓库不保存密码，`cd /opt/dong-lab && ./setup-env.sh` 交互式生成（密码不回显，文件权限 600）。若服务器只能粘贴命令不能传文件，可在本地跑 `src/main/resources/deploy/print-env.sh`，它会打印一段可直接执行的命令。
 
 | 变量 | 说明 |
 |---|---|
