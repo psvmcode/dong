@@ -500,8 +500,8 @@ public class AgentRunServiceImpl implements AgentRunService {
         }
         AgentSession session = sessionMapper.selectBySessionNo(sessionNo);
         if (session != null && (session.getTitle() == null || session.getTitle().isBlank())) {
-            sessionMapper.updateTitle(sessionNo, abbreviate(outcome.answer() == null || outcome.answer().isBlank()
-                    ? run.getPrompt() : outcome.answer()));
+            // 标题取用户的提问而不是模型的回答：列表里扫一眼想知道的是「这个会话在聊什么」
+            sessionMapper.updateTitle(sessionNo, abbreviate(run.getPrompt()));
         }
         run.setStatus(outcome.finishReason() == FinishReason.ERROR ? RunStatus.FAILED : RunStatus.FINISHED);
         run.setFinishReason(outcome.finishReason());

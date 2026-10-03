@@ -82,6 +82,16 @@
 let sessionNo = '';
 let runNo = '';
 let reading = false;
+let warned = false;
+
+/**
+ * 只在对话区提示一次模块不可用，避免每次加载都刷一条。
+ */
+function warnOnce(text) {
+    if (warned) return;
+    warned = true;
+    addMessage('tool', text);
+}
 
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
@@ -96,6 +106,20 @@ async function stream(request) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(request)
     });
+    const contentType = response.headers.get('Content-Type') || '';
+    if (!contentType.includes('text/event-stream')) {
+        // 模块没启用、参数不合法、并发超限时，返回的是统一响应 JSON 而不是事件流。
+        // 不判断这一条的话，页面只会静默闪一下，用户完全不知道发生了什么
+        const text = await response.text();
+        let message = 'HTTP ' + response.status;
+        try {
+            const body = JSON.parse(text);
+            message = body.message || message;
+        } catch (e) {
+            // 不是 JSON 就退回状态码
+        }
+        throw new Error(message);
+    }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -164,7 +188,11 @@ function send() {
     reading = true;
     document.getElementById('sendBtn').disabled = true;
     stream({sessionNo: sessionNo || null, prompt: prompt, clientToken: 'web-' + Date.now()})
-        .catch(e => addMessage('tool', '请求失败：' + e.message))
+        .catch(e => {
+            addMessage('tool', '运行失败：' + e.message
+                + '（若提示 middleware is disabled，需要用 --dong.agent.enabled=true 启动应用）');
+            setStats({状态: '失败', 原因: e.message});
+        })
         .finally(() => {
             reading = false;
             document.getElementById('sendBtn').disabled = false;
@@ -285,6 +313,8 @@ async function loadTools() {
     box.innerHTML = '';
     if (body.code !== 0) {
         box.innerHTML = '<div class="muted">' + body.message + '</div>';
+        // 打开页面就说清楚为什么发消息没反应，而不是等用户点完发送去猜
+        warnOnce('Agent 模块未启用：' + body.message + '。用 --dong.agent.enabled=true 启动后即可使用。');
         return;
     }
     for (const tool of body.data) {
