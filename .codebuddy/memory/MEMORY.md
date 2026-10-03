@@ -20,8 +20,9 @@
 - **写任何 Java / SQL / YAML / Vue 前必须加载 skill【dong-standards】**（SQL 关键字小写、DDL 先行、方法字段空行、文件末尾空行、Result 统一响应、状态枚举落库 int、手写 LIMIT 分页）
 - **包结构**：`service` 只放接口，实现进 `service/impl`；**定时任务→`task`、消息处理器→`handler`、无状态工具→`support`**，这三类不许进 `service`；`framework` 同样「接口留本包、实现进 `impl`」
 - **新增限界上下文必登记**：走主库的 Mapper 包写进 `config/PrimaryMybatisConfig` 的 `@MapperScan`，漏登记报 `No qualifying bean`
-- **DDL 唯一权威源 `db/schema.sql`**，改完**必须跑 `./deploy/gen-initdb.sh`** 生成 `deploy/initdb/`（MySQL）与
-  `deploy/initdb-replica/`（MariaDB）——二者是生成物，禁止手工编辑。
+- **DDL 唯一权威源 `src/main/resources/db/schema.sql`**，改完**必须跑 `./src/main/resources/deploy/gen-initdb.sh`**
+  生成 `src/main/resources/deploy/initdb/`（MySQL）与 `src/main/resources/deploy/initdb-replica/`（MariaDB）
+  ——二者是生成物，禁止手工编辑。脚本按自身位置推根目录，目录再挪位置也不用改。
   ⚠️ 库里已存在的容器不会重跑初始化脚本，**新增表要单独在远程库执行**（用 Java 单文件 + JDBC）
 - **注释**：`com.dong.*` 允许并鼓励中文注释（写意图/原理/坑点）；**成员顺序**：Javadoc → 注解 → 声明；
   **注解与类型声明之间不留空行**，但方法/字段前的空行必须保留
@@ -33,8 +34,13 @@
   **拒绝取值越界**（负数、超长、超大批量），**允许空结果查询**
 - **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004
 
+### 目录结构（2026-10-03 起）
+- 顶层只有 `pom.xml`、`README.md`、`src`；`deploy` / `db` / `doc` 全部在 **`src/main/resources/`** 下
+- `pom.xml` 的 `<resources>` 已排除这三个目录，**不打进 jar**；改 pom 资源过滤时要保留这段 excludes
+- `.gitignore` 里带路径的规则（私人面试文档、`deploy/.env`）已同步为新路径——**锚定式规则，目录再挪就会失效**
+
 ### 模块要点
-- **agent（2026-10-02 设计 + P0/P1 落地，P2~P3 待做）**：`doc/scenario/agent.md`，第 13 个实验场景「Agent 工程实验室」，
+- **agent（2026-10-02 设计 + P0/P1 落地，P2~P3 待做）**：`src/main/resources/doc/scenario/agent.md`，第 13 个实验场景「Agent 工程实验室」，
   对标 WorkBuddy，接口 `/api/agent`，页面 `static/agent/index.html`。
   定位是**把 LLM 应用的工程问题做成对照实验**（E1~E8），不是做办公助手。
   硬约束：零新增 Maven 依赖（JDK HttpClient 读模型流 + SseEmitter 推页面，不引 webflux / Spring AI）；
@@ -62,18 +68,19 @@
   落库失败归还预扣（RESTORE 脚本与抢严格互逆）；**脏份额（占位失败）直接丢弃不归还**，否则在队列里打转。
   `RedPacketConsistencyTask` 定时对账，以库为准重建副本
 - **seckill**：四道防线（限流 / 本地售罄标记 / Lua 扣减去重 / DB 唯一索引），异步 MQ 建单 + 超时回收
-- **crossborder**：`doc/crossborder-payment.md`；开户默认 `singleLimit=50000`，与 AML 阈值相同，要看到人工审核分支必须显式调大
+- **crossborder**：`src/main/resources/doc/topic/crossborder-payment.md`；开户默认 `singleLimit=50000`，与 AML 阈值相同，要看到人工审核分支必须显式调大
 
 ### 运行
 - 单份 `src/main/resources/application.yml`，无 profile；`mvn spring-boot:run`（8090）
-- 配置经 `spring.config.import: optional:file:./deploy/.env[.properties]` 自动读 `deploy/.env`
+- 配置经 `spring.config.import: optional:file:./src/main/resources/deploy/.env[.properties]` 自动读该文件
 - **本地不装任何中间件**，全连云服务器；关组件：`-Dspring-boot.run.arguments="--dong.mongodb.enabled=false"`
 - Knife4j `http://127.0.0.1:8090/doc.html`；验证自动配置生效看 `/actuator/beans`
 
-### 云服务器（地址见 deploy/.env 的 LAB_PUBLIC_HOST，2核2G，CentOS 7）
+### 云服务器（地址见 src/main/resources/deploy/.env 的 LAB_PUBLIC_HOST，2核2G，CentOS 7）
 - Docker Compose profile：`core / mq / kafka / search / doc / replica / full`；入口 `/opt/dong-lab/lab.sh <profile> <up|down>`
-- compose 与配置统一从 `.env` 读（`${VAR:?msg}`）；生成脚本 `deploy/setup-env.sh`（服务器）/ `deploy/print-env.sh`（本地）；Mongo 密码含 `@` 要写 `%40`
-- ⚠️ 安全待办（用户未执行）：轮换中间件统一密码（见 `deploy/.env`）+ 收紧安全组；
+- compose 与配置统一从 `.env` 读（`${VAR:?msg}`）；生成脚本 `src/main/resources/deploy/setup-env.sh`（服务器）/
+  `print-env.sh`（本地）；Mongo 密码含 `@` 要写 `%40`
+- ⚠️ 安全待办（用户未执行）：轮换中间件统一密码（见 `src/main/resources/deploy/.env`）+ 收紧安全组；
   3306/6379/9200/27017/9876/3307 对全网开放，仓库 public
 - **SSH**：`ssh lab`（密钥免密）。需密码时用 `expect` 脚本，用完立即删除
 - 服务器 swap 已用 1.1G：Redis 偶发 5 秒命令超时（表现为 500 + `QueryTimeoutException`），事务会回滚不脏，重试即可，**别往代码上找**

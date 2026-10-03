@@ -54,6 +54,19 @@ public class AgentRunEngine {
             """;
 
     /**
+     * 自我校验提示，E5 用。只在模型给出最终回答后追加一次。
+     */
+    private static final String VERIFY_PROMPT = """
+            请复查你刚才的回答：每一条结论是否都有工具返回值支撑？
+            有工具调用失败、或者没调工具却给出事实性结论的，请重新调用工具核实；
+            确认没问题的只回复「成立」两个字。""";
+
+    /**
+     * topk 注入模式下最多带几个工具。
+     */
+    private static final int TOP_K = 5;
+
+    /**
      * 模型客户端集合，按 provider 选择。
      */
     private final Map<String, LlmClient> clients;
@@ -165,7 +178,17 @@ public class AgentRunEngine {
             messages.addAll(context.getHistory());
         }
         messages.add(ChatMessage.user(context.getPrompt()));
-        List<ToolSpec> tools = toolRegistry.specs();
+        AgentRunOptions options = context.getOptions() == null ? AgentRunOptions.empty() : context.getOptions();
+        int stepsLimit = options.maxSteps() == null ? maxSteps : options.maxSteps();
+        int toolCallsLimit = options.maxToolCalls() == null ? maxToolCalls : options.maxToolCalls();
+        int budgetLimit = options.tokenBudget() == null ? tokenBudget : options.tokenBudget();
+        int failuresLimit = options.maxContinuousFailures() == null ? maxContinuousFailures : options.maxContinuousFailures();
+        int repeatsLimit = options.maxSameToolCalls() == null ? maxSameToolCalls : options.maxSameToolCalls();
+        boolean parallel = options.parallelToolCalls() == null ? parallelToolCalls : options.parallelToolCalls();
+        boolean verify = Boolean.TRUE.equals(options.selfVerify());
+        String inject = options.toolInject() == null ? "full" : options.toolInject();
+        String failure = options.failureMode() == null ? "visible" : options.failureMode();
+        List<ToolSpec> tools = selectTools(inject, context.getPrompt());
         listener.onStart(context.getRunNo(), context.getSessionNo(), tools.size());
 
         int steps = 0;
@@ -177,8 +200,9 @@ public class AgentRunEngine {
         FinishReason reason = FinishReason.STOP;
         Map<String, Integer> repeats = new HashMap<>();
         boolean finished = false;
+        boolean verified = false;
 
-        while (steps < maxSteps) {
+        while (steps < stepsLimit) {
             if (Boolean.TRUE.equals(context.getCancelChecker().get())) {
                 reason = FinishReason.CANCELLED;
                 break;
@@ -187,7 +211,7 @@ public class AgentRunEngine {
                 reason = FinishReason.TIMEOUT;
                 break;
             }
-            if (promptTokens + completionTokens > tokenBudget) {
+            if (promptTokens + completionTokens > budgetLimit) {
                 reason = FinishReason.TOKEN_BUDGET;
                 break;
             }
@@ -202,6 +226,14 @@ public class AgentRunEngine {
             if (!result.hasToolCalls()) {
                 answer = result.content() == null ? "" : result.content();
                 listener.onAssistantMessage(steps, answer, List.of());
+                // 自我校验只追加一次：把回答连同工具结果一起交给模型复查，
+                // 它若认为不成立就会自己再调工具，认为成立就直接结束
+                if (verify && !verified) {
+                    verified = true;
+                    messages.add(ChatMessage.assistant(answer, List.of()));
+                    messages.add(ChatMessage.user(VERIFY_PROMPT));
+                    continue;
+                }
                 finished = true;
                 break;
             }
@@ -211,13 +243,13 @@ public class AgentRunEngine {
             List<ToolCall> executable = new ArrayList<>();
             for (ToolCall call : result.toolCalls()) {
                 toolCallCount++;
-                if (toolCallCount > maxToolCalls) {
+                if (toolCallCount > toolCallsLimit) {
                     reason = FinishReason.MAX_TOOL_CALLS;
                     stopped = true;
                     break;
                 }
                 String repeatKey = call.name() + "|" + call.arguments();
-                if (repeats.merge(repeatKey, 1, Integer::sum) > maxSameToolCalls) {
+                if (repeats.merge(repeatKey, 1, Integer::sum) > repeatsLimit) {
                     log.warn("agent run repeated tool call runNo={} tool={}", context.getRunNo(), call.name());
                     reason = FinishReason.TOOL_FAILURE;
                     stopped = true;
@@ -228,7 +260,7 @@ public class AgentRunEngine {
             // 并行模式下先全部提交再逐个取结果，串行模式边提交边等，
             // 两种都走同一套提交逻辑，避免并行时嵌套提交同一个池把自己锁死
             List<ToolResult> results = new ArrayList<>(executable.size());
-            if (parallelToolCalls) {
+            if (parallel) {
                 List<CompletableFuture<ToolResult>> futures = new ArrayList<>(executable.size());
                 for (ToolCall call : executable) {
                     futures.add(submitTool(call, context, listener, steps));
@@ -249,8 +281,10 @@ public class AgentRunEngine {
                     messages.add(ChatMessage.tool(call.id(), call.name(), truncate(toolResult.payload(), call.name())));
                 } else {
                     continuousFailures++;
-                    messages.add(ChatMessage.tool(call.id(), call.name(), toolResult.errorMessage()));
-                    if (continuousFailures >= maxContinuousFailures) {
+                    // swallow 是 E3 的反面教材：把失败吞掉，模型会把「没查到」当成「查到了但没内容」
+                    messages.add(ChatMessage.tool(call.id(), call.name(),
+                            "swallow".equals(failure) ? "" : toolResult.errorMessage()));
+                    if (continuousFailures >= failuresLimit) {
                         reason = FinishReason.TOOL_FAILURE;
                         stopped = true;
                         break;
@@ -413,6 +447,48 @@ public class AgentRunEngine {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 按注入方式挑选本轮给模型的工具。
+     *
+     * <p>topk 用关键词重合度打分而不是向量检索：E1 要验证的是
+     * 「少带工具能省多少 prompt token」，不是验证检索算法本身，
+     * 用简单打分反而让结论更干净。
+     *
+     * @param inject 注入方式：full 或 topk
+     * @param prompt 用户输入
+     * @return 本次注入的工具描述
+     */
+    private List<ToolSpec> selectTools(String inject, String prompt) {
+        List<ToolSpec> all = toolRegistry.specs();
+        if (!"topk".equals(inject)) {
+            return all;
+        }
+        List<ToolSpec> scored = new ArrayList<>(all);
+        scored.sort((left, right) -> Integer.compare(relevance(right, prompt), relevance(left, prompt)));
+        return scored.stream().limit(TOP_K).toList();
+    }
+
+    /**
+     * 计算工具与用户输入的相关度，按二字组重合计数。
+     *
+     * @param spec   工具描述
+     * @param prompt 用户输入
+     * @return 相关度得分
+     */
+    private int relevance(ToolSpec spec, String prompt) {
+        if (prompt == null || prompt.length() < 2) {
+            return 0;
+        }
+        String text = spec.name() + " " + spec.description();
+        int score = 0;
+        for (int i = 0; i + 1 < prompt.length(); i++) {
+            if (text.contains(prompt.substring(i, i + 2))) {
+                score++;
+            }
+        }
+        return score;
     }
 
     /**

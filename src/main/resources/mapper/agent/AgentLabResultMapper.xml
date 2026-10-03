@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0/EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.agent.mapper.AgentLabResultMapper">
+    <!-- 对照实验结果。默认跑 mock 模型，保证可复现、离线可跑、不烧钱 -->
+
+    <resultMap id="labResultMap" type="com.dong.agent.entity.AgentLabResult">
+        <id column="id" property="id"/>
+        <result column="experiment" property="experiment"/>
+        <result column="mode" property="mode"/>
+        <result column="round" property="round"/>
+        <result column="provider" property="provider"/>
+        <result column="success" property="success"/>
+        <result column="steps" property="steps"/>
+        <result column="tool_calls" property="toolCalls"/>
+        <result column="prompt_tokens" property="promptTokens"/>
+        <result column="completion_tokens" property="completionTokens"/>
+        <result column="elapsed_millis" property="elapsedMillis"/>
+        <result column="detail" property="detail"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="labResultColumns">
+        id, experiment, mode, round, provider, success, steps, tool_calls, prompt_tokens,
+        completion_tokens, elapsed_millis, detail, create_time
+    </sql>
+
+    <!-- 插入实验结果 -->
+    <insert id="insert" parameterType="com.dong.agent.entity.AgentLabResult"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into agent_lab_result (experiment, mode, round, provider, success, steps, tool_calls,
+        prompt_tokens, completion_tokens, elapsed_millis, detail)
+        values (#{experiment}, #{mode}, #{round}, #{provider}, #{success}, #{steps}, #{toolCalls},
+        #{promptTokens}, #{completionTokens}, #{elapsedMillis}, #{detail})
+    </insert>
+
+    <!-- 按实验编号查询，最近的在前 -->
+    <select id="selectByExperiment" resultMap="labResultMap">
+        select
+        <include refid="labResultColumns"/>
+        from agent_lab_result
+        where experiment = #{experiment}
+        order by id desc
+        limit #{limit}
+    </select>
+
+    <!-- 查询最近的全部实验结果 -->
+    <select id="selectRecent" resultMap="labResultMap">
+        select
+        <include refid="labResultColumns"/>
+        from agent_lab_result
+        order by id desc
+        limit #{limit}
+    </select>
+
+</mapper>

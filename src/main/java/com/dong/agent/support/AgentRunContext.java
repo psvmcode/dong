@@ -46,4 +46,9 @@ public class AgentRunContext {
      */
     private Supplier<Boolean> cancelChecker = () -> false;
 
+    /**
+     * 实验参数覆盖，正常运行时为 null。
+     */
+    private AgentRunOptions options = AgentRunOptions.empty();
+
 }

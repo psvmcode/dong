@@ -1,6 +1,6 @@
 # 网页版 Agent（Agent 工程实验室）
 
-> **状态：P0、P1 已落地，P2~P3 待实施。** 本文是 `com.dong.agent` 模块的设计文档，
+> **状态：P0、P1、P2 已落地，P3 待实施。** 本文是 `com.dong.agent` 模块的设计文档，
 > 先把「做什么、不做什么、为什么这么做」定死，再按第十二节的分期落地；
 > 文中出现的类名、接口路径、配置前缀都是落地时严格遵守的约定，不是示意。
 >
@@ -397,6 +397,23 @@ E1 的 `topk` 用关键词打分实现（用户问题与工具名 / 描述的分
 不引入向量模型——本实验要验证的是「少带工具能省多少 token」，
 不是验证检索算法本身，用简单打分反而让结论更干净。
 
+### 6.1 实测数据（mock 模型，远程云库）
+
+| 实验 | 模式 A | 模式 B | 差异说明了什么 |
+|---|---|---|---|
+| E1 | `full` 5919 token | `topk` 2415 token | 按需注入省掉 59% 的 prompt token，两者都正确调到了工具 |
+| E2 | `serial` 7562ms | `parallel` 5529ms | 互不依赖的两个调用，并行省 27% 耗时 |
+| E3 | `visible` 承认失败 | `swallow` 不承认 | 吞掉失败后模型照答不误，把「没查到」当成「查到了」 |
+| E4 | `window` 7549 token | `full` 7953 token | 六轮会话下全量历史多 5%，轮次越多差距越大 |
+| E5 | `none` 2 步 / 5919 token | `verify` 4 步 / 12463 token | 校验换来可靠性，代价是步数与 token 翻倍 |
+| E6 | `gated` 7 步 / 21201 token | `unbounded` 25 步 / 85188 token | 没有闸门时 token 涨到 4 倍，而且它仍然什么都没答出来 |
+| E7 | `none` 执行 2 次 | `token` 执行 1 次、拒绝 1 次 | 幂等键挡掉的正是重复执行的那一次 |
+| E8 | `bounded` 完成 8、拒绝 2 | `shared` 完成 10、拒绝 0 | 上限把 2 个请求挡回去，换来全站不被拖垮 |
+
+E6 的两个模式都**没有**跑到各自的步数上限：gated 被重复调用闸门拦在第 7 步，
+unbounded 被 token 预算拦在第 25 步。这恰好说明闸门是分层生效的——
+少了任何一道，最坏情况都会变成「跑很久、烧一堆 token、什么也没答出来」。
+
 E8 是最重要的一项：它验证的是「Agent 会不会把宿主应用搞挂」，
 这也是本模块最容易被忽视的风险，见 14.1。
 
@@ -421,8 +438,9 @@ E8 是最重要的一项：它验证的是「Agent 会不会把宿主应用搞�
 | POST | `/api/agent/runs/stats` | 运行统计：步数、token、耗时、各 `finish_reason` 分布 |
 | POST | `/api/agent/tools` | 工具清单（名称、描述、schema、危险等级、是否启用） |
 | POST | `/api/agent/tools/dry-run` | 工具试运行，工具名与入参走 JSON body，仅 `READ_ONLY` 可执行 |
-| POST | `/api/agent/lab/{key}` | 跑一组对照实验 |
-| POST | `/api/agent/lab/results` | 实验结果列表 |
+| POST | `/api/agent/lab/{key}` | 跑一组对照实验，`key` 取 E1~E8 |
+| POST | `/api/agent/lab/results` | 实验结果列表，可按实验编号过滤 |
+| POST | `/api/agent/lab/experiments` | 实验编号清单 |
 
 > `sessions` 的创建用 POST `/api/agent/sessions`、列表用 `/sessions/list`——
 > 全站接口改 POST 后，同路径的「创建」与「列表」会撞车，列表一律加 `/list` 后缀。
@@ -734,7 +752,7 @@ Agent 尤其如此——它很擅长把「没查到」说成「查到了，是�
 |---|---|---|
 | **P0 骨架**（已完成） | DDL + 实体 / Mapper（登记 `@MapperScan`）+ 配置开关 + `tools` 清单接口 + 会话 CRUD + MockLlmClient + 静态页面 | 用 mock 模型跑通一轮完整对话，页面能看到流式输出与工具轨迹 |
 | **P1 真模型**（已完成） | OpenAiCompatibleLlmClient（流式）+ 并行工具调用 + 通用工具 4 个 + 场景工具 10 个 + 取消 | 真实模型下能正确调用 `classic.limiter_compare` 并基于结果作答（**待配置 api-key 后验证**） |
-| **P2 实验** | 八组对照实验 + `runs/stats` + `lab/results` + 页面实验面板 | E1~E8 都能跑出可对比的数字，默认走 mock |
+| **P2 实验**（已完成） | 八组对照实验 + `runs/stats` + `lab/{key}`、`lab/results`、`lab/experiments` + 页面实验面板 | E1~E8 都能跑出可对比的数字，默认走 mock（实测见 6.1） |
 | **P3 加固** | 幂等、并发上限、SSRF / SQL 防护、摘要、清理任务、可观测 | 断线重连不重复执行；关掉开关返回 1004；并发打满时其它模块接口不受影响 |
 
 每期结束都要跑 `mvn -q clean compile`，并按项目约定提交（中文 commit message）。

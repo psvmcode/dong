@@ -61,6 +61,14 @@
     </div>
 
     <div class="panel">
+        <h2>对照实验</h2>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <select id="labKey" style="flex:1; border:1px solid #d9d9d9; border-radius:6px; padding:6px;"></select>
+            <button id="labBtn" onclick="runLab()">跑</button>
+        </div>
+        <div id="labDesc" class="muted" style="margin-bottom:8px;"></div>
+        <div id="labResult"><div class="muted">选一个实验开跑，两种模式的数字会并排列出来</div></div>
+
         <h2>工具清单</h2>
         <div id="tools"><div class="muted">加载中…</div></div>
         <h2>本次运行</h2>
@@ -219,6 +227,57 @@ function setStats(map) {
     }
 }
 
+async function loadExperiments() {
+    const res = await fetch('/api/agent/lab/experiments', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+    const body = await res.json();
+    if (body.code !== 0) return;
+    const select = document.getElementById('labKey');
+    select.innerHTML = '';
+    for (const key of body.data) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = key;
+        select.appendChild(option);
+    }
+}
+
+async function runLab() {
+    const key = document.getElementById('labKey').value;
+    const btn = document.getElementById('labBtn');
+    const box = document.getElementById('labResult');
+    if (!key) return;
+    btn.disabled = true;
+    box.innerHTML = '<div class="muted">跑中…</div>';
+    try {
+        const res = await fetch('/api/agent/lab/' + key, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({rounds: 1})
+        });
+        const body = await res.json();
+        if (body.code !== 0) {
+            box.innerHTML = '<div class="muted">' + body.message + '</div>';
+            return;
+        }
+        document.getElementById('labDesc').textContent = body.data.title + ' — ' + body.data.metrics;
+        box.innerHTML = '';
+        for (const item of body.data.items) {
+            const div = document.createElement('div');
+            div.className = 'tool-item';
+            div.innerHTML = '<div><b>' + item.mode + '</b> '
+                + '<span class="badge ' + (item.success ? 'ok' : 'warn') + '">' + (item.finishReason || '-') + '</span></div>'
+                + '<div class="muted" style="margin-top:4px"></div>';
+            div.querySelector('.muted').textContent = '步数 ' + item.steps
+                + ' · 工具 ' + item.toolCalls
+                + ' · 提示token ' + item.promptTokens
+                + ' · 耗时 ' + item.elapsedMillis + 'ms'
+                + ' · ' + item.detail;
+            box.appendChild(div);
+        }
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 async function loadTools() {
     const res = await fetch('/api/agent/tools', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
     const body = await res.json();
@@ -282,6 +341,7 @@ input.addEventListener('keydown', e => {
 
 loadTools();
 loadSessions();
+loadExperiments();
 </script>
 </body>
 </html>

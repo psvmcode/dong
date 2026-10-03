@@ -19,6 +19,7 @@ import com.dong.agent.service.AgentSessionService;
 import com.dong.agent.support.AgentEventSink;
 import com.dong.agent.support.AgentRunContext;
 import com.dong.agent.support.AgentRunEngine;
+import com.dong.agent.support.AgentRunOptions;
 import com.dong.agent.support.RunOutcome;
 import com.dong.agent.support.llm.ChatMessage;
 import com.dong.agent.support.tool.ToolRegistry;
@@ -167,19 +168,63 @@ public class AgentRunServiceImpl implements AgentRunService {
      */
     @Override
     public RunResponse run(RunRequest request) {
+        return execute(request, null, null, true);
+    }
+
+    /**
+     * 发起运行并绕过并发闸门，仅供实验使用。
+     *
+     * @param request 运行请求
+     * @return 运行结果
+     */
+    @Override
+    public RunResponse runUngated(RunRequest request) {
+        return execute(request, null, null, false);
+    }
+
+    /**
+     * 带实验参数发起运行。
+     *
+     * @param request       运行请求
+     * @param options       实验参数覆盖
+     * @param historyWindow 历史窗口覆盖
+     * @return 运行结果
+     */
+    @Override
+    public RunResponse runWithOptions(RunRequest request, AgentRunOptions options, Integer historyWindow) {
+        return execute(request, options, historyWindow, true);
+    }
+
+    /**
+     * 执行运行。正常跑、实验跑、绕闸门跑全都走这一段，
+     * 实验比出来的才是参数本身的作用，而不是几套实现的差异。
+     *
+     * @param request       运行请求
+     * @param options       实验参数覆盖，可为 null
+     * @param historyWindow 历史窗口覆盖，可为 null
+     * @param gated         是否受并发闸门约束
+     * @return 运行结果
+     */
+    private RunResponse execute(RunRequest request, AgentRunOptions options, Integer historyWindow, boolean gated) {
         String sessionNo = sessionService.ensure(request.getSessionNo());
         String runNo = createRun(request, sessionNo);
-        enterConcurrency();
+        if (gated) {
+            enterConcurrency();
+        }
         try {
-            List<ChatMessage> history = loadHistory(sessionNo);
+            List<ChatMessage> history = loadHistory(sessionNo, historyWindow);
             int startSeq = sessionService.nextSeq(sessionNo);
             saveUserMessage(sessionNo, runNo, startSeq, request.getPrompt());
             AgentRunRecorder recorder = new AgentRunRecorder(messageMapper, toolCallMapper, toolRegistry,
                     runNo, sessionNo, startSeq + 1, null);
-            RunOutcome outcome = runEngine.run(buildContext(runNo, sessionNo, request, history), recorder);
+            AgentRunContext context = buildContext(runNo, sessionNo, request, history);
+            context.setOptions(options == null ? AgentRunOptions.empty() : options);
+            RunOutcome outcome = runEngine.run(context, recorder);
             return finish(runNo, sessionNo, outcome, recorder.savedMessages() + 1);
         } finally {
-            activeRuns.decrementAndGet();
+            if (gated) {
+                activeRuns.decrementAndGet();
+            }
         }
     }
 
@@ -360,6 +405,18 @@ public class AgentRunServiceImpl implements AgentRunService {
      * @return 历史消息
      */
     private List<ChatMessage> loadHistory(String sessionNo) {
+        return loadHistory(sessionNo, null);
+    }
+
+    /**
+     * 装载历史，窗口可被实验覆盖。
+     *
+     * @param sessionNo     会话号
+     * @param windowOverride 窗口覆盖，为空则用配置值
+     * @return 历史消息
+     */
+    private List<ChatMessage> loadHistory(String sessionNo, Integer windowOverride) {
+        int window = windowOverride == null || windowOverride < 1 ? historyWindow : windowOverride;
         List<ChatMessage> history = new ArrayList<>();
         AgentSession session = sessionMapper.selectBySessionNo(sessionNo);
         if (session != null && session.getSummary() != null && !session.getSummary().isBlank()) {
@@ -367,8 +424,8 @@ public class AgentRunServiceImpl implements AgentRunService {
         }
         Integer maxSeq = messageMapper.selectMaxSeq(sessionNo);
         int total = maxSeq == null ? 0 : maxSeq;
-        int offset = Math.max(0, total - historyWindow);
-        for (AgentMessage message : messageMapper.selectBySession(sessionNo, offset, historyWindow)) {
+        int offset = Math.max(0, total - window);
+        for (AgentMessage message : messageMapper.selectBySession(sessionNo, offset, window)) {
             ChatMessage converted = convert(message);
             if (converted != null) {
                 history.add(converted);
