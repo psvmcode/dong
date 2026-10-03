@@ -3,6 +3,7 @@ package com.dong.agent.service;
 import com.dong.agent.dto.ToolDescriptor;
 import com.dong.agent.dto.ToolDryRunRequest;
 import com.dong.agent.dto.ToolDryRunResponse;
+import com.dong.agent.dto.ToolStatsResponse;
 
 import java.util.List;
 
@@ -26,5 +27,12 @@ public interface AgentToolService {
      * @return 执行结果
      */
     ToolDryRunResponse dryRun(ToolDryRunRequest request);
+
+    /**
+     * 按工具维度统计调用次数、失败次数与平均耗时。
+     *
+     * @return 统计结果
+     */
+    ToolStatsResponse stats();
 
 }

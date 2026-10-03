@@ -213,6 +213,8 @@ dong:
     tool-timeout: 15s
     max-tool-result-chars: 8000
     history-window: 20
+    # 会话摘要最大长度，超过窗口的历史才会去生成
+    summary-max-chars: 800
     token-budget: 120000
     tool-pool-size: 16
     tool-queue-capacity: 64
@@ -234,7 +236,9 @@ dong:
     lab:
       cleanup-enabled: true
       cleanup-interval-ms: 300000
+      cleanup-initial-delay-ms: 60000
       cleanup-stuck-after: 600s
+      cleanup-scan-limit: 50
 
   redpacket:
     # 单用户每分钟最多抢多少次，挡的是脚本刷，与全局按 IP 限流互补

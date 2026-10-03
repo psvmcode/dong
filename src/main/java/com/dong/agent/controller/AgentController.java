@@ -12,6 +12,7 @@ import com.dong.agent.dto.SessionResponse;
 import com.dong.agent.dto.ToolDescriptor;
 import com.dong.agent.dto.ToolDryRunRequest;
 import com.dong.agent.dto.ToolDryRunResponse;
+import com.dong.agent.dto.ToolStatsResponse;
 import com.dong.agent.service.AgentRunService;
 import com.dong.agent.service.AgentSessionService;
 import com.dong.agent.service.AgentToolService;
@@ -217,6 +218,16 @@ public class AgentController {
     public Result<ToolDryRunResponse> dryRun(@Valid @RequestBody ToolDryRunRequest request) {
         checkAvailable();
         return Result.success(toolService.dryRun(request));
+    }
+
+    /**
+     * 查询工具调用统计。
+     */
+    @PostMapping("/tools/stats")
+    @Operation(summary = "按工具维度统计调用次数、失败次数与平均耗时")
+    public Result<ToolStatsResponse> toolStats() {
+        checkAvailable();
+        return Result.success(toolService.stats());
     }
 
     /**

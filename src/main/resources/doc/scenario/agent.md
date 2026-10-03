@@ -1,6 +1,6 @@
 # 网页版 Agent（Agent 工程实验室）
 
-> **状态：P0、P1、P2 已落地，P3 待实施。** 本文是 `com.dong.agent` 模块的设计文档，
+> **状态：P0~P3 全部落地。** 本文是 `com.dong.agent` 模块的设计文档，
 > 先把「做什么、不做什么、为什么这么做」定死，再按第十二节的分期落地；
 > 文中出现的类名、接口路径、配置前缀都是落地时严格遵守的约定，不是示意。
 >
@@ -438,6 +438,7 @@ E8 是最重要的一项：它验证的是「Agent 会不会把宿主应用搞�
 | POST | `/api/agent/runs/stats` | 运行统计：步数、token、耗时、各 `finish_reason` 分布 |
 | POST | `/api/agent/tools` | 工具清单（名称、描述、schema、危险等级、是否启用） |
 | POST | `/api/agent/tools/dry-run` | 工具试运行，工具名与入参走 JSON body，仅 `READ_ONLY` 可执行 |
+| POST | `/api/agent/tools/stats` | 按工具维度统计调用次数、失败次数与平均耗时 |
 | POST | `/api/agent/lab/{key}` | 跑一组对照实验，`key` 取 E1~E8 |
 | POST | `/api/agent/lab/results` | 实验结果列表，可按实验编号过滤 |
 | POST | `/api/agent/lab/experiments` | 实验编号清单 |
@@ -753,9 +754,20 @@ Agent 尤其如此——它很擅长把「没查到」说成「查到了，是�
 | **P0 骨架**（已完成） | DDL + 实体 / Mapper（登记 `@MapperScan`）+ 配置开关 + `tools` 清单接口 + 会话 CRUD + MockLlmClient + 静态页面 | 用 mock 模型跑通一轮完整对话，页面能看到流式输出与工具轨迹 |
 | **P1 真模型**（已完成） | OpenAiCompatibleLlmClient（流式）+ 并行工具调用 + 通用工具 4 个 + 场景工具 10 个 + 取消 | 真实模型下能正确调用 `classic.limiter_compare` 并基于结果作答（**待配置 api-key 后验证**） |
 | **P2 实验**（已完成） | 八组对照实验 + `runs/stats` + `lab/{key}`、`lab/results`、`lab/experiments` + 页面实验面板 | E1~E8 都能跑出可对比的数字，默认走 mock（实测见 6.1） |
-| **P3 加固** | 幂等、并发上限、SSRF / SQL 防护、摘要、清理任务、可观测 | 断线重连不重复执行；关掉开关返回 1004；并发打满时其它模块接口不受影响 |
+| **P3 加固**（已完成） | 幂等、并发上限、SSRF / SQL 防护、会话摘要、清理任务、工具维度统计 | 断线重连不重复执行；关掉开关返回 1004；并发打满时其它模块接口不受影响（实测见 12.1） |
 
 每期结束都要跑 `mvn -q clean compile`，并按项目约定提交（中文 commit message）。
+
+### 12.1 P3 实测
+
+| 加固项 | 验证方式 | 结果 |
+|---|---|---|
+| 清理任务 | 库里留了 4 条卡死运行（进程重启留下的），启动后按配置周期扫描 | 全部被标记为 `status=3`、`finish_reason=ERROR`、`errorMessage=run stuck...` |
+| 会话摘要 | 跑 E4 让会话累积到 30 条消息（超过窗口 20） | 生成并写入 `agent_session.summary`；只有 5 条消息的短会话**不**生成，不浪费调用 |
+| 工具统计 | `POST /api/agent/tools/stats` | `time.now` 179 次 0 失败、`math.calc` 21 次 0 失败、`not.exist` 3 次 3 失败（E3 故意造的失败） |
+
+摘要在 mock 模型下拿到的是剧本化回复，真实模型下才是真摘要——
+这里验证的是**触发时机与写入链路**，不是摘要质量。
 
 ### 落地时要同步更新的位置
 

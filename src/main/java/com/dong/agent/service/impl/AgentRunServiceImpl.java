@@ -20,6 +20,7 @@ import com.dong.agent.support.AgentEventSink;
 import com.dong.agent.support.AgentRunContext;
 import com.dong.agent.support.AgentRunEngine;
 import com.dong.agent.support.AgentRunOptions;
+import com.dong.agent.support.AgentSummarySupport;
 import com.dong.agent.support.RunOutcome;
 import com.dong.agent.support.llm.ChatMessage;
 import com.dong.agent.support.tool.ToolRegistry;
@@ -104,6 +105,11 @@ public class AgentRunServiceImpl implements AgentRunService {
     private final Snowflake snowflake;
 
     /**
+     * summarySupport，会话摘要生成组件。
+     */
+    private final AgentSummarySupport summarySupport;
+
+    /**
      * 运行调度线程池。
      */
     private final Executor runExecutor;
@@ -142,12 +148,14 @@ public class AgentRunServiceImpl implements AgentRunService {
      * @param runEngine      运行引擎
      * @param toolRegistry   工具注册表
      * @param snowflake      发号器
+     * @param summarySupport 会话摘要组件
      * @param runExecutor    运行调度线程池
      */
     public AgentRunServiceImpl(AgentRunMapper runMapper, AgentSessionMapper sessionMapper,
                                AgentMessageMapper messageMapper, AgentToolCallMapper toolCallMapper,
                                AgentSessionService sessionService, AgentRunEngine runEngine,
                                ToolRegistry toolRegistry, Snowflake snowflake,
+                               AgentSummarySupport summarySupport,
                                @Qualifier("agentRunExecutor") Executor runExecutor) {
         this.runMapper = runMapper;
         this.sessionMapper = sessionMapper;
@@ -157,6 +165,7 @@ public class AgentRunServiceImpl implements AgentRunService {
         this.runEngine = runEngine;
         this.toolRegistry = toolRegistry;
         this.snowflake = snowflake;
+        this.summarySupport = summarySupport;
         this.runExecutor = runExecutor;
     }
 
@@ -505,7 +514,38 @@ public class AgentRunServiceImpl implements AgentRunService {
         run.setErrorMessage("");
         runMapper.updateFinish(run);
         sessionMapper.increaseCounters(sessionNo, messageDelta, 1);
+        refreshSummary(sessionNo);
         return toResponse(run);
+    }
+
+    /**
+     * 会话消息超过窗口时才压缩历史。摘要失败只记日志：
+     * 它只是让模型少看到一点过去，不该让会话变得不可用。
+     *
+     * @param sessionNo 会话号
+     */
+    private void refreshSummary(String sessionNo) {
+        try {
+            Integer maxSeq = messageMapper.selectMaxSeq(sessionNo);
+            int total = maxSeq == null ? 0 : maxSeq;
+            if (total <= historyWindow) {
+                return;
+            }
+            List<AgentMessage> older = messageMapper.selectBySession(sessionNo, 0, total - historyWindow);
+            List<ChatMessage> history = new ArrayList<>();
+            for (AgentMessage message : older) {
+                ChatMessage converted = convert(message);
+                if (converted != null) {
+                    history.add(converted);
+                }
+            }
+            String summary = summarySupport.summarize(history);
+            if (!summary.isEmpty()) {
+                sessionMapper.updateSummary(sessionNo, summary);
+            }
+        } catch (Exception e) {
+            log.warn("agent summary refresh failed sessionNo={}", sessionNo, e);
+        }
     }
 
     /**

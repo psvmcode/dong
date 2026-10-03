@@ -60,7 +60,7 @@
 | 多数据源 | `/api/replica` | MariaDB | 第二数据源、独立事务管理器 | 一致性检查通过 |
 | 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、人工审核、冻结、异步清算、对账 | 金额精确到分，余额流水一致 |
 | 订单状态机 | `/api/order` | MySQL + COLA StateMachine | 守卫、内部迁移、条件分支回退、乐观锁并发 | 16 线程抢推，仅 1 次成功 |
-| Agent 工程实验室 | `/api/agent` | MySQL + LLM（OpenAI 兼容） | 工具调用循环、五道停止闸门、轨迹落库、SSE 流式、幂等 | mock 跑通一轮：2 步、2 次并行工具调用按序回填、`finish_reason=STOP` |
+| Agent 工程实验室 | `/api/agent` | MySQL + LLM（OpenAI 兼容） | 工具调用循环、五道停止闸门、轨迹落库、SSE 流式、幂等、八组对照实验 | 并行调用省 27% 耗时；按需注入省 59% prompt token；无闸门时 token 涨 4 倍仍未答出 |
 
 > 全站接口统一为 POST：写操作仍可用 query 参数，查询类参数一律走 JSON body，分页参数见 `PageQuery`。
 

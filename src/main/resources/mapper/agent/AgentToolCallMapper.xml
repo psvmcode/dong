@@ -48,4 +48,16 @@
         where session_no = #{sessionNo}
     </delete>
 
+    <!-- 按工具统计调用次数、失败次数与平均耗时 -->
+    <select id="selectStats" resultType="com.dong.agent.dto.ToolStatRow">
+        select tool_name as toolName,
+        count(*) as calls,
+        sum(case when status = 0 then 1 else 0 end) as failures,
+        ifnull(round(avg(elapsed_millis)), 0) as avgElapsedMillis
+        from agent_tool_call
+        group by tool_name
+        order by calls desc
+        limit #{limit}
+    </select>
+
 </mapper>

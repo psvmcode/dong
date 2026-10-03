@@ -1,5 +1,6 @@
 package com.dong.agent.mapper;
 
+import com.dong.agent.dto.ToolStatRow;
 import com.dong.agent.entity.AgentToolCall;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -35,5 +36,13 @@ public interface AgentToolCallMapper {
      * @return 影响行数
      */
     int deleteBySessionNo(@Param("sessionNo") String sessionNo);
+
+    /**
+     * 按工具维度统计调用次数、失败次数与平均耗时。
+     *
+     * @param limit 最多返回几个工具
+     * @return 统计行
+     */
+    List<ToolStatRow> selectStats(@Param("limit") int limit);
 
 }

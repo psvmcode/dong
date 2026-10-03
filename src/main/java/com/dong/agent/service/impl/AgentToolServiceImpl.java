@@ -3,6 +3,8 @@ package com.dong.agent.service.impl;
 import com.dong.agent.dto.ToolDescriptor;
 import com.dong.agent.dto.ToolDryRunRequest;
 import com.dong.agent.dto.ToolDryRunResponse;
+import com.dong.agent.dto.ToolStatsResponse;
+import com.dong.agent.mapper.AgentToolCallMapper;
 import com.dong.agent.service.AgentToolService;
 import com.dong.agent.support.tool.AgentTool;
 import com.dong.agent.support.tool.ToolRegistry;
@@ -12,6 +14,8 @@ import com.dong.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +36,11 @@ public class AgentToolServiceImpl implements AgentToolService {
      * toolRegistry，工具注册表。
      */
     private final ToolRegistry toolRegistry;
+
+    /**
+     * toolCallMapper，MyBatis Mapper 数据访问层。
+     */
+    private final AgentToolCallMapper toolCallMapper;
 
     /**
      * 查询工具清单。
@@ -88,6 +97,20 @@ public class AgentToolServiceImpl implements AgentToolService {
         response.setPayload(result.payload());
         response.setErrorMessage(result.errorMessage());
         response.setElapsedMillis(result.elapsedMillis());
+        return response;
+    }
+
+    /**
+     * 按工具维度统计调用情况。
+     *
+     * @return 统计结果
+     */
+    @Override
+    public ToolStatsResponse stats() {
+        ToolStatsResponse response = new ToolStatsResponse();
+        response.setScanLimit(Constants.MAX_QUERY_LIMIT);
+        List<com.dong.agent.dto.ToolStatRow> rows = toolCallMapper.selectStats(Constants.MAX_QUERY_LIMIT);
+        response.setRows(rows == null ? List.of() : rows);
         return response;
     }
 
