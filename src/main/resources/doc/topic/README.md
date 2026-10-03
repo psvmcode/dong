@@ -32,7 +32,7 @@
 工具协议怎么定、危险等级怎么判、SSRF 与注入怎么防，配套 `com.dong.agent.support.tool`。
 含可直接抄的工具实现模板、新增工具准入检查表、13 条防护验证用例。
 
-配套场景文档 [`../scenario/agent.md`](../scenario/agent.md) 第四节（网页版 Agent，状态为设计中）。
+配套场景文档 [`../scenario/agent.md`](../scenario/agent.md) 第四节（网页版 Agent 已落地）。
 适合：要动手实现工具层，或者想搞清楚 Agent 类应用的安全边界该划在哪。
 
 ### [跨境支付 Java 后端面试准备（零基础版）](crossborder-interview-prep.md)

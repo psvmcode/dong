@@ -6,7 +6,7 @@
 >
 > 阅读顺序：先看场景文档建立整体认识，再回来看本文。
 
-配套代码（待建）`src/main/java/com/dong/agent/support/tool/`。
+配套代码 `src/main/java/com/dong/agent/support/tool/`，P1 已落地 14 个工具。
 
 ---
 
