@@ -177,7 +177,10 @@ public class AgentRunEngine {
         if (context.getHistory() != null) {
             messages.addAll(context.getHistory());
         }
-        messages.add(ChatMessage.user(context.getPrompt()));
+        // 续跑时历史里已经带着那条用户提问，不能再加一遍
+        if (context.getPendingToolCalls().isEmpty()) {
+            messages.add(ChatMessage.user(context.getPrompt()));
+        }
         AgentRunOptions options = context.getOptions() == null ? AgentRunOptions.empty() : context.getOptions();
         int stepsLimit = options.maxSteps() == null ? maxSteps : options.maxSteps();
         int toolCallsLimit = options.maxToolCalls() == null ? maxToolCalls : options.maxToolCalls();
@@ -191,7 +194,7 @@ public class AgentRunEngine {
         List<ToolSpec> tools = selectTools(inject, context.getPrompt());
         listener.onStart(context.getRunNo(), context.getSessionNo(), tools.size());
 
-        int steps = 0;
+        int steps = context.getResumeStep();
         int toolCallCount = 0;
         int promptTokens = 0;
         int completionTokens = 0;
@@ -201,6 +204,26 @@ public class AgentRunEngine {
         Map<String, Integer> repeats = new HashMap<>();
         boolean finished = false;
         boolean verified = false;
+
+        // 续跑：用户确认（或拒绝）之后从挂起处继续，不重跑前面已经走过的步骤。
+        // 已确认的调用直接放行，不再走确认校验
+        if (!context.getPendingToolCalls().isEmpty()) {
+            if (context.getResumeNote() != null && !context.getResumeNote().isBlank()) {
+                messages.add(ChatMessage.user(context.getResumeNote()));
+            }
+            context.setConfirmSideEffect(true);
+            List<ToolResult> results = new ArrayList<>();
+            for (ToolCall call : context.getPendingToolCalls()) {
+                results.add(await(submitTool(call, context, listener, steps), call.name()));
+            }
+            for (int i = 0; i < context.getPendingToolCalls().size(); i++) {
+                ToolCall call = context.getPendingToolCalls().get(i);
+                ToolResult toolResult = results.get(i);
+                toolCallCount++;
+                messages.add(ChatMessage.tool(call.id(), call.name(), toolResult.success()
+                        ? truncate(toolResult.payload(), call.name()) : toolResult.errorMessage()));
+            }
+        }
 
         while (steps < stepsLimit) {
             if (Boolean.TRUE.equals(context.getCancelChecker().get())) {
@@ -252,6 +275,15 @@ public class AgentRunEngine {
                 if (repeats.merge(repeatKey, 1, Integer::sum) > repeatsLimit) {
                     log.warn("agent run repeated tool call runNo={} tool={}", context.getRunNo(), call.name());
                     reason = FinishReason.TOOL_FAILURE;
+                    stopped = true;
+                    break;
+                }
+                AgentTool tool = toolRegistry.get(call.name());
+                if (tool != null && tool.risk().needConfirm() && confirmRequired && !context.isConfirmSideEffect()) {
+                    // 有副作用的工具必须等用户点头：挂起并交出本轮待执行的调用，
+                    // 确认后从这一步继续，而不是从头再跑一遍
+                    listener.onWaitingConfirm(steps, call.name(), call.id(), call.arguments(), pendingJson(result.toolCalls()));
+                    reason = FinishReason.WAITING_CONFIRM;
                     stopped = true;
                     break;
                 }
@@ -489,6 +521,21 @@ public class AgentRunEngine {
             }
         }
         return score;
+    }
+
+    /**
+     * 把本轮待执行的调用序列化成 JSON，供挂起后恢复使用。
+     *
+     * @param calls 本轮的调用列表
+     * @return JSON 文本
+     */
+    private String pendingJson(List<ToolCall> calls) {
+        try {
+            return objectMapper.writeValueAsString(calls == null ? List.of() : calls);
+        } catch (Exception e) {
+            log.warn("agent pending calls serialize failed runNo={}", calls);
+            return "[]";
+        }
     }
 
     /**

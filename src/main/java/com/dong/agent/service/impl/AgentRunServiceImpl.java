@@ -23,12 +23,15 @@ import com.dong.agent.support.AgentRunOptions;
 import com.dong.agent.support.AgentSummarySupport;
 import com.dong.agent.support.RunOutcome;
 import com.dong.agent.support.llm.ChatMessage;
+import com.dong.agent.support.llm.ToolCall;
 import com.dong.agent.support.tool.ToolRegistry;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.PageRequest;
 import com.dong.common.result.PageResult;
 import com.dong.common.util.Snowflake;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -110,6 +113,11 @@ public class AgentRunServiceImpl implements AgentRunService {
     private final AgentSummarySupport summarySupport;
 
     /**
+     * objectMapper，用于读写挂起时保存的待执行调用。
+     */
+    private final ObjectMapper objectMapper;
+
+    /**
      * 运行调度线程池。
      */
     private final Executor runExecutor;
@@ -149,13 +157,14 @@ public class AgentRunServiceImpl implements AgentRunService {
      * @param toolRegistry   工具注册表
      * @param snowflake      发号器
      * @param summarySupport 会话摘要组件
+     * @param objectMapper   JSON 序列化器
      * @param runExecutor    运行调度线程池
      */
     public AgentRunServiceImpl(AgentRunMapper runMapper, AgentSessionMapper sessionMapper,
                                AgentMessageMapper messageMapper, AgentToolCallMapper toolCallMapper,
                                AgentSessionService sessionService, AgentRunEngine runEngine,
                                ToolRegistry toolRegistry, Snowflake snowflake,
-                               AgentSummarySupport summarySupport,
+                               AgentSummarySupport summarySupport, ObjectMapper objectMapper,
                                @Qualifier("agentRunExecutor") Executor runExecutor) {
         this.runMapper = runMapper;
         this.sessionMapper = sessionMapper;
@@ -166,6 +175,7 @@ public class AgentRunServiceImpl implements AgentRunService {
         this.toolRegistry = toolRegistry;
         this.snowflake = snowflake;
         this.summarySupport = summarySupport;
+        this.objectMapper = objectMapper;
         this.runExecutor = runExecutor;
     }
 
@@ -189,6 +199,148 @@ public class AgentRunServiceImpl implements AgentRunService {
     @Override
     public RunResponse runUngated(RunRequest request) {
         return execute(request, null, null, false);
+    }
+
+    /**
+     * 确认执行挂起的工具，从挂起处继续。
+     *
+     * @param runNo 运行号
+     * @return 运行结果
+     */
+    @Override
+    public RunResponse confirm(String runNo) {
+        return resume(requireWaiting(runNo), true);
+    }
+
+    /**
+     * 拒绝执行挂起的工具，把拒绝交给模型让它改道。
+     *
+     * @param runNo 运行号
+     * @return 运行结果
+     */
+    @Override
+    public RunResponse reject(String runNo) {
+        return resume(requireWaiting(runNo), false);
+    }
+
+    /**
+     * 从挂起处继续。确认就带上待执行的调用，拒绝则只带一句说明，
+     * 两种情况都复用同一个执行入口，前面的步骤不会重跑。
+     *
+     * @param run      处于等待确认的运行
+     * @param approved 是否放行
+     * @return 运行结果
+     */
+    private RunResponse resume(AgentRun run, boolean approved) {
+        String runNo = run.getRunNo();
+        String sessionNo = run.getSessionNo();
+        Pending pending = parsePending(run.getPendingCalls());
+        enterConcurrency();
+        try {
+            List<ChatMessage> history = loadHistory(sessionNo, null);
+            int startSeq = sessionService.nextSeq(sessionNo);
+            AgentRunContext context = new AgentRunContext();
+            context.setRunNo(runNo);
+            context.setSessionNo(sessionNo);
+            context.setPrompt("");
+            context.setHistory(history);
+            context.setConfirmSideEffect(true);
+            context.setCancelChecker(() -> {
+                AgentRun current = runMapper.selectByRunNo(runNo);
+                return current != null && current.getStatus() == RunStatus.CANCELLED;
+            });
+            if (approved) {
+                context.setPendingToolCalls(pending.calls());
+                context.setResumeStep(pending.step());
+            } else {
+                context.setResumeNote("用户拒绝执行工具 " + pending.toolName() + "，请换个方式回答，不要再请求执行它。");
+            }
+            AgentRunRecorder recorder = new AgentRunRecorder(messageMapper, toolCallMapper, toolRegistry,
+                    runNo, sessionNo, startSeq, null);
+            RunOutcome outcome = runEngine.run(context, recorder);
+            if (outcome.finishReason() == FinishReason.WAITING_CONFIRM) {
+                return suspend(runNo, sessionNo, outcome, recorder);
+            }
+            return finish(runNo, sessionNo, outcome, recorder.savedMessages());
+        } finally {
+            activeRuns.decrementAndGet();
+        }
+    }
+
+    /**
+     * 挂起运行：状态置为等待确认，并把待执行的调用落库。
+     * 挂起态必须落库，只留在内存的话进程一重启就找不到该从哪一步继续。
+     *
+     * @param runNo     运行号
+     * @param sessionNo 会话号
+     * @param outcome   运行结局
+     * @param recorder  记录器
+     * @return 运行结果
+     */
+    private RunResponse suspend(String runNo, String sessionNo, RunOutcome outcome, AgentRunRecorder recorder) {
+        AgentRun run = runMapper.selectByRunNo(runNo);
+        if (run == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "agent run not found " + runNo);
+        }
+        fillStats(run, outcome);
+        run.setStatus(RunStatus.WAITING_CONFIRM);
+        run.setFinishReason(FinishReason.WAITING_CONFIRM);
+        String pending = "{\"step\":" + outcome.steps() + ",\"calls\":" + recorder.pendingJson() + "}";
+        run.setPendingCalls(pending);
+        runMapper.updateFinish(run);
+        runMapper.updatePending(runNo, pending);
+        sessionMapper.increaseCounters(sessionNo, recorder.savedMessages() + 1, 0);
+        log.info("agent run suspended runNo={} step={} pending={}", runNo, outcome.steps(), pending);
+        return toResponse(run);
+    }
+
+    /**
+     * 解析挂起时保存的待执行调用。
+     *
+     * @param json 待执行调用 JSON
+     * @return 步数与调用列表
+     */
+    private Pending parsePending(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(json == null || json.isBlank() ? "{}" : json);
+            int step = node.path("step").asInt();
+            List<ToolCall> calls = new ArrayList<>();
+            String toolName = "";
+            for (JsonNode item : node.path("calls")) {
+                String name = item.path("name").asText("");
+                if (toolName.isEmpty()) {
+                    toolName = name;
+                }
+                calls.add(new ToolCall(item.path("id").asText(""), name, item.path("arguments").asText("{}")));
+            }
+            return new Pending(step, calls, toolName);
+        } catch (Exception e) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "pending calls is not readable");
+        }
+    }
+
+    /**
+     * 取一个处于等待确认状态的运行，不是该状态就报冲突。
+     *
+     * @param runNo 运行号
+     * @return 运行实体
+     */
+    private AgentRun requireWaiting(String runNo) {
+        AgentRun run = requireRun(runNo);
+        if (run.getStatus() != RunStatus.WAITING_CONFIRM) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "run is not waiting for confirm " + runNo);
+        }
+        return run;
+    }
+
+    /**
+     * 挂起时保存的待执行调用。
+     *
+     * @param step     第几步
+     * @param calls    调用列表
+     * @param toolName 首个工具名，拒绝时用来告诉模型拒绝了什么
+     */
+    private record Pending(int step, List<ToolCall> calls, String toolName) {
     }
 
     /**
@@ -229,6 +381,9 @@ public class AgentRunServiceImpl implements AgentRunService {
             AgentRunContext context = buildContext(runNo, sessionNo, request, history);
             context.setOptions(options == null ? AgentRunOptions.empty() : options);
             RunOutcome outcome = runEngine.run(context, recorder);
+            if (outcome.finishReason() == FinishReason.WAITING_CONFIRM) {
+                return suspend(runNo, sessionNo, outcome, recorder);
+            }
             return finish(runNo, sessionNo, outcome, recorder.savedMessages() + 1);
         } finally {
             if (gated) {
@@ -503,14 +658,9 @@ public class AgentRunServiceImpl implements AgentRunService {
             // 标题取用户的提问而不是模型的回答：列表里扫一眼想知道的是「这个会话在聊什么」
             sessionMapper.updateTitle(sessionNo, abbreviate(run.getPrompt()));
         }
+        fillStats(run, outcome);
         run.setStatus(outcome.finishReason() == FinishReason.ERROR ? RunStatus.FAILED : RunStatus.FINISHED);
         run.setFinishReason(outcome.finishReason());
-        run.setAnswer(outcome.answer());
-        run.setSteps(outcome.steps());
-        run.setToolCalls(outcome.toolCalls());
-        run.setPromptTokens(outcome.promptTokens());
-        run.setCompletionTokens(outcome.completionTokens());
-        run.setElapsedMillis((int) outcome.elapsedMillis());
         run.setErrorMessage("");
         runMapper.updateFinish(run);
         sessionMapper.increaseCounters(sessionNo, messageDelta, 1);
@@ -546,6 +696,21 @@ public class AgentRunServiceImpl implements AgentRunService {
         } catch (Exception e) {
             log.warn("agent summary refresh failed sessionNo={}", sessionNo, e);
         }
+    }
+
+    /**
+     * 把结局里的统计值填进运行记录。
+     *
+     * @param run     运行实体
+     * @param outcome 运行结局
+     */
+    private void fillStats(AgentRun run, RunOutcome outcome) {
+        run.setAnswer(outcome.answer());
+        run.setSteps(outcome.steps());
+        run.setToolCalls(outcome.toolCalls());
+        run.setPromptTokens(outcome.promptTokens());
+        run.setCompletionTokens(outcome.completionTokens());
+        run.setElapsedMillis((int) outcome.elapsedMillis());
     }
 
     /**
@@ -624,6 +789,7 @@ public class AgentRunServiceImpl implements AgentRunService {
         response.setCompletionTokens(run.getCompletionTokens());
         response.setElapsedMillis(run.getElapsedMillis());
         response.setErrorMessage(run.getErrorMessage());
+        response.setPendingCalls(run.getPendingCalls());
         response.setCreateTime(run.getCreateTime());
         return response;
     }

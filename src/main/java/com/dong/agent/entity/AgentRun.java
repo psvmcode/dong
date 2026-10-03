@@ -86,6 +86,11 @@ public class AgentRun {
     private String errorMessage;
 
     /**
+     * 挂起等待确认的工具调用，JSON，确认后据此续跑
+     */
+    private String pendingCalls;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

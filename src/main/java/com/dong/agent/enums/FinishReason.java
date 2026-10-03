@@ -47,6 +47,11 @@ public enum FinishReason {
     CANCELLED("已取消"),
 
     /**
+     * 挂起等待用户确认有副作用的工具，不是终态。
+     */
+    WAITING_CONFIRM("等待确认"),
+
+    /**
      * 引擎自身出错或模型不可用。
      */
     ERROR("运行出错");

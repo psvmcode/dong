@@ -67,6 +67,11 @@ public class RunResponse {
     private String errorMessage;
 
     /**
+     * 挂起等待确认的工具调用 JSON，仅等待确认状态有值
+     */
+    private String pendingCalls;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

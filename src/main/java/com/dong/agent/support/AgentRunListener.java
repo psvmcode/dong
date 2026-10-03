@@ -62,6 +62,17 @@ public interface AgentRunListener {
     void onToolResult(int step, String toolName, String toolCallId, ToolResult result);
 
     /**
+     * 需要用户确认才能继续。引擎到此停下，由调用方把运行挂起并保存待确认的调用。
+     *
+     * @param step        第几步
+     * @param toolName    工具名
+     * @param toolCallId  调用 id
+     * @param arguments   入参 JSON
+     * @param pendingJson 本轮待执行的调用 JSON，确认后据此续跑
+     */
+    void onWaitingConfirm(int step, String toolName, String toolCallId, String arguments, String pendingJson);
+
+    /**
      * 运行结束，含被闸门终止的情形。
      *
      * @param outcome 运行结局

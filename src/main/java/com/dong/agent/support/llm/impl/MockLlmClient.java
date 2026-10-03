@@ -97,6 +97,13 @@ public class MockLlmClient implements LlmClient {
             ToolCall call = new ToolCall("call_bad", "not.exist", "{}");
             return new LlmResult(thought, List.of(call), promptTokens, TokenEstimator.estimate(thought));
         }
+        if (isRateLimitQuestion(question)) {
+            // 有副作用的工具：跑一次限流对比，用来验证挂起确认流程
+            String thought = "这个要真的跑一次实验，调用 classic.limiter_compare。";
+            stream(thought, onDelta);
+            ToolCall call = new ToolCall("call_limiter", "classic.limiter_compare", "{\"attempts\": 20}");
+            return new LlmResult(thought, List.of(call), promptTokens, TokenEstimator.estimate(thought));
+        }
         if (isTimeQuestion(question)) {
             String thought = "我需要确认两个时区的当前时间，一次调用两个工具。";
             stream(thought, onDelta);
@@ -146,6 +153,16 @@ public class MockLlmClient implements LlmClient {
      */
     private boolean isLoopQuestion(String question) {
         return question != null && (question.contains("摇摆") || question.contains("循环") || question.contains("卡住"));
+    }
+
+    /**
+     * 判断是否要调用有副作用的实验工具。
+     *
+     * @param question 用户输入
+     * @return true 表示调用限流对比工具
+     */
+    private boolean isRateLimitQuestion(String question) {
+        return question != null && (question.contains("限流") || question.contains("令牌桶") || question.contains("漏桶"));
     }
 
     /**

@@ -73,13 +73,25 @@ public interface AgentRunMapper {
     int updateStatus(@Param("runNo") String runNo, @Param("status") RunStatus status);
 
     /**
-     * 查询卡死的运行：状态仍是运行中且更新时间早于给定时间点。
+     * 查询停留在某个状态超过给定时间的运行。运行中用它找卡死的，
+     * 等待确认用它找确认超时的——两者阈值不同但查询形状一样。
      *
+     * @param status 运行状态编码
      * @param before 更新时间早于该时间点
      * @param limit  最多返回条数
      * @return 运行列表
      */
-    List<AgentRun> selectStuck(@Param("before") LocalDateTime before, @Param("limit") int limit);
+    List<AgentRun> selectByStatusBefore(@Param("status") RunStatus status, @Param("before") LocalDateTime before,
+                                        @Param("limit") int limit);
+
+    /**
+     * 记录挂起等待确认的工具调用。
+     *
+     * @param runNo        运行号
+     * @param pendingCalls 待确认调用 JSON
+     * @return 影响行数
+     */
+    int updatePending(@Param("runNo") String runNo, @Param("pendingCalls") String pendingCalls);
 
     /**
      * 按结束原因统计分布，用来看闸门是不是太紧。

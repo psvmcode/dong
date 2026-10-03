@@ -289,7 +289,9 @@ public record ToolResult(boolean success, String payload, String errorMessage, l
 只在跑自动化实验时才关，且必须显式配置。
 
 L1 工具的确认不是「拒绝」也不是「放行」，而是**挂起运行 → 页面确认 → 从原处继续**，
-挂起态必须落库（对应 `agent_run.status` 的 5 等待确认）。
+挂起态必须落库（对应 `agent_run.status` 的 5 等待确认，待执行的调用存在 `pending_calls`）。
+已实现：确认后从挂起的那一步续跑，前面的步骤不会重跑；拒绝则把「用户拒绝了哪个工具」
+告诉模型让它改道；超时未确认按取消处理，由清理任务执行。
 完整流程与超时处理见 [`../../topic/agent-tool-protocol.md`](../../topic/agent-tool-protocol.md) 第四节。
 
 ### 4.3 首批工具清单
@@ -434,6 +436,8 @@ E8 是最重要的一项：它验证的是「Agent 会不会把宿主应用搞�
 | POST | `/api/agent/runs/stream` | 发起运行，**SSE 流式**（页面用） |
 | POST | `/api/agent/runs/{runNo}` | 查询运行结果 |
 | POST | `/api/agent/runs/{runNo}/cancel` | 取消运行 |
+| POST | `/api/agent/runs/{runNo}/confirm` | 确认执行挂起的有副作用工具，从挂起处继续 |
+| POST | `/api/agent/runs/{runNo}/reject` | 拒绝执行挂起的工具，模型收到拒绝后自行改道 |
 | POST | `/api/agent/runs/list` | 运行列表（分页） |
 | POST | `/api/agent/runs/stats` | 运行统计：步数、token、耗时、各 `finish_reason` 分布 |
 | POST | `/api/agent/tools` | 工具清单（名称、描述、schema、危险等级、是否启用） |
@@ -768,6 +772,35 @@ Agent 尤其如此——它很擅长把「没查到」说成「查到了，是�
 
 摘要在 mock 模型下拿到的是剧本化回复，真实模型下才是真摘要——
 这里验证的是**触发时机与写入链路**，不是摘要质量。
+
+### 12.2 挂起确认与安全防护实测
+
+**挂起确认**（mock 让模型去调 `classic.limiter_compare` 这个副作用工具）：
+
+| 步骤 | 结果 |
+|---|---|
+| 模型要求调副作用工具 | `status=5`、`finishReason=WAITING_CONFIRM`、`pending_calls` 落库待执行调用 |
+| 确认 `/confirm` | 从原步骤续跑，执行限流对比并返回真实结果，`toolCalls=1`（**没有重跑前面的步骤**） |
+| 拒绝 `/reject` | `toolCalls=0`，模型收到「用户拒绝执行工具 X」后直接作答 |
+| 超时不处理 | 20 秒阈值下被清理任务标记为 `status=4`、`finish_reason=CANCELLED` |
+
+**安全防护**（启用 `http.fetch` 与 `mysql.probe` 后逐条验证）：
+
+| 用例 | 结果 |
+|---|---|
+| `http://127.0.0.1:6379` | 拦在非 80/443 端口 |
+| `http://169.254.169.254/latest/meta-data` | 拦为链路本地（云元数据） |
+| `http://192.168.1.1`、`http://10.0.0.5` | 拦为私有网段 |
+| `file:///etc/passwd` | 拦为非 http/https 协议 |
+| `mysql.probe` 查 `agent_run` | 拒绝（不在表白名单） |
+| `mysql.probe` 表名写 `product; drop table product` | 拒绝（白名单精确匹配，注入面不存在） |
+| `math.calc` 含字母 | 拒绝（只认数字与四则运算符） |
+| `limit=99999` | 收敛到上限，不报错 |
+| `classic.limiter_compare` 试运行 | 拒绝（只读工具才可试运行） |
+| `https://www.example.com` | **正常抓取成功**——防护没有误挡正常请求 |
+
+最后一条是最容易被忽略的验证：只测「挡住了什么」而不测「该放行的有没有放行」，
+等于只验证了防护的一半。
 
 ### 落地时要同步更新的位置
 

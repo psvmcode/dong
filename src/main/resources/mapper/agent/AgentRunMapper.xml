@@ -19,13 +19,14 @@
         <result column="completion_tokens" property="completionTokens"/>
         <result column="elapsed_millis" property="elapsedMillis"/>
         <result column="error_message" property="errorMessage"/>
+        <result column="pending_calls" property="pendingCalls"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <sql id="runColumns">
         id, run_no, session_no, client_token, prompt, answer, status, finish_reason, steps, tool_calls,
-        prompt_tokens, completion_tokens, elapsed_millis, error_message, create_time, update_time
+        prompt_tokens, completion_tokens, elapsed_millis, error_message, pending_calls, create_time, update_time
     </sql>
 
     <!-- 插入运行记录。只写创建时已知的字段，统计值与结束原因由收尾更新写入，
@@ -90,16 +91,24 @@
         where run_no = #{runNo}
     </update>
 
-    <!-- 卡死的运行：状态仍是运行中，且更新时间早于给定时间点 -->
-    <select id="selectStuck" resultMap="runMap">
+    <!-- 停留在某个状态超过给定时间的运行：运行中找卡死，等待确认找确认超时 -->
+    <select id="selectByStatusBefore" resultMap="runMap">
         select
         <include refid="runColumns"/>
         from agent_run
-        where status = 1
+        where status = #{status}
         and update_time &lt; #{before}
         order by id asc
         limit #{limit}
     </select>
+
+    <!-- 记录挂起等待确认的工具调用 -->
+    <update id="updatePending">
+        update agent_run
+        set pending_calls = #{pendingCalls},
+        update_time = now()
+        where run_no = #{runNo}
+    </update>
 
     <!-- 按结束原因统计分布 -->
     <select id="countByFinishReason" resultType="java.lang.Long">

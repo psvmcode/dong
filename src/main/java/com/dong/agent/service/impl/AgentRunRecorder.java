@@ -74,6 +74,11 @@ public class AgentRunRecorder implements AgentRunListener {
     private final AtomicInteger savedMessages = new AtomicInteger();
 
     /**
+     * 挂起时待执行的调用 JSON，由运行服务写入运行记录。
+     */
+    private String pendingJson = "";
+
+    /**
      * 构造记录器。
      *
      * @param messageMapper 消息 Mapper
@@ -189,6 +194,26 @@ public class AgentRunRecorder implements AgentRunListener {
     }
 
     /**
+     * 需要用户确认。把待执行的调用记下来交给运行服务落库，
+     * 同时推事件让页面弹确认卡片。
+     *
+     * @param step        第几步
+     * @param toolName    工具名
+     * @param toolCallId  调用 id
+     * @param arguments   入参 JSON
+     * @param pendingJson 本轮待执行的调用 JSON
+     */
+    @Override
+    public void onWaitingConfirm(int step, String toolName, String toolCallId, String arguments, String pendingJson) {
+        this.pendingJson = pendingJson == null ? "[]" : pendingJson;
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("step", step);
+        data.put("toolName", toolName);
+        data.put("arguments", arguments == null ? "" : arguments);
+        send("confirm.required", data);
+    }
+
+    /**
      * 运行结束，只推事件，收尾落库由运行服务负责。
      *
      * @param outcome 运行结局
@@ -214,6 +239,15 @@ public class AgentRunRecorder implements AgentRunListener {
      */
     public int savedMessages() {
         return savedMessages.get();
+    }
+
+    /**
+     * 挂起时待执行的调用 JSON。
+     *
+     * @return 调用 JSON，未挂起时为 "[]"
+     */
+    public String pendingJson() {
+        return pendingJson;
     }
 
     /**

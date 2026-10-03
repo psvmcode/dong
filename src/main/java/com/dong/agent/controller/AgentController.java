@@ -181,6 +181,26 @@ public class AgentController {
     }
 
     /**
+     * 确认执行挂起的有副作用工具，从挂起处继续。
+     */
+    @PostMapping("/runs/{runNo}/confirm")
+    @Operation(summary = "确认执行挂起的有副作用工具，从挂起处继续")
+    public Result<RunResponse> confirmRun(@PathVariable @NotBlank @Size(max = 32) String runNo) {
+        checkAvailable();
+        return Result.success(runService.confirm(runNo));
+    }
+
+    /**
+     * 拒绝执行挂起的工具，模型会收到拒绝原因并自行改道。
+     */
+    @PostMapping("/runs/{runNo}/reject")
+    @Operation(summary = "拒绝执行挂起的工具，让模型换个方式")
+    public Result<RunResponse> rejectRun(@PathVariable @NotBlank @Size(max = 32) String runNo) {
+        checkAvailable();
+        return Result.success(runService.reject(runNo));
+    }
+
+    /**
      * 分页查询运行。
      */
     @PostMapping("/runs/list")

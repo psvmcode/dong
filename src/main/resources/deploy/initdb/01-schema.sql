@@ -713,6 +713,7 @@ create table if not exists agent_run
     completion_tokens int             not null default 0                       comment '生成 token，粗估',
     elapsed_millis    int             not null default 0                       comment '总耗时，单位毫秒',
     error_message     varchar(512)    not null default ''                      comment '失败原因，成功时为空',
+    pending_calls     varchar(2000)   not null default ''                      comment '挂起等待确认的工具调用，JSON，含步数与调用列表，确认后据此续跑',
     create_time       datetime        not null default current_timestamp       comment '创建时间',
     update_time       datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
     primary key (id),

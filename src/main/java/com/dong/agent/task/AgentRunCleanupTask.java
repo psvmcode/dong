@@ -44,33 +44,58 @@ public class AgentRunCleanupTask {
     private Duration stuckAfter;
 
     /**
+     * 等待确认超过这么久按取消处理。用户点了确认才算数，
+     * 挂在半路的运行不该一直占着一个等待状态。
+     */
+    @Value("${dong.agent.tools.side-effect-confirm-timeout:5m}")
+    private Duration confirmTimeout;
+
+    /**
      * 单轮最多处理多少条，避免一次扫太多。
      */
     @Value("${dong.agent.lab.cleanup-scan-limit:50}")
     private int scanLimit;
 
     /**
-     * 标记卡死的运行为失败。
+     * 给卡死的运行与确认超时的运行收尾。
      */
     @Scheduled(fixedDelayString = "${dong.agent.lab.cleanup-interval-ms:300000}",
             initialDelayString = "${dong.agent.lab.cleanup-initial-delay-ms:60000}")
     public void cleanup() {
         try {
-            LocalDateTime deadline = LocalDateTime.now().minus(stuckAfter);
-            List<AgentRun> stuck = runMapper.selectStuck(deadline, scanLimit);
-            for (AgentRun run : stuck) {
-                run.setStatus(RunStatus.FAILED);
-                run.setFinishReason(FinishReason.ERROR);
-                run.setErrorMessage("run stuck, cleaned up by task");
-                runMapper.updateFinish(run);
-            }
-            if (!stuck.isEmpty()) {
-                log.warn("agent run cleanup marked {} stuck runs as failed", stuck.size());
+            int stuck = cleanupByStatus(RunStatus.RUNNING, stuckAfter, RunStatus.FAILED,
+                    FinishReason.ERROR, "run stuck, cleaned up by task");
+            int expired = cleanupByStatus(RunStatus.WAITING_CONFIRM, confirmTimeout, RunStatus.CANCELLED,
+                    FinishReason.CANCELLED, "confirm timeout, cancelled by task");
+            if (stuck + expired > 0) {
+                log.warn("agent run cleanup done stuck={} confirmExpired={}", stuck, expired);
             }
         } catch (Exception e) {
             // 调度线程会吞掉异常，不打日志就只能看到任务「静默地不再工作」
             log.error("agent run cleanup failed", e);
         }
+    }
+
+    /**
+     * 把停留在某个状态超过阈值的运行收尾。
+     *
+     * @param status   要清理的状态
+     * @param threshold 停留超过这么久
+     * @param target   收尾后的状态
+     * @param reason   结束原因
+     * @param message  说明
+     * @return 处理条数
+     */
+    private int cleanupByStatus(RunStatus status, Duration threshold, RunStatus target,
+                                FinishReason reason, String message) {
+        List<AgentRun> runs = runMapper.selectByStatusBefore(status, LocalDateTime.now().minus(threshold), scanLimit);
+        for (AgentRun run : runs) {
+            run.setStatus(target);
+            run.setFinishReason(reason);
+            run.setErrorMessage(message);
+            runMapper.updateFinish(run);
+        }
+        return runs.size();
     }
 
 }

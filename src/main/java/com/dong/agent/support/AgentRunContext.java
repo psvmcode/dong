@@ -1,6 +1,7 @@
 package com.dong.agent.support;
 
 import com.dong.agent.support.llm.ChatMessage;
+import com.dong.agent.support.llm.ToolCall;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -50,5 +51,20 @@ public class AgentRunContext {
      * 实验参数覆盖，正常运行时为 null。
      */
     private AgentRunOptions options = AgentRunOptions.empty();
+
+    /**
+     * 续跑时待执行的工具调用，确认后从挂起处继续，正常运行时为空。
+     */
+    private List<ToolCall> pendingToolCalls = new ArrayList<>();
+
+    /**
+     * 续跑时的起始步数，避免重新从第一步数起。
+     */
+    private int resumeStep;
+
+    /**
+     * 续跑时追加给模型的说明，例如「用户拒绝了这个工具」。
+     */
+    private String resumeNote = "";
 
 }

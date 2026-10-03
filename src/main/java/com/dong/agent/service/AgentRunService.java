@@ -68,6 +68,22 @@ public interface AgentRunService {
     void cancel(String runNo);
 
     /**
+     * 确认执行挂起的有副作用工具，从挂起处继续。
+     *
+     * @param runNo 运行号
+     * @return 运行结果
+     */
+    RunResponse confirm(String runNo);
+
+    /**
+     * 拒绝执行挂起的工具，把拒绝告知模型让它改道。
+     *
+     * @param runNo 运行号
+     * @return 运行结果
+     */
+    RunResponse reject(String runNo);
+
+    /**
      * 分页查询运行。
      *
      * @param query 查询条件

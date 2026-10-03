@@ -51,6 +51,7 @@
 
     <div class="main">
         <div class="chat" id="chat"></div>
+        <div id="confirmBox" style="display:none; margin:0 24px 8px; padding:10px 14px; border:1px solid #ffd591; background:#fffbe6; border-radius:8px;"></div>
         <div class="composer">
             <textarea id="input" placeholder="输入一句话，回车发送（Shift+回车换行）。试试：现在几点了"></textarea>
             <div style="display:flex;flex-direction:column;gap:8px;">
@@ -174,9 +175,56 @@ function onEvent(name, data) {
             '生成 token': data.completionTokens,
             耗时: data.elapsedMillis + 'ms'
         });
+    } else if (name === 'confirm.required') {
+        showConfirm(data);
     } else if (name === 'error') {
         addMessage('tool', '运行出错：' + data.message);
         document.getElementById('stopBtn').disabled = true;
+    }
+}
+
+/**
+ * 有副作用的工具必须先让人点头。卡片上要写清它要做什么，
+ * 让用户在看不懂的情况下点确认等于没有确认。
+ */
+function showConfirm(data) {
+    const box = document.getElementById('confirmBox');
+    box.style.display = 'block';
+    box.innerHTML = '<div><b>' + data.toolName + '</b> 有副作用，需要你确认后才会执行'
+        + '<div class="muted" style="margin-top:4px"></div></div>';
+    box.querySelector('.muted').textContent = '入参：' + data.arguments;
+    const row = document.createElement('div');
+    row.style.marginTop = '8px';
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    const ok = document.createElement('button');
+    ok.className = 'primary';
+    ok.textContent = '确认执行';
+    ok.onclick = () => decide(true);
+    const no = document.createElement('button');
+    no.textContent = '拒绝';
+    no.onclick = () => decide(false);
+    row.appendChild(ok);
+    row.appendChild(no);
+    box.appendChild(row);
+}
+
+async function decide(approved) {
+    if (!runNo) return;
+    document.getElementById('confirmBox').style.display = 'none';
+    try {
+        const res = await fetch('/api/agent/runs/' + runNo + (approved ? '/confirm' : '/reject'), {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        });
+        const body = await res.json();
+        if (body.code !== 0) {
+            addMessage('tool', '操作失败：' + body.message);
+            return;
+        }
+        if (body.data.answer) addMessage('assistant', body.data.answer);
+        setStats({结束原因: body.data.finishReason, 步数: body.data.steps, 工具调用: body.data.toolCalls});
+    } catch (e) {
+        addMessage('tool', '请求失败：' + e.message);
     }
 }
 
