@@ -78,9 +78,12 @@ public class MockLlmClient implements LlmClient {
         }
         String question = last == null ? "" : last.content();
         if (isTimeQuestion(question)) {
-            String thought = "我需要确认当前时间，调用 time.now。";
+            String thought = "我需要确认两个时区的当前时间，一次调用两个工具。";
             stream(thought, onDelta);
-            List<ToolCall> calls = List.of(new ToolCall("call_1", "time.now", "{}"));
+            // 刻意返回两个互不依赖的调用，用来验证并行执行与按原始顺序回填
+            List<ToolCall> calls = List.of(
+                    new ToolCall("call_1", "time.now", "{\"zone\": \"Asia/Shanghai\"}"),
+                    new ToolCall("call_2", "time.now", "{\"zone\": \"UTC\"}"));
             return new LlmResult(thought, calls, promptTokens, TokenEstimator.estimate(thought));
         }
         String answer = "（mock 模型）当前未接入真实模型，这是一段剧本化的固定回复。你的输入是：" + trim(question);

@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -128,6 +128,13 @@ public class AgentRunEngine {
     private boolean confirmRequired;
 
     /**
+     * 一轮里的多个工具调用是否并行执行。关掉它就是为了跑 E2 的对照实验：
+     * 并行与串行必须走同一套提交逻辑，否则比出来的不是调度差异而是代码差异。
+     */
+    @Value("${dong.agent.parallel-tool-calls:true}")
+    private boolean parallelToolCalls;
+
+    /**
      * 构造运行引擎。
      *
      * @param clients      全部模型客户端实现
@@ -201,6 +208,7 @@ public class AgentRunEngine {
             messages.add(ChatMessage.assistant(result.content(), result.toolCalls()));
             listener.onAssistantMessage(steps, result.content(), result.toolCalls());
             boolean stopped = false;
+            List<ToolCall> executable = new ArrayList<>();
             for (ToolCall call : result.toolCalls()) {
                 toolCallCount++;
                 if (toolCallCount > maxToolCalls) {
@@ -215,7 +223,27 @@ public class AgentRunEngine {
                     stopped = true;
                     break;
                 }
-                ToolResult toolResult = executeTool(call, context, listener, steps);
+                executable.add(call);
+            }
+            // 并行模式下先全部提交再逐个取结果，串行模式边提交边等，
+            // 两种都走同一套提交逻辑，避免并行时嵌套提交同一个池把自己锁死
+            List<ToolResult> results = new ArrayList<>(executable.size());
+            if (parallelToolCalls) {
+                List<CompletableFuture<ToolResult>> futures = new ArrayList<>(executable.size());
+                for (ToolCall call : executable) {
+                    futures.add(submitTool(call, context, listener, steps));
+                }
+                for (CompletableFuture<ToolResult> future : futures) {
+                    results.add(await(future, executable.get(results.size()).name()));
+                }
+            } else {
+                for (ToolCall call : executable) {
+                    results.add(await(submitTool(call, context, listener, steps), call.name()));
+                }
+            }
+            for (int i = 0; i < executable.size(); i++) {
+                ToolCall call = executable.get(i);
+                ToolResult toolResult = results.get(i);
                 if (toolResult.success()) {
                     continuousFailures = 0;
                     messages.add(ChatMessage.tool(call.id(), call.name(), truncate(toolResult.payload(), call.name())));
@@ -278,61 +306,87 @@ public class AgentRunEngine {
     }
 
     /**
-     * 执行单个工具。未知工具、参数非法、需要确认、超时、抛异常都转成失败结果回传，
-     * 一律不中断整轮运行——模型看到失败原因后自己会换条路。
+     * 提交一次工具调用。前置校验（工具是否存在、要不要确认、参数是否合法）同步做完，
+     * 真正的执行交给线程池，超时在 future 上挂 orTimeout。
+     *
+     * <p>不在任务里再套一层 supplyAsync：那样并行时会占住线程等内层任务排队，
+     * 池一满就自己把自己锁死了。
      *
      * @param call     工具调用
      * @param context  运行上下文
      * @param listener 运行回调
      * @param step     第几步
-     * @return 执行结果
+     * @return 工具结果的 future
      */
-    private ToolResult executeTool(ToolCall call, AgentRunContext context, AgentRunListener listener, int step) {
-        ToolResult result = doExecute(call, context, listener, step);
-        listener.onToolResult(step, call.name(), call.id(), result);
-        return result;
-    }
-
-    /**
-     * 真正执行工具。未知工具、参数非法、需要确认、超时、抛异常都转成失败结果，
-     * 一律不中断整轮运行——模型看到失败原因后自己会换条路。
-     *
-     * @param call     工具调用
-     * @param context  运行上下文
-     * @param listener 运行回调
-     * @param step     第几步
-     * @return 执行结果
-     */
-    private ToolResult doExecute(ToolCall call, AgentRunContext context, AgentRunListener listener, int step) {
+    private CompletableFuture<ToolResult> submitTool(ToolCall call, AgentRunContext context, AgentRunListener listener, int step) {
         AgentTool tool = toolRegistry.get(call.name());
         if (tool == null) {
-            return ToolResult.fail("工具 " + call.name() + " 不存在，可用的是：" + toolRegistry.names(), 0);
+            return completed(call, listener, step,
+                    ToolResult.fail("工具 " + call.name() + " 不存在，可用的是：" + toolRegistry.names(), 0));
         }
         if (tool.risk().needConfirm() && confirmRequired && !context.isConfirmSideEffect()) {
-            return ToolResult.fail("工具 " + call.name() + " 有副作用，需要用户确认后再执行", 0);
+            return completed(call, listener, step,
+                    ToolResult.fail("工具 " + call.name() + " 有副作用，需要用户确认后再执行", 0));
         }
         Map<String, Object> arguments = parseArguments(call.arguments());
         if (arguments == null) {
-            return ToolResult.fail("参数不是合法 JSON，请重新输出，注意引号与括号配对", 0);
+            return completed(call, listener, step,
+                    ToolResult.fail("参数不是合法 JSON，请重新输出，注意引号与括号配对", 0));
         }
         listener.onToolCall(step, call.name(), call.arguments());
         long start = System.currentTimeMillis();
+        int timeoutSeconds = (int) tool.timeout().toSeconds();
+        return CompletableFuture.supplyAsync(() -> tool.invoke(arguments), toolExecutor)
+                .orTimeout(tool.timeout().toMillis(), TimeUnit.MILLISECONDS)
+                .handle((payload, error) -> {
+                    ToolResult result;
+                    if (error instanceof TimeoutException || (error instanceof CompletionException
+                            && error.getCause() instanceof TimeoutException)) {
+                        result = ToolResult.fail("工具 " + call.name() + " 执行超时（" + timeoutSeconds + " 秒）",
+                                System.currentTimeMillis() - start);
+                    } else if (error != null) {
+                        log.warn("agent tool threw name={}", call.name(), error);
+                        result = ToolResult.fail("工具 " + call.name() + " 执行出错，请换个参数重试",
+                                System.currentTimeMillis() - start);
+                    } else {
+                        result = payload;
+                    }
+                    listener.onToolResult(step, call.name(), call.id(), result);
+                    return result;
+                });
+    }
+
+    /**
+     * 取回工具结果，任何异常都转成失败结果，不让一次工具故障中断整轮运行。
+     *
+     * @param future   工具结果的 future
+     * @param toolName 工具名，用于拼提示
+     * @return 执行结果
+     */
+    private ToolResult await(CompletableFuture<ToolResult> future, String toolName) {
         try {
-            return CompletableFuture.supplyAsync(() -> tool.invoke(arguments), toolExecutor)
-                    .orTimeout(tool.timeout().toMillis(), TimeUnit.MILLISECONDS)
-                    .get();
-        } catch (ExecutionException e) {
-            // orTimeout 超时是「以 TimeoutException 结束这个 future」，get() 包在 ExecutionException 里
-            if (e.getCause() instanceof TimeoutException) {
-                return ToolResult.fail("工具 " + call.name() + " 执行超时（" + tool.timeout().toSeconds() + " 秒）",
-                        System.currentTimeMillis() - start);
-            }
-            log.warn("agent tool threw name={}", call.name(), e);
-            return ToolResult.fail("工具 " + call.name() + " 执行出错，请换个参数重试", System.currentTimeMillis() - start);
+            return future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return ToolResult.fail("工具 " + call.name() + " 执行被中断", System.currentTimeMillis() - start);
+            return ToolResult.fail("工具 " + toolName + " 执行被中断", 0);
+        } catch (Exception e) {
+            return ToolResult.fail("工具 " + toolName + " 执行出错，请换个参数重试", 0);
         }
+    }
+
+    /**
+     * 包装一个已经失败的结果，仍要走一次回调：
+     * 失败不回传，模型就当这次调用从没发生过。
+     *
+     * @param call     工具调用
+     * @param listener 运行回调
+     * @param step     第几步
+     * @param result   失败结果
+     * @return 已完成的结果 future
+     */
+    private CompletableFuture<ToolResult> completed(ToolCall call, AgentRunListener listener, int step, ToolResult result) {
+        listener.onToolResult(step, call.name(), call.id(), result);
+        return CompletableFuture.completedFuture(result);
     }
 
     /**

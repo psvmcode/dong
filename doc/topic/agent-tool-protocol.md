@@ -430,8 +430,10 @@ public class OrderRecentTool implements AgentTool {
 ### 6.3 表达式与模板注入（`math.calc`）
 
 绝不接 `ScriptEngine`、不 `eval`、不解析 SpEL。
-只做白名单 tokenizer：数字、四则运算符、括号、白名单函数名（`abs` / `min` / `max` / `round`），
-token 化之后自己求值。遇到白名单外的 token 直接拒绝。
+只做白名单 tokenizer（数字、四则运算符、括号、一元负号）加递归下降求值，
+遇到白名单外的字符直接拒绝。当前**不支持函数**：
+函数表的解析要引入标识符与作用域，复杂度上去了，收益却很小——
+模型真需要函数时，让它把算式拆成几步更可控。
 
 理由很实在：`ScriptEngine` 的执行边界很难划清，一个 `math.calc` 就能变成任意代码执行——
 这类事故的起点几乎都是「只是想让模型算个数」。
