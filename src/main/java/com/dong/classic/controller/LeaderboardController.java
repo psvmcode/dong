@@ -77,10 +77,10 @@ public class LeaderboardController {
     }
 
     /**
-     * 查询名次，从 0 开始计数。
+     * 查询名次，从 1 开始计数，与 top、around 的 rank 同一口径。
      */
     @PostMapping("/rank")
-    @Operation(summary = "查询某个成员的名次，从 0 开始")
+    @Operation(summary = "查询某个成员的名次，从 1 开始")
     public Result<Long> rank(@Valid @RequestBody LeaderboardMemberQueryRequest request) {
         return Result.success(leaderboardService.rankOf(request.getBoard(), request.getMember()));
     }

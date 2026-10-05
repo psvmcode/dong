@@ -34,6 +34,18 @@
   **拒绝取值越界**（负数、超长、超大批量），**允许空结果查询**
 - **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004
 
+### 前端项目 dong-web（2026-10-04 新建）
+- 位置 `/Users/dong/items/java/dong-web`（与 dong 同级，独立 git 仓库，无远端）
+- Vue 3 + TS + Vite 6 + Element Plus 2 + Pinia + ECharts；**无前端路由外的额外依赖**
+- **不改后端任何配置**：dev 用 vite 代理转发 `/api` `/actuator` `/v3` 到 8090，
+  换后端地址用 `DONG_BACKEND_TARGET=http://x:8090 npm run dev`
+- 接口层约定：`postQuery` 对应后端 @RequestParam（参数挂 URL），`postJson` 对应 @RequestBody；
+  `unwrap()` 把失败也包成 ApiResult 不抛异常，页面自行展示（实验室要看得到 1004/1005）
+- `npm install` 必须加 `--include=dev`，否则环境里 NODE_ENV=production 会跳过 devDependencies
+- **页面形态约定（2026-10-05 用户明确要求）**：场景要还原成真实产品界面（电商搜索/秒杀会场/微信红包/动态流…），
+  不是填参数看 JSON 的调试台；调试信息折叠进右下角「内部链路」抽屉（src/stores/trace.ts + TraceDrawer.vue）；
+  各场景用自己的配色。目前仅 7 个重点场景已产品化，其余页面仍是调试台形态待铺开。
+
 ### 目录结构（2026-10-03 起）
 - 顶层只有 `pom.xml`、`README.md`、`src`；`deploy` / `db` / `doc` 全部在 **`src/main/resources/`** 下
 - `pom.xml` 的 `<resources>` 已排除这三个目录，**不打进 jar**；改 pom 资源过滤时要保留这段 excludes

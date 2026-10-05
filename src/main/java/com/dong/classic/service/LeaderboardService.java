@@ -26,7 +26,7 @@ public interface LeaderboardService {
     List<RankItemResponse> top(String board, int size);
 
     /**
-     * 查询名次，从 0 开始。
+     * 查询名次，从 1 开始。与 top、around 返回的 rank 同一口径。
      */
     Long rankOf(String board, String member);
 

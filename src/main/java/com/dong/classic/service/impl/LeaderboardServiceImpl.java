@@ -108,14 +108,34 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     }
 
     /**
-     * 查询成员名次，从 0 开始。
+     * 查询成员名次，从 1 开始。
+     *
+     * <p>榜单对外统一 1 基：top 与 around 返回的 rank 本来就是 1 基，
+     * 只有 Redis 的 zrevrank 是 0 基。以前这里原样透出 0 基值，
+     * 调用方得记住「哪个接口是 0 基」，展示时错位一名也很难发现，
+     * 所以在出口处统一补 1，让三个接口回答同一个问题。
      *
      * @param board  榜单标识
      * @param member 成员标识
-     * @return 名次
+     * @return 名次，成员不存在返回 null
      */
     @Override
     public Long rankOf(String board, String member) {
+        Long zeroBased = zeroBasedRank(board, member);
+        return zeroBased == null ? null : zeroBased + 1;
+    }
+
+    /**
+     * 取 Redis 原生的 0 基排名。
+     *
+     * <p>只用于切片计算：entryRangeReversed 的下标本来就是 0 基，
+     * 在这里补 1 反而会让区间整体偏后一位。
+     *
+     * @param board  榜单标识
+     * @param member 成员标识
+     * @return 0 基名次，成员不存在返回 null
+     */
+    private Long zeroBasedRank(String board, String member) {
         Integer rank = boardSet(board).revRank(member);
         return rank == null ? null : rank.longValue();
     }
@@ -142,7 +162,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
      */
     @Override
     public List<RankItemResponse> around(String board, String member, int range) {
-        Long rank = rankOf(board, member);
+        Long rank = zeroBasedRank(board, member);
         if (rank == null) {
             return List.of();
         }
