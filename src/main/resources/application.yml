@@ -2,6 +2,13 @@ spring:
   config:
     import: optional:file:./src/main/resources/deploy/.env[.properties]
 
+  servlet:
+    multipart:
+      # 与 server.tomcat.max-http-form-post-size 对齐，取分片大小上限。
+      # 不配这一项的话 Spring 默认单文件 1MB，分片同样传不上来。
+      max-file-size: 100MB
+      max-request-size: 100MB
+
   application:
     name: dong
 
@@ -82,9 +89,12 @@ server:
   port: 8090
   shutdown: graceful
   tomcat:
-    # 请求体上限，防止超大 body 直接把内存吃光
-    max-http-form-post-size: 2MB
-    max-swallow-size: 2MB
+    # 请求体上限。分片上传必须放开这一项：默认 2MB 时连一个 5MB 的分片都会被 tomcat 直接挡掉（413），
+    # 而且是在进入 Controller 之前挡的，业务层连日志都打不出来。
+    # 放宽到 100MB 的代价是全站 form 提交上限一起变大，这里接受——
+    # 分片大小本身另有校验（Constants.MAX_CHUNK_SIZE = 100MB），不会因此无限放大。
+    max-http-form-post-size: 100MB
+    max-swallow-size: 100MB
     connection-timeout: 20000
     # 限制最大工作线程，避免慢请求把线程池耗光导致整个服务无响应
     threads:
@@ -239,6 +249,23 @@ dong:
       cleanup-initial-delay-ms: 60000
       cleanup-stuck-after: 600s
       cleanup-scan-limit: 50
+
+  upload:
+    # 文件分片上传模块开关
+    enabled: true
+    # 默认分片大小 5MB：太大重传代价高，太小请求数暴涨
+    chunk-size: 5242880
+    # 是否真正落盘。默认 false，只记元信息——断点续传与秒传依赖分片记录而非文件内容，
+    # 关着也能完整验证机制，同时不占服务器磁盘
+    persist-data: false
+    # 落盘根目录，仅在 persist-data=true 时生效
+    storage-dir: ./uploads
+    # 过期未完成任务的清理开关与参数
+    cleanup-enabled: true
+    cleanup-interval-ms: 3600000
+    cleanup-initial-delay-ms: 60000
+    cleanup-expire-hours: 24
+    cleanup-limit: 100
 
   redpacket:
     # 单用户每分钟最多抢多少次，挡的是脚本刷，与全局按 IP 限流互补

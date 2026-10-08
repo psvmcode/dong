@@ -769,3 +769,45 @@ create table if not exists agent_lab_result
 ) engine = innodb
   default charset = utf8mb4
   comment = 'Agent 对照实验结果。默认跑 mock 模型，保证可复现、离线可跑、不烧钱';
+
+-- ----------------------------------------------------------------------------
+-- 文件分片上传
+-- ----------------------------------------------------------------------------
+
+create table if not exists upload_task
+(
+    id             bigint unsigned not null auto_increment                  comment '主键',
+    upload_id      varchar(64)     not null                                 comment '上传任务号，前端据此续传',
+    file_name      varchar(255)    not null                                 comment '原始文件名',
+    file_size      bigint          not null default 0                       comment '文件总大小，单位字节',
+    chunk_size     int             not null default 5242880                 comment '分片大小，默认 5MB',
+    total_chunks   int             not null default 0                       comment '总分片数',
+    file_hash      varchar(64)     not null                                 comment '文件指纹',
+    hash_mode      varchar(16)     not null default 'sample'                comment '指纹计算方式：full 全量 sample 抽样',
+    status         int             not null default 0                       comment '状态：0 上传中 1 已完成 2 已取消',
+    storage_path   varchar(512)    not null default ''                      comment '合并后的相对存储路径，未落盘时为空',
+    uploaded_bytes bigint          not null default 0                       comment '已上传字节数',
+    create_time    datetime        not null default current_timestamp       comment '创建时间',
+    update_time    datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_upload_id (upload_id)                                      comment '任务号唯一',
+    unique key uk_hash_size (file_hash, file_size)                           comment '秒传判定：抽样指纹必须联合大小，否则有碰撞风险',
+    key idx_status (status)                                                  comment '按状态筛选'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '文件分片上传任务。断点续传靠它记住「这个任务已经收过哪些分片」';
+
+create table if not exists upload_chunk
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    upload_id   varchar(64)     not null                                 comment '上传任务号',
+    chunk_index int             not null                                 comment '分片下标，从 0 开始',
+    chunk_size  bigint          not null default 0                       comment '分片实际字节数',
+    chunk_hash  varchar(64)     not null default ''                      comment '分片指纹，重复上传同一片时可用于校验',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    unique key uk_upload_chunk (upload_id, chunk_index)                   comment '同一任务同一分片只保留一条，重复上传走覆盖而不是新增',
+    key idx_upload (upload_id)                                            comment '按任务查已收分片'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '已接收的分片记录。断点续传时把它们组成 uploadedChunks 返回给前端';

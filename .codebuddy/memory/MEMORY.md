@@ -119,5 +119,15 @@
 - macOS 无 `timeout`；`execute_command` 不能含 sleep（会被静默杀），要等时间用 `ping -c N 127.0.0.1`
 - **注入 ES 写故障**：`PUT /{index}/_settings {"index.blocks.write":true}`，测完改回 false
 
+### upload 模块（2026-10-08 新增）
+- `com.dong.upload`：分片上传 + 断点续传 + 秒传；表 `upload_task` / `upload_chunk`
+- **uploadId 由内容确定性推导**（hash+size+fileName+chunkSize 的 MD5），不是随机串——
+  刷新页面后重新 init 天然命中同一任务，前端无需持久化 upload_id
+- `dong.upload.persist-data` 默认 **false**：只记元信息不落盘，机制照样能验证且不占磁盘；打开才真正写片与合并
+- **坑**：tomcat `max-http-form-post-size` 默认 2MB 会让 5MB 分片直接 413 且不进 Controller，
+  已放开到 100MB 并同步配 `spring.servlet.multipart.max-file-size`
+- 特大文件铁律：写片用 `Files.copy`、合并用 `InputStream.transferTo`，**绝不 readAllBytes**（GB 级必 OOM）；
+  指纹用分块 digest（每块 2MB），full 遍历全部块、sample 只取首/中/尾 3 块
+
 ### 已归档
 旧的多微服务 HR + 财务平台已于 2026-08-29 整体删除，勿据此改代码。

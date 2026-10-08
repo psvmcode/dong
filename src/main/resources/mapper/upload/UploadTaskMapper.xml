@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.upload.mapper.UploadTaskMapper">
+
+    <resultMap id="uploadTaskMap" type="com.dong.upload.entity.UploadTask">
+        <id column="id" property="id"/>
+        <result column="upload_id" property="uploadId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="chunk_size" property="chunkSize"/>
+        <result column="total_chunks" property="totalChunks"/>
+        <result column="file_hash" property="fileHash"/>
+        <result column="hash_mode" property="hashMode"/>
+        <result column="status" property="status"/>
+        <result column="storage_path" property="storagePath"/>
+        <result column="uploaded_bytes" property="uploadedBytes"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, upload_id, file_name, file_size, chunk_size, total_chunks,
+        file_hash, hash_mode, status, storage_path, uploaded_bytes,
+        create_time, update_time
+    </sql>
+
+    <!-- 新增上传任务，主键回填 -->
+    <insert id="insert" parameterType="com.dong.upload.entity.UploadTask"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into upload_task
+        (upload_id, file_name, file_size, chunk_size, total_chunks,
+         file_hash, hash_mode, status, storage_path, uploaded_bytes)
+        values
+        (#{uploadId}, #{fileName}, #{fileSize}, #{chunkSize}, #{totalChunks},
+         #{fileHash}, #{hashMode}, #{status}, #{storagePath}, #{uploadedBytes})
+    </insert>
+
+    <!-- 按任务号查询 -->
+    <select id="selectByUploadId" resultMap="uploadTaskMap">
+        select
+        <include refid="columns"/>
+        from upload_task
+        where upload_id = #{uploadId}
+    </select>
+
+    <!-- 秒传判定：指纹加大小同时命中，且必须是已完成的 -->
+    <select id="selectCompletedByHash" resultMap="uploadTaskMap">
+        select
+        <include refid="columns"/>
+        from upload_task
+        where file_hash = #{fileHash}
+          and file_size = #{fileSize}
+          and status = 1
+        limit 1
+    </select>
+
+    <!-- 累加已上传字节数，避免并发收片互相覆盖 -->
+    <update id="increaseUploadedBytes">
+        update upload_task
+        set uploaded_bytes = uploaded_bytes + #{delta}
+        where upload_id = #{uploadId}
+    </update>
+
+    <!-- 更新状态与存储路径 -->
+    <update id="updateStatus">
+        update upload_task
+        set status       = #{status},
+            storage_path = #{storagePath}
+        where upload_id = #{uploadId}
+    </update>
+
+    <!-- 分页查询任务列表 -->
+    <select id="selectByPage" resultMap="uploadTaskMap">
+        select
+        <include refid="columns"/>
+        from upload_task
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计任务总数 -->
+    <select id="countByStatus" resultType="java.lang.Long">
+        select count(*)
+        from upload_task
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 查询超过指定小时仍未完成的任务 -->
+    <select id="selectExpired" resultMap="uploadTaskMap">
+        select
+        <include refid="columns"/>
+        from upload_task
+        where status = 0
+          and update_time &lt; date_sub(now(), interval #{hours} hour)
+        order by id asc
+        limit #{limit}
+    </select>
+
+    <!-- 删除任务记录 -->
+    <delete id="deleteByUploadId">
+        delete from upload_task
+        where upload_id = #{uploadId}
+    </delete>
+
+</mapper>

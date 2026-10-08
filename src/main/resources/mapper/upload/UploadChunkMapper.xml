@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dong.upload.mapper.UploadChunkMapper">
+
+    <!-- 重复上传同一分片走覆盖，不新增；靠唯一键收口并发窗口 -->
+    <insert id="upsert">
+        insert into upload_chunk
+        (upload_id, chunk_index, chunk_size, chunk_hash)
+        values
+        (#{uploadId}, #{chunkIndex}, #{chunkSize}, #{chunkHash})
+        on duplicate key update
+            chunk_size = #{chunkSize},
+            chunk_hash = #{chunkHash}
+    </insert>
+
+    <!-- 已接收分片下标，升序返回便于前端跳过 -->
+    <select id="selectChunkIndexes" resultType="java.lang.Integer">
+        select chunk_index
+        from upload_chunk
+        where upload_id = #{uploadId}
+        order by chunk_index asc
+    </select>
+
+    <!-- 已接收分片数 -->
+    <select id="countByUploadId" resultType="java.lang.Long">
+        select count(*)
+        from upload_chunk
+        where upload_id = #{uploadId}
+    </select>
+
+    <!-- 已接收总字节数，没有分片时 coalesce 兜成 0 -->
+    <select id="sumSizeByUploadId" resultType="java.lang.Long">
+        select coalesce(sum(chunk_size), 0)
+        from upload_chunk
+        where upload_id = #{uploadId}
+    </select>
+
+    <!-- 删除某任务全部分片记录 -->
+    <delete id="deleteByUploadId">
+        delete from upload_chunk
+        where upload_id = #{uploadId}
+    </delete>
+
+</mapper>

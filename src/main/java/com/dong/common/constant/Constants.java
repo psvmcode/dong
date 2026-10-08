@@ -96,6 +96,23 @@ public final class Constants {
     public static final int MAX_TEXT_LENGTH = 4096;
 
     /**
+     * 单个文件大小上限，20GB。
+     *
+     * <p>分片上传的意义就是让这个数字能开得很大：整文件上传受超时与内存限制，
+     * 分片之后每一片只有几 MB，理论上只受磁盘容量约束。
+     * 但仍然要封顶——不封顶的话一个伪造的 file_size 就能让总分片数算成天文数字。
+     */
+    public static final long MAX_FILE_SIZE = 20L * 1024 * 1024 * 1024;
+
+    /**
+     * 单个分片大小上限，100MB。
+     *
+     * <p>分片太大重传代价高（断一次就要重传 100MB），太小请求数暴涨（20GB / 1MB = 两万次请求）。
+     * 5MB 是实践里比较均衡的取值，这里的上限只是防止传一个离谱值把内存和磁盘一起吃掉。
+     */
+    public static final int MAX_CHUNK_SIZE = 100 * 1024 * 1024;
+
+    /**
      * 延迟时长上限，单位秒，即 24 小时。
      * 不限制的话传 Long.MAX_VALUE 会让任务永远不触发且无法回收。
      */
