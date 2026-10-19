@@ -14,6 +14,10 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>对外只暴露四个动作：初始化（含秒传与续传判定）、收分片、合并、查进度。
  * 断点续传的能力集中在 init 的返回值里——把「已经收过哪些分片」如实告诉前端，
  * 由前端决定补哪些，服务端不替前端记进度。
+ *
+ * <p>这一层的写操作都不加事务：每个写操作都是单条且幂等的，
+ * 而收分片要走的磁盘 IO 不该占用数据库连接。并发正确性靠 SQL 条件而不是事务隔离，
+ * 具体理由写在实现类的类注释里。
  */
 public interface UploadService {
 
@@ -62,6 +66,9 @@ public interface UploadService {
 
     /**
      * 取消上传任务，清理分片记录与已落盘文件。
+     *
+     * <p>已经完成的任务不允许取消——它已经有合成的文件了，
+     * 用「取消」去删它会绕开 complete 的那些校验。
      *
      * @param uploadId 上传任务号
      */

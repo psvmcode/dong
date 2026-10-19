@@ -47,6 +47,12 @@ public class UploadIdGenerator {
     /**
      * 计算 MD5 十六进制串。
      *
+     * <p>拿不到 MD5 时直接抛异常而不是退回 hashCode：
+     * hashCode 只有 32 位，补成 32 个十六进制字符看着长度一样，碰撞概率却高得多，
+     * 两个不同文件撞出同一个 uploadId 会让后一个文件直接复用前一个的分片，
+     * 传上来的是一个内容完全不对的文件——这种错误比启动失败难查得多。
+     * MD5 是 JDK 规范里必须实现的算法，这个分支本来就不该发生。
+     *
      * @param input 原始字符串
      * @return 32 位小写十六进制
      */
@@ -61,8 +67,7 @@ public class UploadIdGenerator {
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException ex) {
-            // MD5 是 JDK 必须实现的算法，走不到这里；兜底退回 hashCode 保证不中断
-            return String.format("%032x", input.hashCode());
+            throw new IllegalStateException("MD5 not available", ex);
         }
     }
 

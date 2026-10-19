@@ -54,19 +54,30 @@
         limit 1
     </select>
 
-    <!-- 累加已上传字节数，避免并发收片互相覆盖 -->
-    <update id="increaseUploadedBytes">
+    <!-- 更新状态、存储路径与终态字节数 -->
+    <update id="updateStatus">
         update upload_task
-        set uploaded_bytes = uploaded_bytes + #{delta}
+        set status         = #{status},
+            storage_path   = #{storagePath},
+            uploaded_bytes = #{uploadedBytes}
         where upload_id = #{uploadId}
     </update>
 
-    <!-- 更新状态与存储路径 -->
-    <update id="updateStatus">
+    <!-- 只推进 update_time，标记任务仍活跃，避免被清理任务误删 -->
+    <update id="touch">
         update upload_task
-        set status       = #{status},
-            storage_path = #{storagePath}
+        set update_time = now()
         where upload_id = #{uploadId}
+    </update>
+
+    <!-- 带乐观锁的状态推进：status = 0 写在 where 里，靠影响行数判定谁抢到 -->
+    <update id="updateStatusFromUploading">
+        update upload_task
+        set status         = #{status},
+            storage_path   = #{storagePath},
+            uploaded_bytes = #{uploadedBytes}
+        where upload_id = #{uploadId}
+          and status = 0
     </update>
 
     <!-- 分页查询任务列表 -->

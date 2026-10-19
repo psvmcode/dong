@@ -14,6 +14,7 @@ import com.dong.upload.service.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -64,7 +65,7 @@ public class UploadController {
     @PostMapping("/chunk")
     @Operation(summary = "上传单个分片，同一分片重复上传是幂等的")
     public Result<Long> chunk(@RequestParam @NotBlank @Size(max = 64) String uploadId,
-                              @RequestParam @Min(0) Integer chunkIndex,
+                              @RequestParam @Min(0) @Max(Constants.MAX_CHUNK_COUNT) Integer chunkIndex,
                               @RequestParam(required = false) @Size(max = 64) String chunkHash,
                               @RequestParam("file") MultipartFile file) {
         checkAvailable();

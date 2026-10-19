@@ -1,5 +1,6 @@
 package com.dong.upload.mapper;
 
+import com.dong.upload.dto.UploadChunkCount;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -43,6 +44,14 @@ public interface UploadChunkMapper {
      * @return 分片数
      */
     long countByUploadId(@Param("uploadId") String uploadId);
+
+    /**
+     * 批量统计多个任务已接收的分片数，供列表查询一次取全，避免逐条 count。
+     *
+     * @param uploadIds 上传任务号列表，为空时返回空列表
+     * @return 各任务的分片数投影，只包含有分片记录的任务
+     */
+    List<UploadChunkCount> countByUploadIds(@Param("uploadIds") List<String> uploadIds);
 
     /**
      * 累加某任务已接收字节数。

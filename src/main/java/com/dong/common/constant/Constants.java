@@ -113,6 +113,15 @@ public final class Constants {
     public static final int MAX_CHUNK_SIZE = 100 * 1024 * 1024;
 
     /**
+     * 单个文件的分片数上限，十万。
+     *
+     * <p>20GB 按最小 1MB 切也不过两万片，十万足够宽松；
+     * 真正要挡的是 file_size 合法但 chunk_size 极小时算出的天文数字——
+     * 那种任务会生成一个几百万项的响应，还没存分片就把连接打满。
+     */
+    public static final int MAX_CHUNK_COUNT = 100_000;
+
+    /**
      * 延迟时长上限，单位秒，即 24 小时。
      * 不限制的话传 Long.MAX_VALUE 会让任务永远不触发且无法回收。
      */

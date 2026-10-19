@@ -2,6 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.dong.upload.mapper.UploadChunkMapper">
 
+    <resultMap id="chunkCountMap" type="com.dong.upload.dto.UploadChunkCount">
+        <result column="upload_id" property="uploadId"/>
+        <result column="count" property="count"/>
+    </resultMap>
+
     <!-- 重复上传同一分片走覆盖，不新增；靠唯一键收口并发窗口 -->
     <insert id="upsert">
         insert into upload_chunk
@@ -26,6 +31,17 @@
         select count(*)
         from upload_chunk
         where upload_id = #{uploadId}
+    </select>
+
+    <!-- 批量统计，列表查询一次取全。uploadIds 为空时 in () 是语法错误，用 foreach 判空兜住 -->
+    <select id="countByUploadIds" resultMap="chunkCountMap">
+        select upload_id, count(*) as count
+        from upload_chunk
+        where upload_id in
+        <foreach collection="uploadIds" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        group by upload_id
     </select>
 
     <!-- 已接收总字节数，没有分片时 coalesce 兜成 0 -->
