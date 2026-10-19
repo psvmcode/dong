@@ -128,6 +128,11 @@
   已放开到 100MB 并同步配 `spring.servlet.multipart.max-file-size`
 - 特大文件铁律：写片用 `Files.copy`、合并用 `InputStream.transferTo`，**绝不 readAllBytes**（GB 级必 OOM）；
   指纹用分块 digest（每块 2MB），full 遍历全部块、sample 只取首/中/尾 3 块
+- **这一层不加 @Transactional**：写操作都是单条幂等，磁盘 IO 不该占连接；并发正确性靠 SQL 条件
+  （`updateStatusFromUploading` 的 where status=0）而不是事务隔离
+- 路径安全两条：`safeName` 必须排除 `.` / `..`；从库里取的相对路径删除前必须校验
+  `toAbsolutePath().startsWith(存储根)`（storageDir 常配成相对路径，不转绝对路径校验恒为 false）
+- 收分片必须 `touch` 任务，否则大文件传过 cleanup-expire-hours 会被清理任务误删
 
 ### 已归档
 旧的多微服务 HR + 财务平台已于 2026-08-29 整体删除，勿据此改代码。
