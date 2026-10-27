@@ -188,6 +188,23 @@ dong:
     reconcile-interval-ms: 600000
     reconcile-initial-delay-ms: 60000
 
+  logging:
+    # 日志采集开关。关掉之后缓冲不再往 ES 输送，接口返回 1004（中间件未启用）
+    enabled: true
+    # 单次刷写最多取多少条。比缓冲容量小一个量级，避免一次 bulk 太大拖慢 ES
+    flush-max-batch: 500
+    # 刷写周期。日志对可见性延迟没有毫秒级要求，1 秒足够，再小就是白付 ES 的写入压力
+    flush-interval-ms: 1000
+    # 失败退避：ES 不可用期间不能每秒重试一次，那会把一次故障放大成持续的错误风暴
+    retry-backoff-ms: 10000
+    # 索引保留天数。与 logback 落盘文件的 maxHistory 对齐：
+    # 两边不一致会出现「文件里还有、索引里已经没了」这种说不清的缺口
+    retention-days: 14
+    retention-interval-ms: 3600000
+    retention-initial-delay-ms: 60000
+    # 历史日志回填的根目录，与 logging.file.path 对齐
+    log-dir: logs
+
   mongodb:
     enabled: true
 

@@ -101,6 +101,17 @@
         </filter>
     </appender>
 
+    <!-- 日志入 ES 的第一跳：只做「转成文档 + 塞进有界缓冲」这两件极轻的事。
+         真正的网络 IO 由 Spring 管理的刷写任务异步批量做——在打日志的线程里同步写 ES，
+         一次慢查询就会把业务线程一起拖住，而且 ES 客户端自己也会打日志，同步写会形成递归。
+
+         缓冲是有界的，满了就丢：日志是尽力而为的数据，让它反过来把应用拖垮或撑爆内存是本末倒置。
+         队列容量只能写在这里——appender 由 logback 创建，早于 Spring 容器，读不到 application.yml。 -->
+    <appender name="ES_SHIP" class="com.dong.logging.support.ElasticsearchLogAppender">
+        <queueSize>10000</queueSize>
+        <appName>${APP_NAME}</appName>
+    </appender>
+
     <!-- 业务代码开到 DEBUG：MyBatis 的 SQL 在 DEBUG 级别，到这里就能看到完整语句与参数。
          需要更细的内部流程时再临时调成 TRACE -->
     <logger name="com.dong" level="DEBUG"/>
@@ -127,6 +138,7 @@
         <appender-ref ref="DEBUG_FILE"/>
         <appender-ref ref="WARN_FILE"/>
         <appender-ref ref="ERROR_FILE"/>
+        <appender-ref ref="ES_SHIP"/>
     </root>
 
 </configuration>

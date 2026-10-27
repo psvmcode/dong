@@ -11,7 +11,7 @@
 | 章节 | 内容 |
 |---|---|
 | [一、项目定位](#一项目定位) | 这不是脚手架，是一组对照实验 |
-| [二、能力速览](#二能力速览) | 十三个场景一张表看完 |
+| [二、能力速览](#二能力速览) | 十四个场景一张表看完 |
 | [三、快速开始](#三快速开始) | 三步跑起来 |
 | [四、目录结构与分层](#四目录结构与分层) | 限界上下文 + 传统分层 |
 | [五、场景详解](#五场景详解) | 每个场景的问题、解法、验证命令 |
@@ -61,6 +61,7 @@
 | 跨境支付 | `/api/crossborder` | MySQL + MQ + Redis | 幂等、锁汇、合规筛查、人工审核、冻结、异步清算、对账 | 金额精确到分，余额流水一致 |
 | 订单状态机 | `/api/order` | MySQL + COLA StateMachine | 守卫、内部迁移、条件分支回退、乐观锁并发 | 16 线程抢推，仅 1 次成功 |
 | Agent 工程实验室 | `/api/agent` | MySQL + LLM（OpenAI 兼容） | 工具调用循环、五道停止闸门、轨迹落库、SSE 流式、幂等、八组对照实验 | 并行调用省 27% 耗时；按需注入省 59% prompt token；无闸门时 token 涨 4 倍仍未答出 |
+| 日志检索（ELK） | `/api/logs` | Logback + Elasticsearch | 有界缓冲采集、按天索引与别名、回填续传、上下文查询、仪表盘聚合 | 采集零丢失（2438/2438），回填按天归档，过期整块删除 |
 
 > 全站接口统一为 POST：写操作仍可用 query 参数，查询类参数一律走 JSON body，分页参数见 `PageQuery`。
 
@@ -119,7 +120,7 @@ src/main/java/com/dong/
 │   ├── bloom/       Redisson 布隆过滤器
 │   └── mq/          MessageProducer 接口与 MqFacade 路由
 ├── cache/ classic/ seckill/ redpacket/ social/
-├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/ agent/
+├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/ agent/ logging/
 └── 上下文内部：controller / service + impl / mapper / entity / dto / enums / support / task / handler
 
 src/main/resources/
@@ -414,6 +415,38 @@ curl -X POST http://127.0.0.1:8090/api/order/TO.../events -H 'Content-Type: appl
 
 ---
 
+### 5.13 日志检索（logging）
+
+把 ELK 的三件事收进同一个模块：**采集**（logback appender → 有界缓冲 → 定时批量写 ES）、**存储**（按天索引 + 读别名，过期整块删索引）、**检索与可视化**（`/logs/index.html`）。
+
+| 环节 | 实现 | 对应 |
+|---|---|---|
+| 采集 | `ElasticsearchLogAppender` → `LogEventBuffer` → `LogShipperTask` | Logstash / Filebeat |
+| 补齐 | `LogFileImportService`：解析落盘文件，按行数位点续传 | Filebeat 断点续传 |
+| 存储 | `dong_lab_log_yyyy_MM_dd` 按天索引 + 读别名 `dong_lab_log` | ES + ILM |
+| 检索 | `/api/logs/search`、`/context`、`/overview`、`/stats` | Kibana Discover |
+| 可视化 | `src/main/resources/static/logs/index.html` | Kibana Dashboard |
+
+**三条硬约束**，每一条都来自真实故障模式：
+
+1. **采集不能反过来拖垮应用。** 缓冲有界（默认 1 万条）、满了就丢、超过 80% 水位只保留 WARN 及以上。丢了多少在 `/stats` 里看得见。
+2. **采集不能自激。** ES 客户端与本模块自己的日志按 logger 前缀直接挡掉，否则「打日志 → 写 ES → 打日志」会形成递归。
+3. **模块不可用不等于应用不可用。** 索引建不出来只退避告警，绝不阻断启动——这一点与 search 相反，那边索引不可用等于功能不可用。
+
+按天切索引的意义在清理这一刻兑现：过期是「删几个索引」，不是 `delete_by_query` 逐条标记再等段合并。保留天数默认 14，与 logback 落盘文件的 `maxHistory` 对齐。
+
+```bash
+curl -X POST http://127.0.0.1:8090/api/logs/stats    -H 'Content-Type: application/json' -d '{}'
+curl -X POST http://127.0.0.1:8090/api/logs/generate -H 'Content-Type: application/json' -d '{"count":50}'
+curl -X POST http://127.0.0.1:8090/api/logs/search   -H 'Content-Type: application/json' \
+  -d '{"keyword":"started","levels":["INFO"],"pageNum":1,"pageSize":20}'
+curl -X POST http://127.0.0.1:8090/api/logs/import   -H 'Content-Type: application/json' -d '{"maxLines":8000}'
+```
+
+实测：启动 20 秒内采集 2438 条、写入 2438 条、丢弃 0；回填每次调用解析约 175 条并各自归档到日志发生那天的索引；`X-Trace-Id` 串联出的 traceId 能把一次请求的十几条日志一次捞全。
+
+---
+
 ## 六、开关化设计
 
 中间件开关集中在唯一的 `application.yml`，默认全部启用。本地只验证某项功能时，用命令行参数临时关掉不需要的组件，不改配置文件：
@@ -436,6 +469,8 @@ dong:
     enabled: false
   mariadb:
     enabled: false
+  logging:
+    enabled: true       # 日志采集与检索
   cache:
     l1-enabled: true       # Caffeine 本地缓存
     l2-enabled: true       # Redis 分布式缓存

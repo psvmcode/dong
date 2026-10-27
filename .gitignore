@@ -62,4 +62,6 @@ src/main/resources/deploy/.env
 src/main/resources/doc/topic/crossborder-interview-prep.md
 
 ### 运行日志 ###
-logs/
+# 锚定到项目根：应用按 logging.file.path=logs 在根目录写日志。
+# 不锚定的话这条规则会连 src/main/resources/static/logs/（日志检索页面）一起忽略掉。
+/logs/

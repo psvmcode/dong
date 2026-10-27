@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日志检索 · ELK 实验台</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f6f8; color: #1f2329; font-size: 13px; }
+        .top { background: #fff; border-bottom: 1px solid #e5e6eb; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .top h1 { font-size: 16px; margin-right: 8px; }
+        .top .sub { color: #86909c; font-size: 12px; }
+        select, input { border: 1px solid #d9d9d9; border-radius: 6px; padding: 5px 10px; font-size: 13px; font-family: inherit; background: #fff; }
+        input:focus, select:focus { outline: none; border-color: #4c8bf5; }
+        button { border: 1px solid #d9d9d9; background: #fff; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px; font-family: inherit; }
+        button:hover { border-color: #4c8bf5; color: #4c8bf5; }
+        button.primary { background: #4c8bf5; border-color: #4c8bf5; color: #fff; }
+        button.primary:hover { background: #3a75d8; color: #fff; }
+        .chips { display: flex; gap: 6px; }
+        .chip { border: 1px solid #d9d9d9; border-radius: 12px; padding: 3px 12px; cursor: pointer; font-size: 12px; background: #fff; user-select: none; }
+        .chip.on { color: #fff; border-color: transparent; }
+        .chip.on.DEBUG { background: #86909c; }
+        .chip.on.INFO { background: #4c8bf5; }
+        .chip.on.WARN { background: #f5a623; }
+        .chip.on.ERROR { background: #d9534f; }
+        .wrap { padding: 16px 20px 40px; }
+        .card { background: #fff; border: 1px solid #e5e6eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+        .card h2 { font-size: 13px; color: #4e5969; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .hist { height: 140px; display: flex; align-items: flex-end; gap: 1px; }
+        .bar { flex: 1; min-width: 2px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; cursor: pointer; }
+        .bar:hover { background: #f2f5ff; }
+        .seg { width: 100%; }
+        .axis { display: flex; justify-content: space-between; color: #86909c; font-size: 11px; margin-top: 4px; }
+        .row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+        .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: Menlo, Consolas, monospace; font-size: 12px; }
+        .row .val { color: #4e5969; font-variant-numeric: tabular-nums; }
+        .track { flex: 1; height: 6px; background: #f2f3f5; border-radius: 3px; overflow: hidden; }
+        .track i { display: block; height: 100%; background: #4c8bf5; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { text-align: left; color: #86909c; font-weight: normal; padding: 6px 8px; border-bottom: 1px solid #e5e6eb; }
+        td { padding: 6px 8px; border-bottom: 1px solid #f2f3f5; vertical-align: top; }
+        tr.log { cursor: pointer; }
+        tr.log:hover { background: #f7f9ff; }
+        td.time { white-space: nowrap; color: #86909c; font-variant-numeric: tabular-nums; width: 120px; }
+        td.logger { font-family: Menlo, Consolas, monospace; color: #4e5969; width: 260px; word-break: break-all; }
+        td.msg { font-family: Menlo, Consolas, monospace; word-break: break-word; }
+        .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; color: #fff; }
+        .badge.DEBUG { background: #86909c; }
+        .badge.INFO { background: #4c8bf5; }
+        .badge.WARN { background: #f5a623; }
+        .badge.ERROR { background: #d9534f; }
+        .detail { background: #fafbfc; }
+        .detail pre { font-family: Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: #4e5969; }
+        .kv { color: #86909c; margin-right: 14px; }
+        .pager { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 10px; color: #86909c; }
+        .muted { color: #86909c; }
+        .drawer { position: fixed; top: 0; right: 0; width: 520px; max-width: 92vw; height: 100vh; background: #fff; border-left: 1px solid #e5e6eb; box-shadow: -4px 0 16px rgba(0,0,0,.06); transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; z-index: 40; }
+        .drawer.open { transform: translateX(0); }
+        .drawer header { padding: 12px 16px; border-bottom: 1px solid #e5e6eb; display: flex; justify-content: space-between; align-items: center; }
+        .drawer .body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+        .ctx-row { padding: 6px 8px; border-bottom: 1px solid #f2f3f5; font-family: Menlo, Consolas, monospace; font-size: 12px; }
+        .ctx-row.target { background: #fff7e8; border-left: 3px solid #f5a623; }
+        .float-btn { position: fixed; right: 18px; bottom: 18px; z-index: 50; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .stat { border: 1px solid #f0f0f0; border-radius: 6px; padding: 8px 10px; }
+        .stat .k { color: #86909c; font-size: 11px; }
+        .stat .v { font-size: 16px; font-variant-numeric: tabular-nums; }
+        .banner { background: #fff7e8; border: 1px solid #ffd591; color: #a35c00; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; display: none; }
+        label.cb { display: flex; align-items: center; gap: 4px; color: #4e5969; }
+    </style>
+</head>
+<body>
+
+<div class="top">
+    <h1>日志检索</h1>
+    <span class="sub">logback → 有界缓冲 → ES（按天索引 + 别名）→ 检索与可视化</span>
+    <select id="range" onchange="onRange()">
+        <option value="15m">最近 15 分钟</option>
+        <option value="1h" selected>最近 1 小时</option>
+        <option value="6h">最近 6 小时</option>
+        <option value="24h">最近 24 小时</option>
+        <option value="7d">最近 7 天</option>
+        <option value="all">全部</option>
+        <option value="custom" hidden>自定义（点柱状图缩放）</option>
+    </select>
+    <input id="keyword" placeholder="关键字（正文 / 堆栈 / traceId）" style="width:240px" onkeydown="if(event.key==='Enter')query()">
+    <input id="loggerPrefix" placeholder="logger 前缀，如 com.dong.cache" style="width:220px" onkeydown="if(event.key==='Enter')query()">
+    <div class="chips" id="chips"></div>
+    <button class="primary" onclick="query()">查询</button>
+    <label class="cb"><input type="checkbox" id="auto" onchange="onAuto()">自动刷新</label>
+</div>
+
+<div class="wrap">
+    <div class="banner" id="banner"></div>
+
+    <div class="card">
+        <h2>时间分布<span class="muted" id="histHint"></span></h2>
+        <div class="hist" id="hist"></div>
+        <div class="axis"><span id="axisFrom">-</span><span id="axisTo">-</span></div>
+    </div>
+
+    <div class="grid3">
+        <div class="card">
+            <h2>级别分布</h2>
+            <div id="levels"></div>
+        </div>
+        <div class="card">
+            <h2>日志量 Top logger</h2>
+            <div id="loggers"></div>
+        </div>
+        <div class="card">
+            <h2>ERROR 异常类型</h2>
+            <div id="errors"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>日志<span class="muted" id="listHint"></span></h2>
+        <table>
+            <thead>
+            <tr><th style="width:120px">时间</th><th style="width:70px">级别</th><th style="width:260px">logger</th><th>正文</th></tr>
+            </thead>
+            <tbody id="list"></tbody>
+        </table>
+        <div class="pager">
+            <span id="pageInfo"></span>
+            <button onclick="goPage(-1)">上一页</button>
+            <button onclick="goPage(1)">下一页</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>采集管道<span class="muted">日志管道出问题时不会报错，只会安静地少数据</span></h2>
+        <div class="stats" id="stats"></div>
+        <div style="display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+            <input id="genCount" type="number" value="50" min="1" max="1000" style="width:80px">
+            <button onclick="generate()">生成样本日志</button>
+            <input id="importLines" type="number" value="5000" min="1" max="20000" style="width:100px">
+            <button onclick="importFiles()">回填历史日志</button>
+            <button onclick="retention()">清理过期索引</button>
+            <span class="muted" id="opHint"></span>
+        </div>
+    </div>
+</div>
+
+<button class="float-btn" onclick="toggleDrawer('traceDrawer')">内部链路</button>
+
+<div class="drawer" id="traceDrawer">
+    <header><b>内部链路</b><button onclick="toggleDrawer('traceDrawer')">关闭</button></header>
+    <div class="body" id="traceBody"></div>
+</div>
+
+<div class="drawer" id="ctxDrawer">
+    <header><b>上下文</b><button onclick="toggleDrawer('ctxDrawer')">关闭</button></header>
+    <div class="body" id="ctxBody"></div>
+</div>
+
+<script>
+    const API = '/api/logs';
+    const LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+    const COLORS = { DEBUG: '#86909c', INFO: '#4c8bf5', WARN: '#f5a623', ERROR: '#d9534f', OTHER: '#a06bd6' };
+    const RANGES = { '15m': 15 * 60000, '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 };
+
+    const state = { levels: [], pageNum: 1, pageSize: 50, timer: null, buckets: [] };
+    const trace = { items: [] };
+
+    /**
+     * 调后端接口。失败也当成正常返回处理：实验室要看得到 1004 / 1005，
+     * 抛异常会把错误码吞掉，页面上就只剩一个网络错误。
+     */
+    async function call(path, body) {
+        const started = performance.now();
+        let status = 0;
+        let json = null;
+        try {
+            const res = await fetch(API + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body || {})
+            });
+            status = res.status;
+            json = await res.json();
+        } catch (ex) {
+            json = { code: -1, message: String(ex) };
+        }
+        trace.items.unshift({ path, status, ms: Math.round(performance.now() - started), body: body || {}, json });
+        trace.items = trace.items.slice(0, 12);
+        renderTrace();
+        return json;
+    }
+
+    function windowRange() {
+        if (state.custom) {
+            return [state.custom.fromMillis, state.custom.toMillis];
+        }
+        const key = document.getElementById('range').value;
+        if (key === 'all' || !RANGES[key]) {
+            return [null, null];
+        }
+        const now = Date.now();
+        return [now - RANGES[key], now];
+    }
+
+    function filter() {
+        const [from, to] = windowRange();
+        return {
+            fromMillis: from,
+            toMillis: to,
+            levels: state.levels.length ? state.levels : null,
+            keyword: document.getElementById('keyword').value.trim() || null,
+            loggerPrefix: document.getElementById('loggerPrefix').value.trim() || null,
+            traceId: null
+        };
+    }
+
+    async function query() {
+        state.pageNum = 1;
+        document.getElementById('banner').style.display = 'none';
+        await Promise.all([overview(), search(), stats()]);
+    }
+
+    async function overview() {
+        const json = await call('/overview', filter());
+        if (json.code !== 0) {
+            return fail(json);
+        }
+        const data = json.data || {};
+        renderHistogram(data.timeline || []);
+        renderRank('levels', data.levelCounts || {}, true);
+        renderRank('loggers', data.topLoggers || {}, false);
+        renderRank('errors', data.topErrorTypes || {}, false);
+        document.getElementById('histHint').textContent = '命中 ' + (data.total || 0) + ' 条，ERROR ' + (data.errorCount || 0) + ' 条';
+    }
+
+    async function search() {
+        const body = Object.assign(filter(), { pageNum: state.pageNum, pageSize: state.pageSize });
+        const json = await call('/search', body);
+        if (json.code !== 0) {
+            return fail(json);
+        }
+        const data = json.data || {};
+        renderList(data.list || []);
+        document.getElementById('pageInfo').textContent =
+            '共 ' + (data.total || 0) + ' 条 · 第 ' + data.pageNum + ' 页 · ' + data.pageSize + ' 条/页';
+    }
+
+    async function stats() {
+        const json = await call('/stats', {});
+        if (json.code !== 0) {
+            return fail(json);
+        }
+        const s = json.data || {};
+        const cells = [
+            ['缓冲积压', s.bufferSize + ' / ' + s.bufferCapacity + '（' + Math.round((s.bufferUsage || 0) * 100) + '%）'],
+            ['累计收到 / 写入', (s.received || 0) + ' / ' + (s.indexedDocs || 0)],
+            ['丢弃（高水位降级）', (s.dropped || 0) + '（' + (s.droppedByWaterMark || 0) + '）'],
+            ['索引条数 / 份数', (s.documentCount || 0) + ' / ' + ((s.indices || []).length)],
+            ['失败批次', s.failedBatches || 0],
+            ['最后一次刷写', s.lastFlushAt ? fmt(s.lastFlushAt) : '从未'],
+            ['当前写入索引', s.writeIndex || '-'],
+            ['最近一次错误', s.lastError || '无']
+        ];
+        document.getElementById('stats').innerHTML = cells.map(function (c) {
+            return '<div class="stat"><div class="k">' + esc(c[0]) + '</div><div class="v">' + esc(String(c[1])) + '</div></div>';
+        }).join('');
+    }
+
+    async function generate() {
+        const count = Number(document.getElementById('genCount').value) || 50;
+        const json = await call('/generate', { count: count, withException: true, withTrace: true });
+        hint(json, '已生成 ' + count + ' 条样本日志');
+        await query();
+    }
+
+    async function importFiles() {
+        const maxLines = Number(document.getElementById('importLines').value) || 5000;
+        const json = await call('/import', { maxLines: maxLines });
+        hint(json, json.code === 0 ? ('回填完成：解析 ' + json.data.parsed + ' 条，写入 ' + json.data.indexed + ' 条，跳过 ' + json.data.skipped + ' 条') : '');
+        await query();
+    }
+
+    async function retention() {
+        const json = await call('/retention', {});
+        hint(json, json.code === 0 ? ('清理了 ' + json.data + ' 个过期索引') : '');
+        await stats();
+    }
+
+    async function contextOf(id) {
+        const json = await call('/context', { id: id, before: 15, after: 15 });
+        if (json.code !== 0) {
+            return hint(json, '');
+        }
+        const data = json.data || {};
+        let html = '';
+        (data.before || []).forEach(function (hit) {
+            html += ctxRow(hit, false);
+        });
+        if (data.target) {
+            html += ctxRow(data.target, true);
+        }
+        (data.after || []).forEach(function (hit) {
+            html += ctxRow(hit, false);
+        });
+        document.getElementById('ctxBody').innerHTML = html || '<div class="muted">没有上下文</div>';
+        toggleDrawer('ctxDrawer', true);
+    }
+
+    function ctxRow(hit, isTarget) {
+        return '<div class="ctx-row' + (isTarget ? ' target' : '') + '">' +
+            '<span class="muted">' + fmt(ts(hit.timestamp)) + '</span> ' +
+            '<span class="badge ' + hit.level + '">' + hit.level + '</span> ' +
+            esc(hit.logger || '') + ' : ' + esc(hit.message || '') +
+            (hit.traceId ? ' <span class="muted">trace=' + esc(hit.traceId) + '</span>' : '') +
+            '</div>';
+    }
+
+    function renderHistogram(buckets) {
+        state.buckets = buckets;
+        const host = document.getElementById('hist');
+        if (!buckets.length) {
+            host.innerHTML = '<div class="muted" style="align-self:center;margin:auto">这个时间范围内没有日志</div>';
+            document.getElementById('axisFrom').textContent = '-';
+            document.getElementById('axisTo').textContent = '-';
+            return;
+        }
+        let max = 1;
+        buckets.forEach(function (b) {
+            if (b.total > max) {
+                max = b.total;
+            }
+        });
+        host.innerHTML = buckets.map(function (b, index) {
+            const segs = LEVELS.filter(function (level) {
+                return (b.levelCounts || {})[level];
+            }).map(function (level) {
+                const height = Math.max(1, Math.round((b.levelCounts[level] / max) * 100));
+                return '<div class="seg" style="height:' + height + '%;background:' + COLORS[level] + '"></div>';
+            }).reverse().join('');
+            const tip = fmt(b.timeMillis) + ' · ' + b.total + ' 条';
+            return '<div class="bar" title="' + tip + '" onclick="zoom(' + index + ')">' + (segs || '<div class="seg" style="height:1%;background:#e5e6eb"></div>') + '</div>';
+        }).join('');
+        document.getElementById('axisFrom').textContent = fmt(buckets[0].timeMillis);
+        document.getElementById('axisTo').textContent = fmt(buckets[buckets.length - 1].timeMillis);
+    }
+
+    function renderRank(id, map, colored) {
+        const entries = Object.keys(map).map(function (key) {
+            return [key, map[key]];
+        }).sort(function (a, b) {
+            return b[1] - a[1];
+        });
+        const host = document.getElementById(id);
+        if (!entries.length) {
+            host.innerHTML = '<div class="muted">暂无数据</div>';
+            return;
+        }
+        const max = entries[0][1];
+        host.innerHTML = entries.map(function (entry) {
+            const color = colored ? (COLORS[entry[0]] || COLORS.OTHER) : '#4c8bf5';
+            return '<div class="row"><span class="name">' + esc(entry[0]) + '</span>' +
+                '<span class="track"><i style="width:' + Math.max(3, (entry[1] / max) * 100) + '%;background:' + color + '"></i></span>' +
+                '<span class="val">' + entry[1] + '</span></div>';
+        }).join('');
+    }
+
+    function renderList(list) {
+        const host = document.getElementById('list');
+        if (!list.length) {
+            host.innerHTML = '<tr><td colspan="4" class="muted">没有匹配的日志。可以先点「生成样本日志」造一批数据</td></tr>';
+            return;
+        }
+        host.innerHTML = list.map(function (hit) {
+            return '<tr class="log" onclick="toggle(\'' + hit.id + '\')">' +
+                '<td class="time">' + fmt(ts(hit.timestamp)) + '</td>' +
+                '<td><span class="badge ' + hit.level + '">' + hit.level + '</span></td>' +
+                '<td class="logger">' + esc(hit.logger || '') + '</td>' +
+                '<td class="msg">' + highlight(hit) + '</td></tr>' +
+                '<tr id="d-' + hit.id + '" class="detail" style="display:none"><td colspan="4"></td></tr>';
+        }).join('');
+    }
+
+    async function toggle(id) {
+        const row = document.getElementById('d-' + id);
+        const cell = row.firstChild;
+        if (row.style.display === 'none') {
+            const json = await call('/context', { id: id, before: 0, after: 0 });
+            if (json.code !== 0) {
+                return hint(json, '');
+            }
+            const hit = json.data.target;
+            let html = '<div><span class="kv">线程</span>' + esc(hit.thread || '-') +
+                '<span class="kv">traceId</span>' + esc(hit.traceId || '-') +
+                '<span class="kv">主机</span>' + esc(hit.host || '-') +
+                '<span class="kv">异常</span>' + esc(hit.exceptionType || '无') + '</div>';
+            if (hit.exception) {
+                html += '<pre style="margin-top:6px">' + esc(hit.exception) + '</pre>';
+            }
+            html += '<div style="margin-top:8px"><button onclick="contextOf(\'' + id + '\')">查看上下文</button></div>';
+            cell.innerHTML = html;
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+
+    function highlight(hit) {
+        const parts = hit.messageHighlights || [];
+        return parts.length ? parts.map(esc).join(' … ') : esc(hit.message || '');
+    }
+
+    function zoom(index) {
+        const buckets = state.buckets;
+        if (buckets.length < 2) {
+            return;
+        }
+        const step = buckets.length > 1 ? buckets[1].timeMillis - buckets[0].timeMillis : 60000;
+        const from = buckets[index].timeMillis;
+        // 缩到单个桶：改用自定义范围，直接改查询窗口
+        state.custom = { fromMillis: from, toMillis: from + step };
+        document.getElementById('range').value = 'custom';
+        state.pageNum = 1;
+        overview().then(search);
+    }
+
+    function goPage(delta) {
+        state.pageNum = Math.max(1, state.pageNum + delta);
+        search();
+    }
+
+    function onRange() {
+        state.custom = null;
+        state.pageNum = 1;
+        overview().then(search);
+    }
+
+    function onAuto() {
+        const on = document.getElementById('auto').checked;
+        if (state.timer) {
+            clearInterval(state.timer);
+            state.timer = null;
+        }
+        if (on) {
+            state.timer = setInterval(function () {
+                overview().then(search).then(stats);
+            }, 5000);
+        }
+    }
+
+    function toggleDrawer(id, force) {
+        const el = document.getElementById(id);
+        const open = force === true || !el.classList.contains('open');
+        el.classList.toggle('open', open);
+    }
+
+    function renderTrace() {
+        document.getElementById('traceBody').innerHTML = trace.items.map(function (item) {
+            return '<div style="border-bottom:1px solid #f2f3f5;padding:8px 0">' +
+                '<div><b>' + item.path + '</b> <span class="muted">' + item.status + ' · ' + item.ms + 'ms · code=' + item.json.code + '</span></div>' +
+                '<div class="muted">请求 ' + esc(JSON.stringify(item.body)) + '</div>' +
+                '<pre style="white-space:pre-wrap;word-break:break-all;margin-top:4px">' + esc(JSON.stringify(item.json).slice(0, 1200)) + '</pre>' +
+                '</div>';
+        }).join('') || '<div class="muted">还没有请求</div>';
+    }
+
+    function fail(json) {
+        const banner = document.getElementById('banner');
+        banner.style.display = 'block';
+        banner.textContent = '接口返回 code=' + json.code + '：' + json.message;
+    }
+
+    function hint(json, ok) {
+        const el = document.getElementById('opHint');
+        el.textContent = json.code === 0 ? ok : ('失败 code=' + json.code + '：' + json.message);
+    }
+
+    function ts(instant) {
+        return instant ? new Date(instant).getTime() : 0;
+    }
+
+    function fmt(ms) {
+        if (!ms) {
+            return '-';
+        }
+        const d = new Date(ms);
+        const p = function (n) {
+            return String(n).padStart(2, '0');
+        };
+        return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    }
+
+    function esc(text) {
+        return String(text == null ? '' : text).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+    }
+
+    document.getElementById('chips').innerHTML = LEVELS.map(function (level) {
+        return '<span class="chip ' + level + '" onclick="toggleLevel(\'' + level + '\')">' + level + '</span>';
+    }).join('');
+
+    function toggleLevel(level) {
+        const at = state.levels.indexOf(level);
+        if (at >= 0) {
+            state.levels.splice(at, 1);
+        } else {
+            state.levels.push(level);
+        }
+        document.querySelectorAll('#chips .chip').forEach(function (el) {
+            el.classList.toggle('on', state.levels.indexOf(el.textContent) >= 0);
+        });
+        state.pageNum = 1;
+        overview().then(search);
+    }
+
+    query();
+</script>
+</body>
+</html>
