@@ -2,137 +2,92 @@
 
 ## dong（中间件与分布式场景实验室）
 
-> 2026-09-06 改名：项目 `dong-lab`→`dong`，包名 `com.dong.lab.*`→`com.dong.*`，启动类 `DongApplication`，
-> 配置前缀 `dong:`。**服务器目录 `/opt/dong-lab`、`deploy/lab.sh`、库名 `dong_lab`/`dong_lab_replica`、
-> ES 索引前缀 `dong_lab`、环境变量 `LAB_*` 均不改**。
-> 2026-08-29 由旧 HR+财务平台整体清空重建。定位：单 Spring Boot 工程，把中间件用法做成可运行、可对比、可量化的实验。
+> 2026-08-29 由旧 HR+财务平台整体清空重建（旧微服务架构已归档，勿据此改代码）。
+> 2026-09-06 改名：`dong-lab`→`dong`，包名 `com.dong.*`，启动类 `DongApplication`，配置前缀 `dong:`。
+> **服务器目录 `/opt/dong-lab`、`deploy/lab.sh`、库名 `dong_lab`/`dong_lab_replica`、ES 索引前缀 `dong_lab`、环境变量 `LAB_*` 均不改。**
+> 定位：单 Spring Boot 工程，把中间件用法做成可运行、可对比、可量化的实验。
 
 ### 技术选型
-- Spring Boot 3.4.5 + JDK 21 + 原生 MyBatis XML（**不用 MyBatis-Plus**）；**无前端**
-- 中间件：MySQL 8 / Redis 7 / Redisson 3.45 / RocketMQ 4.9.7 / Kafka / ES 8.15.3（IK）/ MongoDB 7 / MariaDB 10.11
-- 状态机：COLA StateMachine 5.0.0（order 模块）。要点：迁移被拒时**返回原状态**（需上下文加 `accepted` 标记区分）；
-  内部迁移 `internalTransition().within(X).on(E)`；同 from+event 多条迁移时每条**必须**带 `when`；
-  状态机管规则不管并发，落库仍需 `where status=期望 and version=当前` 乐观锁
-- 分布式锁统一用 **Redisson**（`DistributedLockService`，拿不到锁返回 failed 句柄不抛异常）
+- Spring Boot 3.4.5 + JDK 21 + 原生 MyBatis XML（**不用 MyBatis-Plus**）
+- 中间件：MySQL 8 / Redis 7 / Redisson 3.45 / RocketMQ 4.9.7 / Kafka / ES 8.15（IK）/ MongoDB 7 / MariaDB 10.11
+- COLA StateMachine 5.0.0（order）：迁移被拒**返回原状态**（上下文加 `accepted` 标记区分）；同 from+event 多条迁移每条**必须**带 `when`；状态机管规则不管并发，落库仍要 `where status=期望 and version=当前`
+- 分布式锁统一 **Redisson**（`DistributedLockService`，拿不到锁返回 failed 句柄不抛异常）
 
-### 架构与编码规范（用户明确要求）
-- 单 Maven 模块；顶层按限界上下文分包，上下文内传统分层（controller / service + service/impl / mapper / entity / dto / enums）
-- **写任何 Java / SQL / YAML / Vue 前必须加载 skill【dong-standards】**（SQL 关键字小写、DDL 先行、方法字段空行、文件末尾空行、Result 统一响应、状态枚举落库 int、手写 LIMIT 分页）
-- **包结构**：`service` 只放接口，实现进 `service/impl`；**定时任务→`task`、消息处理器→`handler`、无状态工具→`support`**，这三类不许进 `service`；`framework` 同样「接口留本包、实现进 `impl`」
-- **新增限界上下文必登记**：走主库的 Mapper 包写进 `config/PrimaryMybatisConfig` 的 `@MapperScan`，漏登记报 `No qualifying bean`
-- **DDL 唯一权威源 `src/main/resources/db/schema.sql`**，改完**必须跑 `./src/main/resources/deploy/gen-initdb.sh`**
-  生成 `src/main/resources/deploy/initdb/`（MySQL）与 `src/main/resources/deploy/initdb-replica/`（MariaDB）
-  ——二者是生成物，禁止手工编辑。脚本按自身位置推根目录，目录再挪位置也不用改。
-  ⚠️ 库里已存在的容器不会重跑初始化脚本，**新增表要单独在远程库执行**（用 Java 单文件 + JDBC）
-- **注释**：`com.dong.*` 允许并鼓励中文注释（写意图/原理/坑点）；**成员顺序**：Javadoc → 注解 → 声明；
-  **注解与类型声明之间不留空行**，但方法/字段前的空行必须保留
-- **接口方法（2026-09-27 起）**：全站业务接口一律 **POST，禁止 GET**；查询参数走 JSON body 并新建查询 DTO，
-  `@PathVariable` 保留在 URL 上；分页 DTO 继承 `com.dong.common.result.PageQuery`。
-  actuator 与 Knife4j 由框架提供，保持 GET 不变。
-  注意改 POST 后同路径会与已有 POST 撞车（`/accounts`、`/fx/rate`、`/settlement/batch`、`/activities` 等都要加 `/list` 之类后缀）
-- **参数校验**：`@NotBlank` = 必填 → 可选参数只能用 `@Size`（对 null 放行），不能与 `defaultValue=""` 并存；
-  **拒绝取值越界**（负数、超长、超大批量），**允许空结果查询**
-- **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时 Bean 仍注册，返回 1005 而非 1004
+### 编码规范（写 Java / SQL / YAML / Vue 前**必须加载 skill【dong-standards】**）
+- 单 Maven 模块；顶层按限界上下文分包，上下文内传统分层
+- `service` 只放接口，实现进 `service/impl`；**定时任务→`task`、消息处理器→`handler`、无状态工具→`support`**，这三类不进 `service`；`framework` 同理「接口留本包、实现进 impl」
+- 中文注释鼓励写（意图/原理/坑点）；**成员顺序 Javadoc → 注解 → 声明；注解与声明之间不留空行**；方法/字段前后空行；文件末尾空行
+- 全站业务接口一律 **POST**；查询参数走 JSON body + 查询 DTO；分页 DTO 继承 `PageQuery`（改 POST 时注意与已有 POST 同路径撞车，加 `/list` 之类后缀）
+- 可选参数只能用 `@Size`（`@NotBlank` = 必填）；**拒绝取值越界，允许空结果**
+- 错误码只取 `Constants`：1000 参数 / 1001 不存在 / 1002 冲突 / 1003 限流 / 1004 中间件未启用 / 1005 依赖不可用 / 1006 幂等 / 1007 超限
+- **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时返回 1005 而非 1004
+- 新增走主库的 Mapper 包**必须登记**到 `config/PrimaryMybatisConfig` 的 `@MapperScan`
 
-### 前端项目 dong-web（2026-10-04 新建）
-- 位置 `/Users/dong/items/java/dong-web`（与 dong 同级，独立 git 仓库，无远端）
-- Vue 3 + TS + Vite 6 + Element Plus 2 + Pinia + ECharts；**无前端路由外的额外依赖**
-- **不改后端任何配置**：dev 用 vite 代理转发 `/api` `/actuator` `/v3` 到 8090，
-  换后端地址用 `DONG_BACKEND_TARGET=http://x:8090 npm run dev`
-- 接口层约定：`postQuery` 对应后端 @RequestParam（参数挂 URL），`postJson` 对应 @RequestBody；
-  `unwrap()` 把失败也包成 ApiResult 不抛异常，页面自行展示（实验室要看得到 1004/1005）
-- `npm install` 必须加 `--include=dev`，否则环境里 NODE_ENV=production 会跳过 devDependencies
-- **页面形态约定（2026-10-05 用户明确要求）**：场景要还原成真实产品界面（电商搜索/秒杀会场/微信红包/动态流…），
-  不是填参数看 JSON 的调试台；调试信息折叠进右下角「内部链路」抽屉（src/stores/trace.ts + TraceDrawer.vue）；
-  各场景用自己的配色。目前仅 7 个重点场景已产品化，其余页面仍是调试台形态待铺开。
-
-### 目录结构（2026-10-03 起）
-- 顶层只有 `pom.xml`、`README.md`、`src`；`deploy` / `db` / `doc` 全部在 **`src/main/resources/`** 下
-- `pom.xml` 的 `<resources>` 已排除这三个目录，**不打进 jar**；改 pom 资源过滤时要保留这段 excludes
-- `.gitignore` 里带路径的规则（私人面试文档、`deploy/.env`）已同步为新路径——**锚定式规则，目录再挪就会失效**
+### DDL 与目录结构
+- **DDL 唯一权威源 `src/main/resources/db/schema.sql`**，改完必须跑 `./src/main/resources/deploy/gen-initdb.sh` 生成 `initdb/` 与 `initdb-replica/`（生成物，禁手工编辑）
+  ⚠️ 已存在的容器不会重跑初始化脚本，**新增表要单独在远程库执行**
+- 顶层只有 `pom.xml`、`README.md`、`src`；`deploy`/`db`/`doc` 都在 `src/main/resources/` 下，且已被 pom 的 `<resources>` 排除出 jar
+- `.gitignore` 里带路径的规则（私人面试文档、`deploy/.env`、运行日志 `/logs/`）都是**锚定式，目录再挪就失效**
 
 ### 模块要点
-- **agent（2026-10-02 设计 + P0/P1 落地，P2~P3 待做）**：`src/main/resources/doc/scenario/agent.md`，第 13 个实验场景「Agent 工程实验室」，
-  对标 WorkBuddy，接口 `/api/agent`，页面 `static/agent/index.html`。
-  定位是**把 LLM 应用的工程问题做成对照实验**（E1~E8），不是做办公助手。
-  硬约束：零新增 Maven 依赖（JDK HttpClient 读模型流 + SseEmitter 推页面，不引 webflux / Spring AI）；
-  工具实现进 `support/tool` 并**直调 service，不 HTTP 回打自己的接口**；
-  五道停止闸门 + 每运行必有 `finish_reason`；实验默认跑 `mock` provider；
-  不提供任意 SQL / 命令 / 文件读写，`http.fetch` 与 `mysql.probe` 默认关闭。
-  最大风险：**SSE 长期占用 tomcat 线程（max 200）会拖垮全站** → 并发上限 1003 + 墙钟超时 + cleanup 任务。
-  页面禁用 `EventSource`（仅 GET），用 `fetch` + `ReadableStream` 解析 SSE。
-  幂等键 `client_token` 必须 nullable（唯一索引允许多 null，只许一个空串）
-- **cache（2026-09-27 加固）**：主读路径是 `MultiLevelCache.resolve()`，返回四态
-  Fresh / Stale（回源失败用旧值兜底）/ Absent（空值或布隆判定）/ Unavailable（连旧值都没有，抛 1005）。
-  **回源失败绝不写空值标记**——那会把一次故障固化成「数据不存在」，是这里最严重的坑。
-  防护分层：IP 读限流 → 撞 id 扫描封禁 → L2 熔断 → 回源熔断 → 回源频控（**本地实现，不依赖 Redis**）→ 重建锁。
-  原则：Redis 挂了退化为无锁回源、布隆不可用一律放行，不把中间件故障放大成业务不可用
-- **search（ES）**：MySQL 权威、索引可丢弃重建，单向收敛。事件只带 id 消费时回查库；afterCommit 监听器必须 try/catch；
-  对账两侧全量，超限抛 1007；运维类动作结束要 `refresh()`；价格比对只能用 `compareTo`。
-  索引命名：`IndexNameResolver.resolve()` 返回**别名**，真实索引带版本号，改 mapping 只能重建（建 v(n+1)→reindex→切别名→删旧）。
-  自清理用 `delete_by_query`（`bool.mustNot.ids`），**不要捞全量 id 到内存**。
-  ES Client 坑：补全在父类 `suggest()`；子聚合挂 `Aggregation.Builder` 的 ContainerBuilder；range 的 `ranges()` 整体替换且 from/to 是 Double；`_geo_distance` 必须显式 `.unit()`
-  客户端能用 Boot 自动配置就别手写 Bean；`RestClientBuilderCustomizer` 必须实现 `customize(HttpAsyncClientBuilder)`，否则顶掉 Boot 凭据回调（401）
-- **redpacket（2026-09-19 重构）**：`red_packet_item` 份额表是权威源，Redis 队列只是**副本**。
-  队列元素格式 `序号:金额`；Lua 区分三种空：未预热(-2) / 真抢完(-1) / 计数与队列不一致(-2)，重复抢(-3)。
-  五道防线：单用户滑动窗口限流（限流器不可用→放行，别把中间件故障放大成业务不可用）→ 本地抢完标记 → Lua 原子弹出 →
-  份额 `status=0` 占位 → 扣减带充足条件。Redis 不可用时降级 DB（随机序号起步 + 乐观锁）；
-  落库失败归还预扣（RESTORE 脚本与抢严格互逆）；**脏份额（占位失败）直接丢弃不归还**，否则在队列里打转。
-  `RedPacketConsistencyTask` 定时对账，以库为准重建副本
+- **cache**：主读路径 `MultiLevelCache.resolve()` 四态 Fresh / Stale / Absent / Unavailable。**回源失败绝不写空值标记**（会把故障固化成「数据不存在」）。
+  防护分层：IP 读限流 → 撞 id 扫描封禁 → L2 熔断 → 回源熔断 → 回源频控（本地实现，不依赖 Redis）→ 重建锁
+- **search（ES）**：MySQL 权威、索引可丢弃重建，单向收敛。事件只带 id；afterCommit 监听器必须 try/catch；对账超限抛 1007；运维动作结束 `refresh()`；价格比对用 `compareTo`。
+  索引名走 `IndexNameResolver`（**别名** + 带版本真实索引，改 mapping 只能重建）；自清理用 `delete_by_query`，别捞全量 id。
+  Client 坑：补全在父类 `suggest()`；子聚合挂 ContainerBuilder；range 的 `ranges()` 整体替换且 from/to 是 Double；`_geo_distance` 必须显式 `.unit()`；
+  `RestClientBuilderCustomizer` 必须实现 `customize(HttpAsyncClientBuilder)`，否则顶掉 Boot 凭据回调（401）
+- **redpacket**：`red_packet_item` 份额表是权威源，Redis 队列只是**副本**（元素 `序号:金额`；Lua 区分未预热/真抢完/计数不一致/重复抢）。
+  五道防线：滑动窗口限流 → 本地抢完标记 → Lua 原子弹出 → `status=0` 占位 → 扣减带充足条件；Redis 不可用时降级 DB（乐观锁）；
+  落库失败归还预扣，**脏份额直接丢弃不归还**；`RedPacketConsistencyTask` 以库为准重建副本
 - **seckill**：四道防线（限流 / 本地售罄标记 / Lua 扣减去重 / DB 唯一索引），异步 MQ 建单 + 超时回收
-- **crossborder**：`src/main/resources/doc/topic/crossborder-payment.md`；开户默认 `singleLimit=50000`，与 AML 阈值相同，要看到人工审核分支必须显式调大
+- **crossborder**：开户默认 `singleLimit=50000` 与 AML 阈值相同，要看到人工审核分支必须显式调大
+- **agent**（`doc/scenario/agent.md`，页面 `static/agent/index.html`）：把 LLM 应用的工程问题做成对照实验（E1~E8）。
+  零新增 Maven 依赖（JDK HttpClient + SseEmitter）；工具进 `support/tool` 且**直调 service 不回打自己的接口**；五道停止闸门 + 必有 `finish_reason`；默认 `mock` provider。
+  最大风险：**SSE 长期占用 tomcat 线程（max 200）** → 并发上限 + 墙钟超时 + cleanup。页面禁用 `EventSource`（仅 GET），用 `fetch` + `ReadableStream`
+- **upload**：分片上传 + 断点续传 + 秒传；表 `upload_task`/`upload_chunk`。**uploadId 由内容确定性推导**（hash+size+name+chunkSize 的 MD5）。
+  `dong.upload.persist-data` 默认 false（只记元信息）。坑：tomcat `max-http-form-post-size` 默认 2MB 会让 5MB 分片 413 且不进 Controller，已放开到 100MB。
+  铁律：写片 `Files.copy`、合并 `transferTo`，**绝不 readAllBytes**；路径安全：`safeName` 排除 `.`/`..`，删除前校验 `startsWith(存储根绝对路径)`；收分片必须 `touch` 任务防过期清理
+- **logging（2026-10-27 新增，ELK）**：见下节
 
-### 运行
-- 单份 `src/main/resources/application.yml`，无 profile；`mvn spring-boot:run`（8090）
-- 配置经 `spring.config.import: optional:file:./src/main/resources/deploy/.env[.properties]` 自动读该文件
+### logging 模块（ELK 日志检索，2026-10-27）
+`com.dong.logging`，接口 `/api/logs`，页面 `static/logs/index.html`，文档 `doc/scenario/logging.md`。三件事合一：
+- **采集**：`ElasticsearchLogAppender`（logback，用 `UnsynchronizedAppenderBase`）→ `LogEventBuffer`（有界 1 万，80% 水位后只留 WARN+）→ `LogShipperTask` 定时批量写 ES。
+  硬要求：打日志的线程只入队（同步写 ES 会拖慢业务且自激递归）；按 logger 前缀挡掉 `com.dong.logging`/`org.elasticsearch`/`co.elastic.clients`/`org.apache.http`；
+  appender 方法体必须整体 try/catch；**缓冲容量只能配在 `logback-spring.xml`**（appender 早于 Spring 容器）
+- **补齐**：`LogFileImportService` 解析落盘文件回填，**位点按行数记并存在 ES**（字节偏移会漂移），只导主日志与其轮转 `.N.log.gz`，按日志时间归档到各自那天的索引，超保留窗口的轮转目录整体跳过
+- **存储**：按天索引 `dong_lab_log_yyyy_MM_dd` + 读别名 `dong_lab_log`，过期**整块删索引**（不是 delete_by_query）；保留天数 14，与 logback `maxHistory` 对齐；**无写别名**（写入目标由日期算出）
+- **检索/可视化**：检索、上下文、仪表盘共用一套过滤条件；索引未建时返回空而非报错；`LogTraceFilter` 注入 MDC traceId 并回写 `X-Trace-Id`（必须在 finally 清理 MDC）
+- 实测：启动 20 秒采集 2438 条零丢弃；关闭开关返回 1004
+
+### 前端项目 dong-web
+- `/Users/dong/items/java/dong-web`（同级独立仓库，无远端）；Vue 3 + TS + Vite 6 + Element Plus + Pinia + ECharts
+- **不改后端任何配置**：vite 代理 `/api` `/actuator` `/v3` → 8090；`DONG_BACKEND_TARGET=http://x:8090 npm run dev`
+- `postQuery` 对应 @RequestParam，`postJson` 对应 @RequestBody；`unwrap()` 把失败也包成 ApiResult（页面要看得到 1004/1005）
+- `npm install` 必须加 `--include=dev`
+- **页面形态（用户明确要求）**：还原成真实产品界面而非调试台；调试信息折叠进右下角「内部链路」抽屉；各场景用自己的配色
+
+### 运行与部署
+- 单份 `src/main/resources/application.yml`，无 profile；`mvn spring-boot:run`（8090）；Knife4j `/doc.html`
+- 配置经 `spring.config.import: optional:file:./src/main/resources/deploy/.env[.properties]` 自动读取
 - **本地不装任何中间件**，全连云服务器；关组件：`-Dspring-boot.run.arguments="--dong.mongodb.enabled=false"`
-- Knife4j `http://127.0.0.1:8090/doc.html`；验证自动配置生效看 `/actuator/beans`
-
-### 云服务器（地址见 src/main/resources/deploy/.env 的 LAB_PUBLIC_HOST，2核2G，CentOS 7）
-- Docker Compose profile：`core / mq / kafka / search / doc / replica / full`；入口 `/opt/dong-lab/lab.sh <profile> <up|down>`
-- compose 与配置统一从 `.env` 读（`${VAR:?msg}`）；生成脚本 `src/main/resources/deploy/setup-env.sh`（服务器）/
-  `print-env.sh`（本地）；Mongo 密码含 `@` 要写 `%40`
-- ⚠️ 安全待办（用户未执行）：轮换中间件统一密码（见 `src/main/resources/deploy/.env`）+ 收紧安全组；
-  3306/6379/9200/27017/9876/3307 对全网开放，仓库 public
-- **SSH**：`ssh lab`（密钥免密）。需密码时用 `expect` 脚本，用完立即删除
-- 服务器 swap 已用 1.1G：Redis 偶发 5 秒命令超时（表现为 500 + `QueryTimeoutException`），事务会回滚不脏，重试即可，**别往代码上找**
+- 云服务器（地址见 `.env` 的 LAB_PUBLIC_HOST，2核2G，CentOS 7）：`ssh lab`；`/opt/dong-lab/lab.sh <profile> <up|down>`，profile `core/mq/kafka/search/doc/replica/full`
+- ⚠️ 安全待办（用户未执行）：轮换中间件统一密码 + 收紧安全组（3306/6379/9200/27017/9876/3307 对全网开放，仓库 public）
+- 服务器 swap 已用 1.1G：Redis 偶发 5 秒命令超时（500 + `QueryTimeoutException`），事务会回滚不脏，重试即可，**别往代码上找**
 
 ### 用户偏好
 - **改完确认无误必须主动 commit + push**（中文 commit message），提交前先编译验证
-- **不要自动启动项目**：改完 `mvn -q clean compile` 即可；确需端到端验证才起服务，验证完立刻关掉并确认 8090 释放
-  （⚠️ 别误杀父进程是 IntelliJ IDEA 的 java）
+- **不要自动启动项目**：改完 `mvn -q clean compile` 即可；确需端到端验证才起服务，验证完立刻关掉并确认 8090 释放（⚠️ 别误杀父进程是 IntelliJ IDEA 的 java）
 - **本地绝不装中间件**；不清楚要二次确认；做完反复自检；汇报用简洁表格/分点
 
 ### 工具与验证的坑（反复踩过）
 - **本地 Maven 仓库 `/Users/dong/.m2/dong`**，不是 `~/.m2`
-- **本地无 mysql 客户端**：远程 DDL 用 `java -cp <mysql-connector-j-9.1.0.jar> /tmp/Xxx.java "<jdbc-url>" root "$PW"`
 - **第三方库链式 DSL 别靠猜**，用 `javap -classpath <jar> <类>` 逐个确认签名
-- **`schema.sql` 与真实库可能不一致**，加表或报"表不存在"先 `show tables`
-- **改已有表注释必须 ALTER**：字段 `MODIFY COLUMN`、表 `ALTER TABLE t COMMENT=`；操作前 `mysqldump --no-data --skip-add-drop-table` 备份；
-  验证 DDL 先在临时库（如 `dong_lab_chk`）跑完 drop
-- **验证配置生效必须 `env -u` 清干净环境变量**（shell export 优先级高于 `.env`，假阳性）
-- **端口占用会让验证失真**：先 `lsof -nP -iTCP:8090` + `pkill -9`，再 grep 日志 `Started DongApplication`；判断生效要用能区分两端的数据特征
+- **本地无 mysql 客户端**：远程 DDL 用 `java -cp <mysql-connector-j-9.1.0.jar> /tmp/Xxx.java "<jdbc-url>" root "$PW"`
+- **`schema.sql` 与真实库可能不一致**，加表或报"表不存在"先 `show tables`；改表注释必须 ALTER（先 `mysqldump --no-data` 备份），验证 DDL 先在临时库（如 `dong_lab_chk`）跑完 drop
+- **验证配置生效必须 `env -u` 清干净环境变量**；**端口占用会让验证失真**：先 `lsof -nP -iTCP:8090` + kill，再 grep 日志 `Started DongApplication`
 - **跨包移动类**：补 import + 包级私有类型改 public；做法 `git mv` → sed → 由编译错误驱动
-- **`delete_file` 只清空成 0 字节**，必须跟 `rm -f` 并 `ls` 验证（`git status` 显示 `M` 即没删掉）
-- **`replicaSqlSessionFactory` 解析失败**：根因是 MariaDB(3307) 不可用（`new HikariDataSource` 构造即建连），处理：`mvn clean` 或 `--dong.mariadb.enabled=false`
-- 宿主机 ps 能看到容器进程且显示宿主机同 uid 用户名（ES 显示 lighthouse），判归属看 `/proc/<pid>/cgroup`
+- **`delete_file` 只清空成 0 字节**，必须跟 `rm -f` 并 `ls` 验证
+- **`replicaSqlSessionFactory` 解析失败**：根因 MariaDB(3307) 不可用，处理 `mvn clean` 或 `--dong.mariadb.enabled=false`
+- 宿主机 ps 能看到容器进程（ES 显示 lighthouse），判归属看 `/proc/<pid>/cgroup`
 - macOS 无 `timeout`；`execute_command` 不能含 sleep（会被静默杀），要等时间用 `ping -c N 127.0.0.1`
 - **注入 ES 写故障**：`PUT /{index}/_settings {"index.blocks.write":true}`，测完改回 false
-
-### upload 模块（2026-10-08 新增）
-- `com.dong.upload`：分片上传 + 断点续传 + 秒传；表 `upload_task` / `upload_chunk`
-- **uploadId 由内容确定性推导**（hash+size+fileName+chunkSize 的 MD5），不是随机串——
-  刷新页面后重新 init 天然命中同一任务，前端无需持久化 upload_id
-- `dong.upload.persist-data` 默认 **false**：只记元信息不落盘，机制照样能验证且不占磁盘；打开才真正写片与合并
-- **坑**：tomcat `max-http-form-post-size` 默认 2MB 会让 5MB 分片直接 413 且不进 Controller，
-  已放开到 100MB 并同步配 `spring.servlet.multipart.max-file-size`
-- 特大文件铁律：写片用 `Files.copy`、合并用 `InputStream.transferTo`，**绝不 readAllBytes**（GB 级必 OOM）；
-  指纹用分块 digest（每块 2MB），full 遍历全部块、sample 只取首/中/尾 3 块
-- **这一层不加 @Transactional**：写操作都是单条幂等，磁盘 IO 不该占连接；并发正确性靠 SQL 条件
-  （`updateStatusFromUploading` 的 where status=0）而不是事务隔离
-- 路径安全两条：`safeName` 必须排除 `.` / `..`；从库里取的相对路径删除前必须校验
-  `toAbsolutePath().startsWith(存储根)`（storageDir 常配成相对路径，不转绝对路径校验恒为 false）
-- 收分片必须 `touch` 任务，否则大文件传过 cleanup-expire-hours 会被清理任务误删
-
-### 已归档
-旧的多微服务 HR + 财务平台已于 2026-08-29 整体删除，勿据此改代码。

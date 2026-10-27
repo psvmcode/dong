@@ -31,6 +31,9 @@
         <knife4j.version>4.5.0</knife4j.version>
         <springdoc.version>2.9.0</springdoc.version>
         <cola-statemachine.version>5.0.0</cola-statemachine.version>
+        <!-- 与 Redisson 传递进来的 netty 保持一致：直接使用的库显式声明，
+             版本不冲突，也不会因为 Redisson 升级换掉 netty 而悄悄打断 RPC -->
+        <netty.version>4.1.119.Final</netty.version>
     </properties>
 
     <dependencies>
@@ -98,6 +101,11 @@
             <groupId>com.alibaba.cola</groupId>
             <artifactId>cola-component-statemachine</artifactId>
             <version>${cola-statemachine.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>

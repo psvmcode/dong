@@ -11,7 +11,7 @@
 | 章节 | 内容 |
 |---|---|
 | [一、项目定位](#一项目定位) | 这不是脚手架，是一组对照实验 |
-| [二、能力速览](#二能力速览) | 十四个场景一张表看完 |
+| [二、能力速览](#二能力速览) | 十五个场景一张表看完 |
 | [三、快速开始](#三快速开始) | 三步跑起来 |
 | [四、目录结构与分层](#四目录结构与分层) | 限界上下文 + 传统分层 |
 | [五、场景详解](#五场景详解) | 每个场景的问题、解法、验证命令 |
@@ -62,6 +62,7 @@
 | 订单状态机 | `/api/order` | MySQL + COLA StateMachine | 守卫、内部迁移、条件分支回退、乐观锁并发 | 16 线程抢推，仅 1 次成功 |
 | Agent 工程实验室 | `/api/agent` | MySQL + LLM（OpenAI 兼容） | 工具调用循环、五道停止闸门、轨迹落库、SSE 流式、幂等、八组对照实验 | 并行调用省 27% 耗时；按需注入省 59% prompt token；无闸门时 token 涨 4 倍仍未答出 |
 | 日志检索（ELK） | `/api/logs` | Logback + Elasticsearch | 有界缓冲采集、按天索引与别名、回填续传、上下文查询、仪表盘聚合 | 采集零丢失（2438/2438），回填按天归档，过期整块删除 |
+| RPC 框架 | `/api/rpc` | Netty + Redis + 自研 protobuf | 自研 wire format、Netty 长连接、ZSet 注册发现、本地缓存与降级、远程/本地对照 | 远程 0.29ms vs 本地 0.00006ms；protobuf 110B vs JSON 233B |
 
 > 全站接口统一为 POST：写操作仍可用 query 参数，查询类参数一律走 JSON body，分页参数见 `PageQuery`。
 
@@ -120,7 +121,7 @@ src/main/java/com/dong/
 │   ├── bloom/       Redisson 布隆过滤器
 │   └── mq/          MessageProducer 接口与 MqFacade 路由
 ├── cache/ classic/ seckill/ redpacket/ social/
-├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/ agent/ logging/
+├── search/ tcc/ mq/ doc/ replica/ crossborder/ order/ agent/ logging/ rpc/
 └── 上下文内部：controller / service + impl / mapper / entity / dto / enums / support / task / handler
 
 src/main/resources/
@@ -447,6 +448,39 @@ curl -X POST http://127.0.0.1:8090/api/logs/import   -H 'Content-Type: applicati
 
 ---
 
+### 5.14 RPC 框架（rpc）
+
+极简但跑得通的 RPC：**零新增依赖自研 protobuf 编解码** + **Netty 长连接** + **Redis 注册发现**。
+服务端监听独立端口 9090，客户端走真实 TCP 调用；进程内直调同一个实现作为对照组。
+
+| 环节 | 实现 |
+|---|---|
+| 协议 | 自己实现 varint / zigzag / TLV / 嵌套 / repeated，schema 由 `@ProtoMessage` + `@ProtoField` 描述 |
+| 传输 | Netty，帧格式「4 字节长度 + protobuf 报文」，解决粘包拆包；单地址长连接 + requestId 并发复用 |
+| 注册发现 | Redis ZSet（score = 心跳时间），TTL 续约；客户端本地缓存 + Redis 不可用时降级到配置地址 |
+| 调用 | JDK 动态代理；服务端按「方法名 + 参数类型」匹配方法反射调用 |
+
+**依赖方向**：接口与注解在 rpc 模块，业务模块自己写实现并打 `@RpcService`。
+跨模块示例是 `ProductQueryService`——实现在 search 模块，调用方编译时只依赖接口。
+
+三个数字值得记住：
+
+- 首次远程调用 34ms，其中绝大部分是注册中心往返；加了本地缓存后降到 **0.29ms/次**，而本地直调是 0.00006ms。
+- 同一份数据 **protobuf 110B、JSON 233B**，且 protobuf 解码回原值完全相等。
+- 整型统一 zigzag，因此它能和官方 sint32/sint64 互通，但和 int32 不互通（见文档）。
+
+```bash
+curl -X POST http://127.0.0.1:8090/api/rpc/echo    -H 'Content-Type: application/json' -d '{"text":"hi"}'
+curl -X POST http://127.0.0.1:8090/api/rpc/sum     -H 'Content-Type: application/json' -d '{"left":-128,"right":-256}'
+curl -X POST http://127.0.0.1:8090/api/rpc/compare -H 'Content-Type: application/json' -d '{"times":50}'
+curl -X POST http://127.0.0.1:8090/api/rpc/product -H 'Content-Type: application/json' -d '{"keyword":"手机","pageSize":2}'
+```
+
+刻意没做：重试与熔断（要解决幂等）、连接池、异步接口、带权负载均衡、压缩。
+这些都属于「能调通之后才需要的东西」。
+
+---
+
 ## 六、开关化设计
 
 中间件开关集中在唯一的 `application.yml`，默认全部启用。本地只验证某项功能时，用命令行参数临时关掉不需要的组件，不改配置文件：
@@ -471,6 +505,8 @@ dong:
     enabled: false
   logging:
     enabled: true       # 日志采集与检索
+  rpc:
+    enabled: true       # RPC 服务端与注册发现
   cache:
     l1-enabled: true       # Caffeine 本地缓存
     l2-enabled: true       # Redis 分布式缓存

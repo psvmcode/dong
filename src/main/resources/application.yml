@@ -205,6 +205,33 @@ dong:
     # 历史日志回填的根目录，与 logging.file.path 对齐
     log-dir: logs
 
+  rpc:
+    # RPC 框架开关。关掉后不监听端口、不注册服务，接口返回 1004
+    enabled: true
+    # 服务端监听端口，与 HTTP 的 8090 完全独立：RPC 不该和业务的 HTTP 连接池抢端口
+    port: 9090
+    # 注册到注册中心的主机地址。留空取本机地址；多网卡或容器里通常要显式指定，
+    # 否则注册出去的地址别人连不上，表现为「发现成功却连不上」
+    register-host:
+    # 注册中心不可用时的兜底地址，多个用逗号分隔。单机部署时它与注册地址一致，
+    # 于是 Redis 挂了也只是多一条 warn，调用照常
+    default-addresses: 127.0.0.1:9090
+    # 心跳续约间隔。必须明显小于实例 TTL，否则实例会被判为已下线
+    heartbeat-interval-ms: 10000
+    heartbeat-initial-delay-ms: 5000
+    # 实例 TTL：超过这么久没续约就认为实例已下线。设短了摘得快，设长了 Redis 压力小
+    instance-ttl-ms: 30000
+    # 服务列表的本地缓存时长。没有它，每次调用都要为「找地址」多付一次注册中心的往返——
+    # 实测这一项就能占掉调用耗时的九成以上，而且和服务本身毫无关系
+    discovery-cache-ms: 5000
+    connect-timeout-ms: 3000
+    call-timeout-ms: 3000
+    # 单帧最大长度，10MB。不设上限的话对端一直发数据就能把服务端攒到 OOM
+    max-frame-length: 10485760
+    boss-threads: 1
+    # 0 表示交给 netty 按 CPU 核数决定
+    worker-threads: 0
+
   mongodb:
     enabled: true
 

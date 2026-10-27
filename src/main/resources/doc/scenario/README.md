@@ -67,6 +67,16 @@
 
 适合：想看清「日志从打出来到能搜到」中间到底经历了几跳，每一跳各自会怎样失败。
 
+### [RPC 框架模块说明](rpc.md)
+
+`com.dong.rpc`，接口前缀 `/api/rpc`。
+
+零新增依赖自研 protobuf 编解码（varint / zigzag / TLV / 嵌套 / repeated）+ Netty 长连接
++ Redis ZSet 注册发现，另附远程与本地调用的对照实验。
+跨模块示例：`ProductQueryService` 的实现落在 search 模块，调用方只依赖接口。
+
+适合：想搞清楚「一次跨服务调用」里编码、寻址、连接、反射各占多少代价。
+
 ---
 
 ## 通用约定
