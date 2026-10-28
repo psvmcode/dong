@@ -59,6 +59,18 @@
 - **检索/可视化**：检索、上下文、仪表盘共用一套过滤条件；索引未建时返回空而非报错；`LogTraceFilter` 注入 MDC traceId 并回写 `X-Trace-Id`（必须在 finally 清理 MDC）
 - 实测：启动 20 秒采集 2438 条零丢弃；关闭开关返回 1004
 
+### rpc 模块（RPC 框架，2026-10-27）
+`com.dong.rpc`，接口 `/api/rpc`，文档 `doc/scenario/rpc.md`。跨进程真 RPC：服务端监听独立端口 9090，客户端走真实 TCP，进程内直调同一实现作对照。
+- **协议零依赖自研**：varint / zigzag（整型统一走 zigzag，等价官方 sint32/sint64，**不与官方 int32 互通**）/ TLV / 嵌套 / repeated / fixed 小端；
+  schema 用 `@ProtoMessage` + `@ProtoField(order, type, repeated)`，首次使用时反射并缓存未知字段按线类型跳过（前向兼容）
+- **传输 Netty**：帧 = 4 字节长度 + protobuf 报文（LengthField 解决粘包拆包）；单地址长连接复用 + requestId 挂起实现并发；
+  必须有超时与最大帧长上限；绑定失败只记 error 不阻断启动
+- **注册发现 Redis ZSet**：score = 心跳时间戳，TTL 续约 + 定时清区间（解决被强杀实例残留）；
+  客户端本地缓存服务列表但**空结果不缓存**；Redis 不可用时降级到 `dong.rpc.default-addresses`
+- **依赖方向**：接口与注解在 rpc 模块，业务模块写实现并打 `@RpcService`（示例：`ProductQueryService` 实现在 search 模块，按 ES 开关启停）；rpc 不依赖任何业务模块
+- **实测教训**：首次调用 33ms 里几乎全是注册中心往返（云服务器 Redis RTT ~30ms），加本地缓存后降到 0.29ms/次；
+  同一份数据 protobuf 110B vs JSON 233B。做性能对照前先确认「寻址」有没有被算进去
+
 ### 前端项目 dong-web
 - `/Users/dong/items/java/dong-web`（同级独立仓库，无远端）；Vue 3 + TS + Vite 6 + Element Plus + Pinia + ECharts
 - **不改后端任何配置**：vite 代理 `/api` `/actuator` `/v3` → 8090；`DONG_BACKEND_TARGET=http://x:8090 npm run dev`
