@@ -1,6 +1,7 @@
 package com.dong.crossborder.dto;
 
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
@@ -12,7 +13,10 @@ public class BalanceDiffQueryRequest {
 
     /**
      * 开户初始余额。必须是精确小数，用浮点算金额迟早对不上账。
+     * JSON 里显式的 null 会覆盖默认值并绕过 @Digits，
+     * 因此必须 @NotNull 拦住，否则后续 add 直接 NPE。
      */
+    @NotNull
     @Digits(integer = 16, fraction = 2)
     private BigDecimal initial = BigDecimal.ZERO;
 

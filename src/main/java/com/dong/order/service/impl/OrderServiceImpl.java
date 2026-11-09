@@ -272,7 +272,7 @@ public class OrderServiceImpl implements OrderService {
             case PAY -> patch.setPayNo(context.getPayNo());
             case SHIP -> patch.setTrackingNo(context.getTrackingNo());
             case APPLY_REFUND -> patch.setRefundFrom(from.getCode());
-            case REFUND_SUCCESS -> patch.setRefundAmount(order.getRefundAmount().add(context.getRefundAmount()));
+            case REFUND_SUCCESS -> patch.setRefundAmount(refundedOf(order).add(context.getRefundAmount()));
             case REFUND_FAIL -> patch.setRefundFrom(0);
             default -> {
             }
@@ -310,7 +310,14 @@ public class OrderServiceImpl implements OrderService {
         if (request.getRefundAmount() != null) {
             return request.getRefundAmount();
         }
-        return order.getPayAmount().subtract(order.getRefundAmount());
+        return order.getPayAmount().subtract(refundedOf(order));
+    }
+
+    /**
+     * 取已退金额，历史数据该列可能为 null，按零处理防止 NPE。
+     */
+    private BigDecimal refundedOf(TradeOrder order) {
+        return order.getRefundAmount() == null ? BigDecimal.ZERO : order.getRefundAmount();
     }
 
     /**

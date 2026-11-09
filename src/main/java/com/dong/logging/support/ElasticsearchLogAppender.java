@@ -189,7 +189,8 @@ public class ElasticsearchLogAppender extends UnsynchronizedAppenderBase<ILoggin
         if (text == null || text.length() <= max) {
             return text;
         }
-        return text.substring(0, max) + "...(truncated " + (text.length() - max) + " chars)";
+        // 保留尾部：日志的关键信息（异常原因、结果）通常在末尾
+        return "...(truncated " + (text.length() - max) + " chars)" + text.substring(text.length() - max);
     }
 
 }

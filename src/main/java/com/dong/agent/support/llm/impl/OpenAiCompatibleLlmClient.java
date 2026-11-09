@@ -237,7 +237,10 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
             JsonNode calls = delta.path("tool_calls");
             if (calls.isArray()) {
                 for (JsonNode call : calls) {
-                    int index = call.path("index").asInt();
+                    // 部分兼容网关的流式分片不带 index：缺失时按到达顺序分配，
+                    // 否则多个调用的分片全落到 0 号、参数互相拼接成非法 JSON
+                    JsonNode indexNode = call.path("index");
+                    int index = indexNode.isMissingNode() || indexNode.isNull() ? pending.size() : indexNode.asInt();
                     PendingTool item = pending.computeIfAbsent(index, key -> new PendingTool());
                     if (!call.path("id").isMissingNode() && !call.path("id").isNull()) {
                         item.id = call.path("id").asText();

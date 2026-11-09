@@ -264,7 +264,8 @@ public class AgentRunEngine {
             listener.onAssistantMessage(steps, result.content(), result.toolCalls());
             boolean stopped = false;
             List<ToolCall> executable = new ArrayList<>();
-            for (ToolCall call : result.toolCalls()) {
+            for (int index = 0; index < result.toolCalls().size(); index++) {
+                ToolCall call = result.toolCalls().get(index);
                 toolCallCount++;
                 if (toolCallCount > toolCallsLimit) {
                     reason = FinishReason.MAX_TOOL_CALLS;
@@ -281,45 +282,49 @@ public class AgentRunEngine {
                 AgentTool tool = toolRegistry.get(call.name());
                 if (tool != null && tool.risk().needConfirm() && confirmRequired && !context.isConfirmSideEffect()) {
                     // 有副作用的工具必须等用户点头：挂起并交出本轮待执行的调用，
-                    // 确认后从这一步继续，而不是从头再跑一遍
-                    listener.onWaitingConfirm(steps, call.name(), call.id(), call.arguments(), pendingJson(result.toolCalls()));
+                    // 确认后从这一步继续，而不是从头再跑一遍。
+                    // 只保存从被拦下的这条起的未执行调用：排在前面的已经执行过，
+                    // 混进挂起列表的话续跑时会重复执行并落两条重复的工具记录
+                    listener.onWaitingConfirm(steps, call.name(), call.id(), call.arguments(), pendingJson(result.toolCalls().subList(index, result.toolCalls().size())));
                     reason = FinishReason.WAITING_CONFIRM;
                     stopped = true;
                     break;
                 }
                 executable.add(call);
             }
-            // 并行模式下先全部提交再逐个取结果，串行模式边提交边等，
-            // 两种都走同一套提交逻辑，避免并行时嵌套提交同一个池把自己锁死
-            List<ToolResult> results = new ArrayList<>(executable.size());
-            if (parallel) {
-                List<CompletableFuture<ToolResult>> futures = new ArrayList<>(executable.size());
-                for (ToolCall call : executable) {
-                    futures.add(submitTool(call, context, listener, steps));
-                }
-                for (CompletableFuture<ToolResult> future : futures) {
-                    results.add(await(future, executable.get(results.size()).name()));
-                }
-            } else {
-                for (ToolCall call : executable) {
-                    results.add(await(submitTool(call, context, listener, steps), call.name()));
-                }
-            }
-            for (int i = 0; i < executable.size(); i++) {
-                ToolCall call = executable.get(i);
-                ToolResult toolResult = results.get(i);
-                if (toolResult.success()) {
-                    continuousFailures = 0;
-                    messages.add(ChatMessage.tool(call.id(), call.name(), truncate(toolResult.payload(), call.name())));
+            if (!stopped) {
+                // 并行模式下先全部提交再逐个取结果，串行模式边提交边等，
+                // 两种都走同一套提交逻辑，避免并行时嵌套提交同一个池把自己锁死
+                List<ToolResult> results = new ArrayList<>(executable.size());
+                if (parallel) {
+                    List<CompletableFuture<ToolResult>> futures = new ArrayList<>(executable.size());
+                    for (ToolCall call : executable) {
+                        futures.add(submitTool(call, context, listener, steps));
+                    }
+                    for (CompletableFuture<ToolResult> future : futures) {
+                        results.add(await(future, executable.get(results.size()).name()));
+                    }
                 } else {
-                    continuousFailures++;
-                    // swallow 是 E3 的反面教材：把失败吞掉，模型会把「没查到」当成「查到了但没内容」
-                    messages.add(ChatMessage.tool(call.id(), call.name(),
-                            "swallow".equals(failure) ? "" : toolResult.errorMessage()));
-                    if (continuousFailures >= failuresLimit) {
-                        reason = FinishReason.TOOL_FAILURE;
-                        stopped = true;
-                        break;
+                    for (ToolCall call : executable) {
+                        results.add(await(submitTool(call, context, listener, steps), call.name()));
+                    }
+                }
+                for (int i = 0; i < executable.size(); i++) {
+                    ToolCall call = executable.get(i);
+                    ToolResult toolResult = results.get(i);
+                    if (toolResult.success()) {
+                        continuousFailures = 0;
+                        messages.add(ChatMessage.tool(call.id(), call.name(), truncate(toolResult.payload(), call.name())));
+                    } else {
+                        continuousFailures++;
+                        // swallow 是 E3 的反面教材：把失败吞掉，模型会把「没查到」当成「查到了但没内容」
+                        messages.add(ChatMessage.tool(call.id(), call.name(),
+                                "swallow".equals(failure) ? "" : toolResult.errorMessage()));
+                        if (continuousFailures >= failuresLimit) {
+                            reason = FinishReason.TOOL_FAILURE;
+                            stopped = true;
+                            break;
+                        }
                     }
                 }
             }

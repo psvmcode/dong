@@ -64,12 +64,15 @@ public class ComplianceServiceImpl implements ComplianceService {
     /**
      * 释放占用。用 math.max 兜底防止减成负数，
      * 因为扣款失败与退款可能重复触发释放。
+     * SET 会丢弃已有 TTL，必须重新 EXPIRE，否则当天最后一次
+     * 操作若是释放，该键会变成永不过期的泄漏键。
      */
     private static final String RELEASE_SCRIPT = """
             local current = tonumber(redis.call('GET', KEYS[1]) or '0')
             local delta = tonumber(ARGV[1])
             local next = math.max(0, current - delta)
             redis.call('SET', KEYS[1], tostring(next))
+            redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
             return next
             """;
 
@@ -242,7 +245,7 @@ public class ComplianceServiceImpl implements ComplianceService {
     public void releaseDailyLimit(Long accountId, BigDecimal amount) {
         String key = DAILY_USAGE_KEY + LocalDate.now() + ":" + accountId;
         long cents = amount.multiply(new BigDecimal("100")).longValue();
-        redisService.execute(RELEASE, List.of(key), cents);
+        redisService.execute(RELEASE, List.of(key), cents, DAILY_USAGE_TTL_SECONDS);
     }
 
     /**

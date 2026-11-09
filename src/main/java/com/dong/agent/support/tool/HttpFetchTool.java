@@ -175,15 +175,19 @@ public class HttpFetchTool implements AgentTool {
                     .GET()
                     .build();
             HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            int status = response.statusCode();
-            if (status != 200) {
-                return ToolResult.fail("目标返回状态码 " + status, System.currentTimeMillis() - start);
+            // 响应体必须 try-with-resources：非 200 时直接 return 会泄漏底层 TCP 连接，
+            // 反复调用 3xx/4xx/5xx 目标会累积耗尽连接资源
+            try (InputStream body = response.body()) {
+                int status = response.statusCode();
+                if (status != 200) {
+                    return ToolResult.fail("目标返回状态码 " + status, System.currentTimeMillis() - start);
+                }
+                Map<String, String> payload = new LinkedHashMap<>();
+                payload.put("url", uri.toString());
+                payload.put("status", String.valueOf(status));
+                payload.put("content", readText(body));
+                return ToolResult.ok(toolJson.write(payload), System.currentTimeMillis() - start);
             }
-            Map<String, String> payload = new LinkedHashMap<>();
-            payload.put("url", uri.toString());
-            payload.put("status", String.valueOf(status));
-            payload.put("content", readText(response.body()));
-            return ToolResult.ok(toolJson.write(payload), System.currentTimeMillis() - start);
         } catch (Exception e) {
             log.warn("agent tool http.fetch failed url={}", url, e);
             return ToolResult.fail("抓取失败：" + e.getMessage(), System.currentTimeMillis() - start);

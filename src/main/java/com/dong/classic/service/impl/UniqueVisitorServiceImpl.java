@@ -1,6 +1,8 @@
 package com.dong.classic.service.impl;
 
 import com.dong.classic.service.UniqueVisitorService;
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RHyperLogLog;
@@ -96,6 +98,9 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
      */
     @Override
     public long countBetween(String page, LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "from must not be after to");
+        }
         List<String> keys = from.datesUntil(to.plusDays(1)).map(date -> keyOf(page, date)).toList();
         if (keys.isEmpty()) {
             return 0L;
@@ -105,8 +110,10 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
         }
         RHyperLogLog<String> merged = redissonClient.getHyperLogLog(UV + page + ":merged:" + from + "_" + to);
         merged.mergeWith(keys.toArray(new String[0]));
-        merged.expire(RETENTION);
-        return merged.count();
+        long count = merged.count();
+        // 用完即删：merged 只是中间结果，按 (page, from, to) 组合无限累积会撑爆键空间
+        merged.delete();
+        return count;
     }
 
     /**

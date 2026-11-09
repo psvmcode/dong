@@ -28,9 +28,10 @@ public interface SeckillOrderMapper {
     int insert(SeckillOrder order);
 
     /**
-     * 更新状态，返回影响行数。
+     * 条件更新状态：只有当前状态等于 fromStatus 才更新，返回影响行数。
+     * 无条件更新会把「查询到更新之间已被并发支付」的订单改成已取消，造成付款成功却钱货两空。
      */
-    int updateStatus(@Param("orderNo") String orderNo, @Param("status") int status);
+    int updateStatus(@Param("orderNo") String orderNo, @Param("status") int status, @Param("fromStatus") int fromStatus);
 
     /**
      * 查询超时候选记录。

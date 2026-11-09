@@ -157,7 +157,14 @@ public class SeckillServiceImpl implements SeckillService {
         message.put("userId", userId);
         message.put("quantity", quantity);
         message.put("unitPrice", activity.getUnitPrice());
-        messageProducer.send(TOPIC, orderNo, JsonUtils.toJson(message));
+        try {
+            messageProducer.send(TOPIC, orderNo, JsonUtils.toJson(message));
+        } catch (Exception ex) {
+            // Redis 已扣减库存且用户已进参与者集合，MQ 发送失败若不回滚，
+            // 库存蒸发一份且该用户被永久限购到活动结束
+            seckillStockService.rollback(activityId, userId, quantity);
+            throw ex;
+        }
         log.info("seckill reserved orderNo={} activity={} user={} remaining={}", orderNo, activityId, userId, result);
         return SeckillReceiptResponse.accepted(orderNo, result, amount);
     }
@@ -200,7 +207,10 @@ public class SeckillServiceImpl implements SeckillService {
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "order is not payable: " + order.getStatus());
         }
-        seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.PAID.getCode());
+        int updated = seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.PAID.getCode(), SeckillOrderStatus.PENDING_PAYMENT.getCode());
+        if (updated <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "order is not payable: " + order.getStatus());
+        }
         log.info("seckill order paid orderNo={}", orderNo);
     }
 
@@ -214,7 +224,10 @@ public class SeckillServiceImpl implements SeckillService {
         if (order.getStatus() != SeckillOrderStatus.PENDING_PAYMENT) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "order cannot be cancelled: " + order.getStatus());
         }
-        seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.CANCELLED.getCode());
+        int updated = seckillOrderMapper.updateStatus(orderNo, SeckillOrderStatus.CANCELLED.getCode(), SeckillOrderStatus.PENDING_PAYMENT.getCode());
+        if (updated <= 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "order cannot be cancelled: " + order.getStatus());
+        }
         seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());
         soldOutFlag.clear(order.getActivityId());
         log.info("seckill order cancelled and stock returned orderNo={}", orderNo);

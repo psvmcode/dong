@@ -40,6 +40,21 @@
         where task_no = #{taskNo}
     </update>
 
+    <!-- 补偿重投后顺延预计时间一个扫描周期，否则同一任务每轮都被重复选中并重复入队 -->
+    <update id="postpone">
+        update classic_delay_task
+        set expect_time = #{expectTime}
+        where task_no = #{taskNo}
+    </update>
+
+    <!-- 重投超限的终态标记，状态 4 已取消（与 DDL 注释一致），不再参与补偿扫描 -->
+    <update id="markFailed">
+        update classic_delay_task
+        set status = 4,
+        actual_time = now()
+        where task_no = #{taskNo}
+    </update>
+
     <!-- 按 payload 反查标记已消费，取预计时间最早的一条未消费记录 -->
     <update id="markConsumedByPayload">
         update classic_delay_task

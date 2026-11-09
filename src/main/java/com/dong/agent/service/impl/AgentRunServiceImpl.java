@@ -244,7 +244,9 @@ public class AgentRunServiceImpl implements AgentRunService {
             context.setSessionNo(sessionNo);
             context.setPrompt("");
             context.setHistory(history);
-            context.setConfirmSideEffect(true);
+            // 只有确认放行才置 true：拒绝后续跑必须仍然拦副作用工具，
+            // 否则用户刚拒绝过的工具会被无条件放行，确认闸门形同虚设
+            context.setConfirmSideEffect(approved);
             context.setCancelChecker(() -> {
                 AgentRun current = runMapper.selectByRunNo(runNo);
                 return current != null && current.getStatus() == RunStatus.CANCELLED;
@@ -403,36 +405,50 @@ public class AgentRunServiceImpl implements AgentRunService {
         String sessionNo = sessionService.ensure(request.getSessionNo());
         String runNo = createRun(request, sessionNo);
         enterConcurrency();
-        List<ChatMessage> history = loadHistory(sessionNo);
-        int startSeq = sessionService.nextSeq(sessionNo);
-        saveUserMessage(sessionNo, runNo, startSeq, request.getPrompt());
         SseEmitter emitter = new SseEmitter(runTimeout.plusSeconds(10).toMillis());
-        AgentEventSink sink = (event, data) -> emitter.send(SseEmitter.event().name(event).data(data));
-        AgentRunRecorder recorder = new AgentRunRecorder(messageMapper, toolCallMapper, toolRegistry,
-                runNo, sessionNo, startSeq + 1, sink);
-        // 连接断开必须置取消标记：否则循环在后台继续跑，是最浪费的一种泄漏
-        emitter.onCompletion(() -> markCancelled(runNo));
-        emitter.onTimeout(() -> markCancelled(runNo));
-        emitter.onError(e -> markCancelled(runNo));
-        AgentRunContext context = buildContext(runNo, sessionNo, request, history);
-        runExecutor.execute(() -> {
-            try {
-                RunOutcome outcome = runEngine.run(context, recorder);
-                finish(runNo, sessionNo, outcome, recorder.savedMessages() + 1);
-            } catch (Exception e) {
-                log.error("agent stream run failed runNo={}", runNo, e);
-                markFailed(runNo);
+        try {
+            List<ChatMessage> history = loadHistory(sessionNo);
+            int startSeq = sessionService.nextSeq(sessionNo);
+            saveUserMessage(sessionNo, runNo, startSeq, request.getPrompt());
+            AgentEventSink sink = (event, data) -> emitter.send(SseEmitter.event().name(event).data(data));
+            AgentRunRecorder recorder = new AgentRunRecorder(messageMapper, toolCallMapper, toolRegistry,
+                    runNo, sessionNo, startSeq + 1, sink);
+            // 连接断开必须置取消标记：否则循环在后台继续跑，是最浪费的一种泄漏
+            emitter.onCompletion(() -> markCancelled(runNo));
+            emitter.onTimeout(() -> markCancelled(runNo));
+            emitter.onError(e -> markCancelled(runNo));
+            AgentRunContext context = buildContext(runNo, sessionNo, request, history);
+            runExecutor.execute(() -> {
                 try {
-                    sink.send("error", Map.of("code", Constants.CODE_INTERNAL_ERROR, "message", "agent run failed"));
-                } catch (Exception sendError) {
-                    log.warn("agent error event send failed runNo={}", runNo, sendError);
+                    RunOutcome outcome = runEngine.run(context, recorder);
+                    // 流式路径同样要处理挂起：不落库 pending 的话，
+                    // 前端收到 confirm.required 事件后 confirm(runNo) 必然报「不在等待确认」冲突
+                    if (outcome.finishReason() == FinishReason.WAITING_CONFIRM) {
+                        suspend(runNo, sessionNo, outcome, recorder);
+                    } else {
+                        finish(runNo, sessionNo, outcome, recorder.savedMessages() + 1);
+                    }
+                } catch (Exception e) {
+                    log.error("agent stream run failed runNo={}", runNo, e);
+                    markFailed(runNo);
+                    try {
+                        sink.send("error", Map.of("code", Constants.CODE_INTERNAL_ERROR, "message", "agent run failed"));
+                    } catch (Exception sendError) {
+                        log.warn("agent error event send failed runNo={}", runNo, sendError);
+                    }
+                } finally {
+                    activeRuns.decrementAndGet();
+                    emitter.complete();
                 }
-            } finally {
-                activeRuns.decrementAndGet();
-                emitter.complete();
-            }
-        });
-        return emitter;
+            });
+            return emitter;
+        } catch (Exception e) {
+            // 名额已被占用而任务未成功提交（查库失败或线程池拒绝），
+            // 必须在这里释放，否则每次泄漏一个名额，8 个名额耗尽后整个模块持续拒绝服务
+            activeRuns.decrementAndGet();
+            emitter.completeWithError(e);
+            throw e;
+        }
     }
 
     /**
@@ -659,9 +675,15 @@ public class AgentRunServiceImpl implements AgentRunService {
             sessionMapper.updateTitle(sessionNo, abbreviate(run.getPrompt()));
         }
         fillStats(run, outcome);
-        run.setStatus(outcome.finishReason() == FinishReason.ERROR ? RunStatus.FAILED : RunStatus.FINISHED);
-        run.setFinishReason(outcome.finishReason());
-        run.setErrorMessage("");
+        // 已是终态（如运行中途被用户取消）时不能覆写成 FINISHED/FAILED，
+        // 否则取消的运行在列表里显示成正常结束，统计口径也随之失真
+        if (!run.getStatus().isTerminal()) {
+            run.setStatus(outcome.finishReason() == FinishReason.ERROR ? RunStatus.FAILED : RunStatus.FINISHED);
+            run.setFinishReason(outcome.finishReason());
+            run.setErrorMessage("");
+        } else {
+            log.info("agent run already terminal, keep status={} runNo={}", run.getStatus(), runNo);
+        }
         runMapper.updateFinish(run);
         sessionMapper.increaseCounters(sessionNo, messageDelta, 1);
         refreshSummary(sessionNo);

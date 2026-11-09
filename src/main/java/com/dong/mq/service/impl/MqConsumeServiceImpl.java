@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,10 +37,12 @@ public class MqConsumeServiceImpl implements MqConsumeService {
     private final LongAdder deadLettered = new LongAdder();
 
     /**
-     * consume。
+     * 消费消息。幂等靠消息日志唯一索引。
+     * 注意不能给整个方法套 @Transactional：死锁、连接中断这类会终止事务的错误
+     * 发生后，同一事务里的重试 insert 与死信 insert 必然继续失败，
+     * 「三次重试后转死信」对这些错误完全不工作。单条 insert 本身就是原子的。
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public boolean consume(String topic, String msgId, String payload) {
         if (mqMessageLogMapper.countByMsgId(msgId) > 0) {
             duplicated.increment();
@@ -82,6 +83,8 @@ public class MqConsumeServiceImpl implements MqConsumeService {
             mqMessageLogMapper.insert(deadLetter);
         } catch (DuplicateKeyException ex) {
             mqMessageLogMapper.updateStatus(msgId, MqMessageStatus.DEAD_LETTERED.getCode());
+        } catch (Exception ex) {
+            log.error("failed to persist dead letter record topic={} msgId={}", topic, msgId, ex);
         }
         deadLettered.increment();
         log.error("message moved to dead letter topic={} msgId={}", topic, msgId);

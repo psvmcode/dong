@@ -1,6 +1,7 @@
 package com.dong.crossborder.dto;
 
 import com.dong.crossborder.entity.RemittanceEvent;
+import com.dong.crossborder.enums.RemittanceStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -82,12 +83,27 @@ public class RemittanceEventResponse {
         response.setOperator(event.getOperator());
         response.setCreateTime(event.getCreateTime());
         if (event.getFromStatus() != null) {
-            response.setFromStatusName(com.dong.crossborder.enums.RemittanceStatus.of(event.getFromStatus()).name());
+            response.setFromStatusName(safeName(event.getFromStatus()));
         }
         if (event.getToStatus() != null) {
-            response.setToStatusName(com.dong.crossborder.enums.RemittanceStatus.of(event.getToStatus()).name());
+            response.setToStatusName(safeName(event.getToStatus()));
         }
         return response;
+    }
+
+    /**
+     * 状态编码转名称。编码不在枚举内（历史脏数据、手工改数）时返回 UNKNOWN，
+     * 不能让一条流转日志就把整个 history 接口打成 500。
+     *
+     * @param code 状态编码
+     * @return 状态名
+     */
+    private static String safeName(int code) {
+        try {
+            return RemittanceStatus.of(code).name();
+        } catch (Exception ex) {
+            return "UNKNOWN";
+        }
     }
 
 }

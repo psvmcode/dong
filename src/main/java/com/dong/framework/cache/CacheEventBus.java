@@ -76,10 +76,18 @@ public class CacheEventBus {
     /**
      * 收到事件。先过滤自己发出的，再分发给本地监听器，
      * 单个监听器失败不影响其他监听器。
+     * 非法或空消息体（他人向频道发布垃圾内容）直接丢弃，
+     * 不能让监听线程每次都走 NPE 或解析异常路径刷错误日志。
      */
     public void dispatch(String payload) {
-        CacheInvalidationEvent event = JsonUtils.fromJson(payload, CacheInvalidationEvent.class);
-        if (nodeId.equals(event.sourceNode())) {
+        CacheInvalidationEvent event;
+        try {
+            event = JsonUtils.fromJson(payload, CacheInvalidationEvent.class);
+        } catch (Exception ex) {
+            log.warn("cache invalidation message not parseable, dropped: {}", payload, ex);
+            return;
+        }
+        if (event == null || event.sourceNode() == null || nodeId.equals(event.sourceNode())) {
             return;
         }
         listeners.forEach(listener -> {

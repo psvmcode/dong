@@ -159,6 +159,7 @@
         set batch_no = #{batchNo},
         update_time = now()
         where remittance_no = #{remittanceNo}
+        and (batch_no = '' or batch_no is null)
     </update>
 
     <!-- 审核放行后回填成交要素，不带 version 条件：调用前已用 updateStatus 独占抢占 -->

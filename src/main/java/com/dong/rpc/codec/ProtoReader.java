@@ -165,11 +165,15 @@ public final class ProtoReader {
     }
 
     /**
-     * 读 8 字节定长，小端。
+     * 读 8 字节定长，小端。必须先校验剩余长度：
+     * 被截断的报文会抛数组越界而不是协议异常，错误语义错乱。
      *
      * @return 位模式
      */
     private long readFixed64() {
+        if (position + 8 > data.length) {
+            throw new ProtoCodecException("unexpected end of message while reading fixed64");
+        }
         long bits = 0L;
         for (int index = 0; index < 8; index++) {
             bits |= ((long) (data[position++] & 0xFF)) << (8 * index);
@@ -178,11 +182,14 @@ public final class ProtoReader {
     }
 
     /**
-     * 读 4 字节定长，小端。
+     * 读 4 字节定长，小端。必须先校验剩余长度，理由同 fixed64。
      *
      * @return 位模式
      */
     private int readFixed32() {
+        if (position + 4 > data.length) {
+            throw new ProtoCodecException("unexpected end of message while reading fixed32");
+        }
         int bits = 0;
         for (int index = 0; index < 4; index++) {
             bits |= (data[position++] & 0xFF) << (8 * index);

@@ -75,11 +75,11 @@
         where batch_no = #{batchNo}
     </update>
 
-    <!-- 累加批次笔数与金额 -->
+    <!-- 原子累加批次笔数与金额：读实体再整字段覆盖写会在并发归批时互相丢失更新 -->
     <update id="updateTotal">
         update cross_border_settlement_batch
-        set total_count = #{totalCount},
-        total_amount = #{totalAmount},
+        set total_count = total_count + #{count},
+        total_amount = total_amount + #{amount},
         update_time = now()
         where batch_no = #{batchNo}
     </update>

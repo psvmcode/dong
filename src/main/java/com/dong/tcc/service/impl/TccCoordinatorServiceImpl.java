@@ -146,11 +146,20 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         if (transaction == null) {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "tcc transaction " + xid + " not found");
         }
+        // Map.of 不允许 null value：分支或事务状态为 null（脏数据）时会直接 NPE，必须逐个 put
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("xid", transaction.getXid());
-        status.put("status", transaction.getStatus() == null ? null : transaction.getStatus().name());
+        status.put("status", transaction.getStatus() == null ? "" : transaction.getStatus().name());
         status.put("retryCount", transaction.getRetryCount());
-        status.put("branches", branches(xid).stream().map(branch -> Map.of("branchId", branch.getBranchId(), "status", branch.getStatus() == null ? null : branch.getStatus().name(), "errorMessage", branch.getErrorMessage() == null ? "" : branch.getErrorMessage())).toList());
+        List<Map<String, Object>> branchList = new java.util.ArrayList<>();
+        for (TccBranch branch : branches(xid)) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("branchId", branch.getBranchId());
+            item.put("status", branch.getStatus() == null ? "" : branch.getStatus().name());
+            item.put("errorMessage", branch.getErrorMessage() == null ? "" : branch.getErrorMessage());
+            branchList.add(item);
+        }
+        status.put("branches", branchList);
         return status;
     }
 
@@ -163,13 +172,16 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
     }
 
     /**
-     * 恢复悬挂事务。分支全部已确认则推进为已提交，否则整单回滚，
-     * 避免冻结的资源永远不被释放。
+     * 恢复悬挂事务。分支全部已确认则推进为已提交；有分支已确认但未全部确认时
+     * 只能向前补齐 confirm（回滚已确认分支等于把钱再加回去）；完全没有确认过的
+     * 事务才整单回滚。取消中的事务同样要重试，否则取消失败分支的冻结资源永久泄漏。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int recoverPending() {
-        List<TccTransaction> pending = tccTransactionMapper.selectByStatus(TccTransactionStatus.CONFIRMING.getCode(), 100);
+        List<TccTransaction> pending = new java.util.ArrayList<>();
+        pending.addAll(tccTransactionMapper.selectByStatus(TccTransactionStatus.CONFIRMING.getCode(), 100));
+        pending.addAll(tccTransactionMapper.selectByStatus(TccTransactionStatus.CANCELLING.getCode(), 100));
         if (pending.isEmpty()) {
             return 0;
         }
@@ -178,17 +190,27 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
         for (TccTransaction transaction : pending) {
             String xid = transaction.getXid();
             List<TccBranch> branches = tccTransactionMapper.selectBranches(xid);
+            if (branches.isEmpty()) {
+                continue;
+            }
+            boolean anyConfirmed = branches.stream().anyMatch(branch -> branch.getStatus() == TccBranchStatus.CONFIRMED);
             boolean allConfirmed = branches.stream().allMatch(branch -> branch.getStatus() == TccBranchStatus.CONFIRMED);
-            if (allConfirmed && !branches.isEmpty()) {
+            if (allConfirmed) {
                 tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CONFIRMED.getCode());
                 tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CONFIRMED.getCode());
                 recovered++;
                 log.info("tcc transaction recovered xid={}", xid);
+            } else if (anyConfirmed) {
+                if (retryConfirm(xid, branches)) {
+                    recovered++;
+                    log.info("tcc transaction confirm completed by recovery xid={}", xid);
+                }
             } else {
                 tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLING.getCode());
-                cancelBranches(xid, branches);
-                recovered++;
-                log.info("tcc transaction rolled back by recovery xid={}", xid);
+                if (cancelBranches(xid, branches)) {
+                    recovered++;
+                    log.info("tcc transaction rolled back by recovery xid={}", xid);
+                }
             }
         }
         return recovered;
@@ -208,8 +230,8 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
             inventory.setFrozen(0);
             tccParticipantMapper.insertInventory(inventory);
         } else {
-            inventory.setAvailable(available);
-            tccParticipantMapper.freezeInventory(productId, 0);
+            // 已有记录时必须真正落库：只改内存实体的话传入的可用量会被静默丢弃
+            tccParticipantMapper.updateInventory(productId, available);
         }
 
         TccAccount account = tccParticipantMapper.selectAccount(userId);
@@ -225,10 +247,12 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
 
     /**
      * 回滚已 Try 成功的分支。回滚失败的分支会被标回 TRIED 状态，
-     * 等待恢复任务再次尝试，不能自接丢弃，否则冻结资源就泄漏了。
+     * 事务保持 CANCELLING 等待恢复任务再次尝试；
+     * 若立即置为 CANCELLED 终态，恢复任务不再扫描，冻结资源就永久泄漏了。
      */
     private void cancelAll(String xid, List<TccParticipant> tried, Map<String, Object> payload) {
         tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLING.getCode());
+        boolean allCancelled = true;
         for (TccParticipant participant : tried) {
             try {
                 participant.cancelPhase(xid, payload);
@@ -236,33 +260,101 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
             } catch (Exception ex) {
                 log.error("tcc cancel failed xid={} branch={}", xid, participant.branchId(), ex);
                 tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.TRIED.getCode(), ex.getMessage());
+                allCancelled = false;
             }
         }
-        tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLED.getCode());
-        tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
+        if (allCancelled) {
+            tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLED.getCode());
+            tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
+        }
     }
 
     /**
-     * 取消指定事务下的所有分支。
+     * 恢复路径：取消指定事务下尚未取消的分支。
+     * 已 CONFIRMED 的分支必须跳过——confirm 已把冻结扣掉，cancel 再加回去就是凭空造钱。
+     * 有分支取消失败时事务留在 CANCELLING，下一轮恢复任务继续重试。
+     *
+     * @return 是否全部分支到达取消终态
      */
-    private void cancelBranches(String xid, List<TccBranch> branches) {
-        Map<String, Object> payload = branches.isEmpty() ? Map.of() : JsonUtils.fromJson(branches.get(0).getPayload(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-        });
+    private boolean cancelBranches(String xid, List<TccBranch> branches) {
+        boolean allCancelled = true;
         for (TccBranch branch : branches) {
-            if (branch.getStatus() == TccBranchStatus.CANCELLED) {
+            if (branch.getStatus() == TccBranchStatus.CANCELLED || branch.getStatus() == TccBranchStatus.CONFIRMED) {
                 continue;
             }
-            participants.stream().filter(participant -> participant.branchId().equals(branch.getBranchId())).forEach(participant -> {
+            Map<String, Object> payload = payloadOf(branch);
+            boolean matched = false;
+            for (TccParticipant participant : participants) {
+                if (!participant.branchId().equals(branch.getBranchId())) {
+                    continue;
+                }
+                matched = true;
                 try {
                     participant.cancelPhase(xid, payload);
                     tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.CANCELLED.getCode(), "");
                 } catch (Exception ex) {
                     log.error("tcc recovery cancel failed xid={} branch={}", xid, participant.branchId(), ex);
+                    allCancelled = false;
                 }
-            });
+            }
+            if (!matched) {
+                log.warn("tcc recovery cancel skipped, participant not found xid={} branch={}", xid, branch.getBranchId());
+            }
         }
-        tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLED.getCode());
-        tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
+        if (allCancelled) {
+            tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CANCELLED.getCode());
+            tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CANCELLED.getCode());
+        }
+        return allCancelled;
+    }
+
+    /**
+     * 恢复路径：向前补齐 confirm。只重试尚未确认的分支，
+     * 已确认的分支再次执行 confirm 会把 frozen 重复扣减，幂等只能靠分支状态保证。
+     * 补齐失败时事务留在 CONFIRMING，下一轮恢复任务继续。
+     *
+     * @return 是否全部分支到达确认终态
+     */
+    private boolean retryConfirm(String xid, List<TccBranch> branches) {
+        boolean allConfirmed = true;
+        for (TccBranch branch : branches) {
+            if (branch.getStatus() == TccBranchStatus.CONFIRMED) {
+                continue;
+            }
+            Map<String, Object> payload = payloadOf(branch);
+            boolean matched = false;
+            for (TccParticipant participant : participants) {
+                if (!participant.branchId().equals(branch.getBranchId())) {
+                    continue;
+                }
+                matched = true;
+                try {
+                    participant.confirmPhase(xid, payload);
+                    tccTransactionMapper.updateBranchStatus(xid, participant.branchId(), TccBranchStatus.CONFIRMED.getCode(), "");
+                } catch (Exception ex) {
+                    log.error("tcc recovery confirm failed xid={} branch={}", xid, participant.branchId(), ex);
+                    allConfirmed = false;
+                }
+            }
+            if (!matched) {
+                log.warn("tcc recovery confirm skipped, participant not found xid={} branch={}", xid, branch.getBranchId());
+            }
+        }
+        if (allConfirmed) {
+            tccTransactionMapper.updateStatus(xid, TccTransactionStatus.CONFIRMED.getCode());
+            tccParticipantMapper.updateOrderStatus(xid, TccOrderStatus.CONFIRMED.getCode());
+        }
+        return allConfirmed;
+    }
+
+    /**
+     * 反序列化分支 payload。空或非法内容时返回空 Map，
+     * 恢复路径不能因为一条坏 payload 就中断整批事务的恢复。
+     */
+    private Map<String, Object> payloadOf(TccBranch branch) {
+        Map<String, Object> payload = JsonUtils.fromJson(branch.getPayload(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+        });
+        return payload == null ? Map.of() : payload;
     }
 
     /**

@@ -29,6 +29,16 @@ public interface ClassicDelayTaskMapper {
     int increaseRetry(@Param("taskNo") String taskNo);
 
     /**
+     * 补偿重投后顺延预计时间，避免同一任务每轮扫描都被重复选中。
+     */
+    int postpone(@Param("taskNo") String taskNo, @Param("expectTime") LocalDateTime expectTime);
+
+    /**
+     * 重投次数超限后标记为失败终态（状态 4），停止补偿。
+     */
+    int markFailed(@Param("taskNo") String taskNo);
+
+    /**
      * 按任务内容标记已消费。队列里只传 payload，
      * 因此按 payload 反查一条尚未消费的记录来更新，取预计时间最早的那条。
      */

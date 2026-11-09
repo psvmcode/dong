@@ -59,6 +59,21 @@ public class SeckillStockServiceImpl implements SeckillStockService {
     private static final RedisScript<Long> DEDUCT = new DefaultRedisScript<>(DEDUCT_SCRIPT, Long.class);
 
     /**
+     * 回滚库存。库存键只在仍然存在时才回加：键过期后 INCRBY 会以零起底
+     * 重建一个无过期时间的「幽灵库存」，让早已结束的活动重新显示出可售。
+     * 回加与移除参与者放同一条脚本，消除两步之间的重复购买窗口。
+     */
+    private static final String ROLLBACK_SCRIPT = """
+            if redis.call('exists', KEYS[1]) == 1 then
+                redis.call('incrby', KEYS[1], tonumber(ARGV[1]))
+            end
+            redis.call('srem', KEYS[2], ARGV[2])
+            return 1
+            """;
+
+    private static final RedisScript<Long> ROLLBACK = new DefaultRedisScript<>(ROLLBACK_SCRIPT, Long.class);
+
+    /**
      * redisService，业务服务层。
      */
     private final RedisService redisService;
@@ -96,11 +111,10 @@ public class SeckillStockServiceImpl implements SeckillStockService {
      */
     @Override
     public int rollback(Long activityId, Long userId, int quantity) {
-        redisService.template().opsForSet().remove(participantsKey(activityId), userId.toString());
-        Long remaining = redisService.incrementBy(stockKey(activityId), quantity);
+        redisService.execute(ROLLBACK, List.of(stockKey(activityId), participantsKey(activityId)), quantity, userId);
         soldOutFlag.clear(activityId);
         log.info("seckill stock rolled back activity={} user={} quantity={}", activityId, userId, quantity);
-        return remaining == null ? 0 : remaining.intValue();
+        return available(activityId);
     }
 
     /**

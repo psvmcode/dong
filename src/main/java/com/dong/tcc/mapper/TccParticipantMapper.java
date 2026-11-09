@@ -28,6 +28,12 @@ public interface TccParticipantMapper {
     int freezeInventory(@Param("productId") Long productId, @Param("quantity") int quantity);
 
     /**
+     * 重置库存可用量并清零冻结。seed 已有记录时用：
+     * 只改内存实体不落库的话，传入的可用量会被静默丢弃。
+     */
+    int updateInventory(@Param("productId") Long productId, @Param("available") int available);
+
+    /**
      * 确认扣减库存。
      */
     int confirmInventory(@Param("productId") Long productId, @Param("quantity") int quantity);

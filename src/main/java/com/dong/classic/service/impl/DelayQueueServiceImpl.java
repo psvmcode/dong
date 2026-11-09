@@ -92,6 +92,17 @@ public class DelayQueueServiceImpl implements DelayQueueService {
     }
 
     /**
+     * 补偿重投：只入队不落库，调用方负责推进原记录的预计时间与重试计数。
+     *
+     * @param payload 任务内容
+     * @param delay   延迟时间
+     */
+    @Override
+    public void reoffer(String payload, Duration delay) {
+        delayedQueue.offer(payload, delay.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+    }
+
+    /**
      * 取出已到期的任务，并把对应记录标记为已消费。
      *
      * @param limit 最大取出数量

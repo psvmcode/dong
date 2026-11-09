@@ -106,12 +106,16 @@ public class SettlementServiceImpl implements SettlementService {
         int count = 0;
         BigDecimal total = BigDecimal.ZERO;
         for (CrossBorderRemittance candidate : candidates) {
-            remittanceMapper.updateBatchNo(candidate.getRemittanceNo(), batchNo);
+            // updateBatchNo 带「未归批」条件并以影响行数判定成败：
+            // 并发 collect 或实时消息归批可能已抢先占用该单，重复计数会让批次总额虚高
+            if (remittanceMapper.updateBatchNo(candidate.getRemittanceNo(), batchNo) <= 0) {
+                continue;
+            }
             count++;
             total = total.add(candidate.getTargetAmount());
         }
         if (count > 0) {
-            batchMapper.updateTotal(batchNo, batch.getTotalCount() + count, batch.getTotalAmount().add(total));
+            batchMapper.updateTotal(batchNo, count, total);
         }
         return count;
     }

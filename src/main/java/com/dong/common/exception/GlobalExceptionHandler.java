@@ -14,6 +14,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
@@ -29,6 +31,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class GlobalExceptionHandler {
 
     /**
+     * 业务错误码写入当前请求的属性名。异常被本处理器消化后，
+     * 拦截器 afterCompletion 拿到的异常对象是 null（Spring 的既定行为），
+     * 拦截器靠这个标记识别请求的业务结局（如缓存未命中统计）。
+     */
+    public static final String BUSINESS_ERROR_CODE_ATTRIBUTE = "com.dong.businessErrorCode";
+
+    /**
      * 处理业务异常。
      *
      * @param ex 业务异常
@@ -37,6 +46,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException ex) {
         log.info("business exception code={} message={}", ex.getCode(), ex.getMessage());
+        // 把错误码挂到当前请求上，供拦截器在 afterCompletion 阶段识别请求结局
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            attributes.getRequest().setAttribute(BUSINESS_ERROR_CODE_ATTRIBUTE, ex.getCode());
+        }
         return Result.fail(ex.getCode(), ex.getMessage());
     }
 

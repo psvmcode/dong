@@ -45,6 +45,15 @@ public class CacheCircuitBreaker {
     // 半开态只允许一个探测请求在飞，否则恢复瞬间又被全部流量打回
     private final AtomicBoolean probeInFlight = new AtomicBoolean();
 
+    // 半开探测的回报截止时间。探测请求拿走名额后若一直不回报
+    // （被锁、被限流、提前返回等路径），靠它强制自愈，避免熔断器永久卡死
+    private final AtomicLong probeDeadlineMillis = new AtomicLong();
+
+    /**
+     * 探测允许的最大在飞时长，超过视为回报丢失，自动释放名额。
+     */
+    private static final long PROBE_GRACE_MILLIS = 30_000L;
+
     private final LongAdder openedTimes = new LongAdder();
 
     /**
@@ -74,6 +83,12 @@ public class CacheCircuitBreaker {
         if (now < until) {
             return false;
         }
+        if (now > probeDeadlineMillis.get()) {
+            // 探测超时仍未回报，强制释放名额自愈：
+            // 一个丢失的回报不能让所有后续请求永远拿不到探测机会
+            probeInFlight.compareAndSet(true, false);
+            probeDeadlineMillis.set(now + PROBE_GRACE_MILLIS);
+        }
         return probeInFlight.compareAndSet(false, true);
     }
 
@@ -87,12 +102,23 @@ public class CacheCircuitBreaker {
     }
 
     /**
+     * 中性回报：请求没有真正触达下游（被频控、重建锁或 L2 命中挡掉），
+     * 只归还半开探测名额，熔断状态保持不变，由下一个请求继续探测。
+     * 不归还的话，这个名额会在半开态被永久占用。
+     */
+    public void recordNeutral() {
+        probeInFlight.set(false);
+    }
+
+    /**
      * 记录一次失败。达到阈值或半开探测失败时打开熔断。
      */
     public void recordFailure() {
         long count = consecutiveFailures.incrementAndGet();
         if (count >= failureThreshold || openUntilMillis.get() > 0) {
-            openUntilMillis.set(System.currentTimeMillis() + openDurationMillis);
+            long now = System.currentTimeMillis();
+            openUntilMillis.set(now + openDurationMillis);
+            probeDeadlineMillis.set(now + openDurationMillis + PROBE_GRACE_MILLIS);
             probeInFlight.set(false);
             openedTimes.increment();
         }

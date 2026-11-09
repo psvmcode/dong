@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -49,6 +48,7 @@ public class SeckillTimeoutTask {
     /**
      * 回收超时订单。回滚库存后必须清掉售罄标记，
      * 否则库存虽然回来了，后续请求仍会被本地标记直接拒绝。
+     * 逐条 try/catch：一条订单处理失败不能中断整批，否则后面的订单本轮全部不处理。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
     public void releaseUnpaidOrders() {
@@ -56,18 +56,39 @@ public class SeckillTimeoutTask {
         if (candidates.isEmpty()) {
             return;
         }
-        candidates.forEach(this::release);
-        log.info("released {} unpaid seckill orders", candidates.size());
+        int released = 0;
+        for (SeckillOrder order : candidates) {
+            try {
+                if (release(order)) {
+                    released++;
+                }
+            } catch (Exception ex) {
+                log.error("release unpaid seckill order failed orderNo={}", order.getOrderNo(), ex);
+            }
+        }
+        log.info("released {} unpaid seckill orders", released);
     }
 
     /**
-     * 释放单个超时订单，回滚库存并清除售罄标记。
+     * 释放单个超时订单。条件更新以影响行数判定：订单在扫描到更新之间可能已被
+     * 并发支付或取消，此时不得回滚库存，否则已支付订单的钱货两空。
+     * 回滚库存失败时把订单放回待支付状态，等待下一轮回收重试，避免库存蒸发。
+     *
+     * @return 是否真正释放
      */
-    @Transactional(rollbackFor = Exception.class)
-    public void release(SeckillOrder order) {
-        seckillOrderMapper.updateStatus(order.getOrderNo(), SeckillOrderStatus.CANCELLED.getCode());
-        seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());
+    private boolean release(SeckillOrder order) {
+        int updated = seckillOrderMapper.updateStatus(order.getOrderNo(), SeckillOrderStatus.CANCELLED.getCode(), SeckillOrderStatus.PENDING_PAYMENT.getCode());
+        if (updated <= 0) {
+            return false;
+        }
+        try {
+            seckillStockService.rollback(order.getActivityId(), order.getUserId(), order.getQuantity());
+        } catch (Exception ex) {
+            seckillOrderMapper.updateStatus(order.getOrderNo(), SeckillOrderStatus.PENDING_PAYMENT.getCode(), SeckillOrderStatus.CANCELLED.getCode());
+            throw ex;
+        }
         soldOutFlag.clear(order.getActivityId());
+        return true;
     }
 
 }

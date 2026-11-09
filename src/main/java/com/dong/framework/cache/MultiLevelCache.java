@@ -245,7 +245,14 @@ public class MultiLevelCache implements SmartInitializingSingleton {
      * 重建锁保证同一个 key 只有一个线程真的去查。
      */
     private <T> CacheResolution<T> rebuild(String key, Class<T> type, Duration ttl, Supplier<T> loader, T stale) {
-        if (!allowRebuild(key)) {
+        if (properties.isBreakerEnabled() && !sourceBreaker.allowRequest()) {
+            stats.recordCircuitBlocked();
+            return fallback(stale);
+        }
+        // 频控拒绝时必须归还半开探测名额，否则一次被限流的请求就把熔断器永久卡在半开态
+        if (!tryAcquireQuota(REBUILD_GLOBAL_KEY, properties.getRebuildGlobalLimitPerSecond())
+                || !tryAcquireQuota(REBUILD_KEY_PREFIX + key, properties.getRebuildKeyLimitPerSecond())) {
+            sourceBreaker.recordNeutral();
             return fallback(stale);
         }
         try (LockHandle handle = acquireRebuildLock(key)) {
@@ -255,10 +262,13 @@ public class MultiLevelCache implements SmartInitializingSingleton {
             if (handle != null && !handle.isAcquired()) {
                 // 已经有线程在重建了，本线程不该跟着一起打数据库
                 stats.recordRebuildSkipped();
+                sourceBreaker.recordNeutral();
                 return fallback(stale);
             }
             if (l2 != null && l2.lookup(key, type) instanceof CacheLookup.Hit<T> hit) {
                 stats.recordL2Hit();
+                // L2 命中无需回源，归还名额让下一个请求继续探测下游恢复情况
+                sourceBreaker.recordNeutral();
                 return new CacheResolution.Fresh<>(hit.value());
             }
             stats.recordRebuild();
@@ -292,21 +302,6 @@ public class MultiLevelCache implements SmartInitializingSingleton {
             log.warn("rebuild lock unavailable key={}, rebuilding without lock: {}", key, ex.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 判断是否允许回源。熔断优先于频控：下游已经故障时没必要再数配额。
-     *
-     * @param key 缓存键
-     * @return 允许返回 true
-     */
-    private boolean allowRebuild(String key) {
-        if (properties.isBreakerEnabled() && !sourceBreaker.allowRequest()) {
-            stats.recordCircuitBlocked();
-            return false;
-        }
-        return tryAcquireQuota(REBUILD_GLOBAL_KEY, properties.getRebuildGlobalLimitPerSecond())
-                && tryAcquireQuota(REBUILD_KEY_PREFIX + key, properties.getRebuildKeyLimitPerSecond());
     }
 
     /**

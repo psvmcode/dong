@@ -163,7 +163,12 @@ public class RpcClient {
         pending.put(request.getRequestId(), future);
         try {
             Channel channel = channel(instance);
-            channel.writeAndFlush(Unpooled.wrappedBuffer(ProtoCodec.encode(request)));
+            channel.writeAndFlush(Unpooled.wrappedBuffer(ProtoCodec.encode(request))).addListener(f -> {
+                // 写失败立即失败，不再干等满超时才返回
+                if (!f.isSuccess()) {
+                    future.completeExceptionally(f.cause());
+                }
+            });
             RpcResponse response = future.get(callTimeoutMs, TimeUnit.MILLISECONDS);
             totalElapsed.addAndGet(System.currentTimeMillis() - started);
             return response;
@@ -209,19 +214,25 @@ public class RpcClient {
 
     /**
      * 取一条可用连接，断了就重连。
+     * 必须用 compute 原子替换：get → 判活 → connect → put 的非原子序列下，
+     * 并发重连的两个线程会各自建连，先放入的连接被覆盖且永远不会关闭，
+     * 对端重启或网络闪断的高并发期会积累泄漏的 socket 与 EventLoop 注册。
      *
      * @param instance 实例
      * @return 连接
      */
     private Channel channel(ServiceInstance instance) {
         String address = instance.address();
-        Channel existing = channels.get(address);
-        if (existing != null && existing.isActive()) {
-            return existing;
-        }
-        Channel created = connect(instance);
-        channels.put(address, created);
-        return created;
+        return channels.compute(address, (key, existing) -> {
+            if (existing != null && existing.isActive()) {
+                return existing;
+            }
+            Channel created = connect(instance);
+            if (existing != null) {
+                existing.close();
+            }
+            return created;
+        });
     }
 
     /**

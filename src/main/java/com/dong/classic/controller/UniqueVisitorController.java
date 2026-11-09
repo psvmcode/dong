@@ -63,11 +63,15 @@ public class UniqueVisitorController {
     /**
      * 查询日期区间的独立访客数。合并多个 HyperLogLog 得到的去重结果，
      * 而不是简单相加，否则同一个人会被重复计数。
+     * 区间端点缺省时按当天处理，与单日查询的默认行为保持一致。
      */
     @PostMapping("/range")
     @Operation(summary = "查询日期区间的独立访客数，自动去重")
     public Result<Long> countBetween(@Valid @RequestBody UvRangeQueryRequest request) {
-        return Result.success(uniqueVisitorService.countBetween(request.getPage(), request.getFrom(), request.getTo()));
+        LocalDate today = LocalDate.now();
+        LocalDate from = request.getFrom() == null ? today : request.getFrom();
+        LocalDate to = request.getTo() == null ? today : request.getTo();
+        return Result.success(uniqueVisitorService.countBetween(request.getPage(), from, to));
     }
 
 }

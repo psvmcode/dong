@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,7 +80,12 @@ public class SocialServiceImpl implements SocialService {
         SocialRelation relation = new SocialRelation();
         relation.setFollowerId(followerId);
         relation.setFolloweeId(followeeId);
-        socialRelationMapper.insert(relation);
+        try {
+            socialRelationMapper.insert(relation);
+        } catch (DuplicateKeyException ex) {
+            // 并发关注撞唯一索引：前置 count 检查挡不住同时到达的两个请求，转成业务冲突而不是 500
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "already following");
+        }
         followingSet(followerId).add(followeeId);
         followerSet(followeeId).add(followerId);
         socialTimelineService.rebuildTimelineFor(followerId, socialRelationMapper.selectFollowees(followerId));

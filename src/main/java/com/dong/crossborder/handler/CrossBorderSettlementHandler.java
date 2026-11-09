@@ -152,8 +152,10 @@ public class CrossBorderSettlementHandler implements MessageHandler {
                 batchMapper.insert(batch);
                 log.info("settlement batch auto created batchNo={} channel={} currency={}", batch.getBatchNo(), channel, remittance.getTargetCurrency());
             }
-            remittanceMapper.updateBatchNo(remittance.getRemittanceNo(), batch.getBatchNo());
-            batchMapper.updateTotal(batch.getBatchNo(), batch.getTotalCount() + 1, batch.getTotalAmount().add(remittance.getTargetAmount()));
+            // updateBatchNo 带「未归批」条件并以影响行数判定，防止重复消息或与 collect 并发时重复计数
+            if (remittanceMapper.updateBatchNo(remittance.getRemittanceNo(), batch.getBatchNo()) > 0) {
+                batchMapper.updateTotal(batch.getBatchNo(), 1, remittance.getTargetAmount());
+            }
             remittance.setBatchNo(batch.getBatchNo());
         } catch (Exception ex) {
             log.warn("assign batch failed remittanceNo={}", remittance.getRemittanceNo(), ex);

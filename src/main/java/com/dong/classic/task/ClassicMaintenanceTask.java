@@ -37,6 +37,18 @@ public class ClassicMaintenanceTask {
     private static final int DELAY_LIMIT = 50;
 
     /**
+     * 重投次数上限。超过后标记失败终态，避免一条永远无人消费的任务
+     * 每分钟都被重投一次，把队列和日志撑爆。
+     */
+    private static final int MAX_RETRY = 5;
+
+    /**
+     * 补偿重投的再次到期时间。顺延一个扫描周期，否则原记录
+     * 仍处于超时状态，下一轮扫描会重复入队同一份 payload。
+     */
+    private static final Duration REPRIORITIZE_DELAY = Duration.ofMinutes(1);
+
+    /**
      * 短链接服务，业务服务层。
      */
     private final ShortLinkService shortLinkService;
@@ -63,16 +75,23 @@ public class ClassicMaintenanceTask {
      * 补偿超时未消费的延迟任务。
      *
      * <p>Redis 延迟队列没有重试保证，任务可能因为进程重启或消费失败而丢失。
-     * 这里按预计时间扫描那些还没被标记消费的任务，重新投递并递增重投次数。
-     * 次数本身不设上限，但会一直打日志，便于人工介入。
+     * 这里按预计时间扫描那些还没被标记消费的任务，只把原任务的 payload
+     * 重新入队（不新建任务记录），顺延预计时间一个扫描周期并递增重投次数。
+     * 重投超限后标记失败终态，等待人工介入。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 90_000)
     public void compensateDelayTasks() {
         LocalDateTime threshold = LocalDateTime.now().minus(DELAY_GRACE);
         for (ClassicDelayTask task : delayTaskMapper.selectOverdue(threshold, DELAY_LIMIT)) {
             try {
-                delayQueueService.offer(task.getPayload(), Duration.between(LocalDateTime.now(), LocalDateTime.now().plusSeconds(1)));
+                if (task.getRetryCount() >= MAX_RETRY) {
+                    delayTaskMapper.markFailed(task.getTaskNo());
+                    log.error("delay task retry exhausted, marked failed taskNo={} payload={}", task.getTaskNo(), task.getPayload());
+                    continue;
+                }
+                delayQueueService.reoffer(task.getPayload(), REPRIORITIZE_DELAY);
                 delayTaskMapper.increaseRetry(task.getTaskNo());
+                delayTaskMapper.postpone(task.getTaskNo(), LocalDateTime.now().plus(REPRIORITIZE_DELAY));
                 log.warn("delay task re-offered taskNo={} retry={}", task.getTaskNo(), task.getRetryCount() + 1);
             } catch (Exception ex) {
                 log.error("compensate delay task failed taskNo={}", task.getTaskNo(), ex);

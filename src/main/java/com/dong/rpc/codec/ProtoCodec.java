@@ -28,6 +28,13 @@ public final class ProtoCodec {
     private static final int VALUE_ORDER = 1;
 
     /**
+     * 单条消息里 repeated 元素的总数上限。帧长上限只约束输入字节，
+     * 不约束解码后对象数：2 字节一条的微型 repeated 元素能把一帧放大成
+     * 数百万个对象的列表，几个并发请求即可打满堆，必须在解码层封顶。
+     */
+    private static final int MAX_REPEATED_ELEMENTS = 10_000;
+
+    /**
      * 空字节。
      */
     private static final byte[] EMPTY = new byte[0];
@@ -82,6 +89,7 @@ public final class ProtoCodec {
         ProtoSchema schema = ProtoSchema.of(type);
         Object target = schema.newInstance();
         ProtoReader reader = new ProtoReader(data);
+        int repeatedElements = 0;
         while (reader.hasNext()) {
             int tag = reader.readTag();
             int order = tag >>> 3;
@@ -95,6 +103,9 @@ public final class ProtoCodec {
             }
             Object value = readValue(reader, field.type(), field.valueType());
             if (field.repeated()) {
+                if (++repeatedElements > MAX_REPEATED_ELEMENTS) {
+                    throw new ProtoCodecException("repeated elements exceed " + MAX_REPEATED_ELEMENTS + ", possible malicious payload");
+                }
                 appendRepeated(target, field, value);
             } else {
                 field.set(target, value);

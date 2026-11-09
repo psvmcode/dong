@@ -152,12 +152,17 @@ public class AmlMonitorImpl implements AmlMonitor {
     /**
      * 用 scan 增量扫描替代 keys 全量扫描。keys 在大库上会阻塞 Redis 主线程，
      * scan 虽然多一轮往返但不会阻塞，是生产环境的强制要求。
+     * Cursor 独占一条连接（executeWithStickyConnection），必须 try-with-resources
+     * 归还，否则每次调用泄漏一条连接，池耗尽后全站 Redis 操作阻塞。
      */
     private Set<String> scanAmlKeys() {
         Set<String> result = new java.util.HashSet<>();
-        org.springframework.data.redis.core.Cursor<String> cursor = redisService.template().scan(org.springframework.data.redis.core.ScanOptions.scanOptions().match(KEY_PREFIX + "*").count(100).build());
-        while (cursor.hasNext()) {
-            result.add(cursor.next());
+        try (org.springframework.data.redis.core.Cursor<String> cursor = redisService.template().scan(org.springframework.data.redis.core.ScanOptions.scanOptions().match(KEY_PREFIX + "*").count(100).build())) {
+            while (cursor.hasNext()) {
+                result.add(cursor.next());
+            }
+        } catch (Exception ex) {
+            log.error("scan aml keys failed", ex);
         }
         return result;
     }

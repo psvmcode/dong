@@ -55,10 +55,15 @@ public class RedPacketAllocator {
     /**
      * 均分。除不尽的余数补在最后一份上，
      * 这个细节保证总额精确守恒，不会因整除丢掉零头。
+     * 金额不足时必须拒绝：totalAmount < count 会分出 0 分的份额，
+     * 用户能「成功」抢到一个空红包。
      */
     public static List<Long> allocateFixed(long totalAmount, int count) {
         if (count <= 0) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "count must be positive");
+        }
+        if (totalAmount < (long) count * MIN_AMOUNT) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "total amount must leave at least one cent for each grabber");
         }
         long each = totalAmount / count;
         List<Long> amounts = new ArrayList<>(count);

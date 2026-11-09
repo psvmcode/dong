@@ -134,6 +134,19 @@ public class SearchIndexServiceImpl implements SearchIndexService {
         try {
             createIndex(next);
             var reindex = elasticsearchClient.reindex(request -> request.source(source -> source.index(current)).dest(dest -> dest.index(next)).refresh(true));
+            // reindex 部分失败时（脏 geo_point、mapping 不兼容的文档）绝不能切别名删旧索引，
+            // 否则搬不过去的文档永久丢失，MySQL 权威源的对账任务会永远追不平
+            long total = reindex.total() == null ? 0L : reindex.total();
+            long failures = reindex.failures() == null ? 0L : reindex.failures().size();
+            long moved = (reindex.created() == null ? 0L : reindex.created()) + (reindex.updated() == null ? 0L : reindex.updated());
+            if (failures > 0 || moved < total) {
+                try {
+                    elasticsearchClient.indices().delete(request -> request.index(next));
+                } catch (Exception cleanupEx) {
+                    log.warn("failed to clean up failed rebuild target index {}", next, cleanupEx);
+                }
+                throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "reindex lost " + (total - moved + failures) + " docs, old index kept");
+            }
             elasticsearchClient.indices().updateAliases(request -> request.actions(action -> action.remove(remove -> remove.index(current).alias(alias))).actions(action -> action.add(add -> add.index(next).alias(alias))));
             elasticsearchClient.indices().delete(request -> request.index(current));
             log.info("index rebuilt: {} -> {} (alias {}, {} docs moved)", current, next, alias, reindex.total());
@@ -144,6 +157,8 @@ public class SearchIndexServiceImpl implements SearchIndexService {
             response.setToIndex(next);
             response.setMovedDocs(reindex.total() == null ? 0L : reindex.total());
             return response;
+        } catch (BusinessException ex) {
+            throw ex;
         } catch (Exception ex) {
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "rebuild failed", ex);
         }

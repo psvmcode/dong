@@ -2,6 +2,7 @@ package com.dong.cache.support;
 
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
+import com.dong.common.exception.GlobalExceptionHandler;
 import com.dong.common.web.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -54,6 +55,8 @@ public class CacheGuardInterceptor implements HandlerInterceptor {
 
     /**
      * 请求结束后统计未命中，用于识别撞 id 的扫描行为。
+     * 异常被全局异常处理器消化后这里的 ex 恒为 null（Spring 的既定行为），
+     * 因此改读处理器挂到请求上的业务错误码标记；未走处理器的裸异常仍作兜底。
      *
      * @param request  当前请求
      * @param response 当前响应
@@ -62,7 +65,10 @@ public class CacheGuardInterceptor implements HandlerInterceptor {
      */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        if (ex instanceof BusinessException businessException && businessException.getCode() == Constants.CODE_DATA_NOT_FOUND) {
+        Integer code = (Integer) request.getAttribute(GlobalExceptionHandler.BUSINESS_ERROR_CODE_ATTRIBUTE);
+        boolean miss = code != null && code == Constants.CODE_DATA_NOT_FOUND
+                || ex instanceof BusinessException businessException && businessException.getCode() == Constants.CODE_DATA_NOT_FOUND;
+        if (miss) {
             cacheReadGuard.recordMiss(clientIpResolver.resolve(request));
         }
     }

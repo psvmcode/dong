@@ -57,6 +57,14 @@
         and available &gt;= #{quantity}
     </update>
 
+    <!-- 重置库存可用量并清零冻结，seed 已有记录时用 -->
+    <update id="updateInventory">
+        update tcc_inventory
+        set available = #{available},
+        frozen = 0
+        where product_id = #{productId}
+    </update>
+
     <!-- Confirm 阶段扣减冻结库存 -->
     <update id="confirmInventory">
         update tcc_inventory

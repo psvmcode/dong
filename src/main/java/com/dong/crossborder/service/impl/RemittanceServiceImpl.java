@@ -6,6 +6,7 @@ import com.dong.common.result.PageResult;
 import com.dong.common.result.PageRequest;
 import com.dong.common.util.JsonUtils;
 import com.dong.common.util.Snowflake;
+import com.dong.crossborder.dto.FxQuoteResponse;
 import com.dong.crossborder.dto.RemittanceCreateRequest;
 import com.dong.crossborder.dto.RemittanceResponse;
 import com.dong.crossborder.dto.ReviewDecisionRequest;
@@ -13,6 +14,7 @@ import com.dong.crossborder.entity.AccountLedger;
 import com.dong.crossborder.entity.CrossBorderAccount;
 import com.dong.crossborder.entity.CrossBorderRemittance;
 import com.dong.crossborder.enums.ComplianceResult;
+import com.dong.crossborder.enums.FxQuoteStatus;
 import com.dong.crossborder.enums.LedgerDirection;
 import com.dong.crossborder.enums.RemittanceStatus;
 import com.dong.crossborder.enums.SettlementChannel;
@@ -257,8 +259,18 @@ public class RemittanceServiceImpl implements RemittanceService {
         // 拆分交易检测放在常规合规之后：单独看每笔都合规，要看行为模式才能发现
         Optional<String> structuring = amlMonitor.detectStructuring(payer.getId(), request.getSourceAmount());
         structuring.ifPresent(detail -> log.warn("aml structuring signal remittanceNo={} {}", remittance.getRemittanceNo(), detail));
-        BigDecimal rate = fxQuoteService.lock(remittance.getQuoteNo(), remittance.getRemittanceNo());
-        BigDecimal fee = fxQuoteService.fee(request.getSourceAmount(), channel);
+        BigDecimal rate;
+        BigDecimal fee;
+        try {
+            rate = fxQuoteService.lock(remittance.getQuoteNo(), remittance.getRemittanceNo());
+            fee = fxQuoteService.fee(request.getSourceAmount(), channel);
+        } catch (RuntimeException ex) {
+            // 合规筛查已按「先累加再判断」占用了日限额，锁汇（报价过期/被并发抢走）
+            // 与算费失败时单子不会落库，不释放的话失败几次额度就被吃光，这是真实系统里最常见的额度泄漏事故
+            complianceService.releaseDailyLimit(payer.getId(), request.getSourceAmount());
+            eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.QUOTE_LOCKED, "quote", ex.getMessage(), "system");
+            throw ex;
+        }
         BigDecimal targetAmount = request.getSourceAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
         remittance.setExchangeRate(rate);
         remittance.setFeeAmount(fee);
@@ -435,13 +447,22 @@ public class RemittanceServiceImpl implements RemittanceService {
      * 这里按放行时刻的市场报价重新锁定并回填，之后走与正常链路相同的扣款事务。
      */
     private void settleSuspended(CrossBorderRemittance suspended, CrossBorderAccount payer) {
-        BigDecimal rate = fxQuoteService.lock(suspended.getQuoteNo(), suspended.getRemittanceNo());
+        String quoteNo = suspended.getQuoteNo();
+        FxQuoteResponse quote = fxQuoteService.findByQuoteNo(quoteNo);
+        if (quote == null || quote.isExpired() || quote.getStatus() != FxQuoteStatus.AVAILABLE) {
+            // 挂起单的人工审核几乎必然超过报价有效期（默认 300 秒），
+            // 锁旧报价只会放行失败回退，单子在待审核与失败之间死循环。
+            // 按放行时刻重新询价并回写单号，再走与正常链路相同的锁定。
+            quoteNo = fxQuoteService.quote(suspended.getSourceCurrency(), suspended.getTargetCurrency(), 300L).getQuoteNo();
+            remittanceMapper.updateQuoteNo(suspended.getRemittanceNo(), quoteNo);
+        }
+        BigDecimal rate = fxQuoteService.lock(quoteNo, suspended.getRemittanceNo());
         BigDecimal fee = fxQuoteService.fee(suspended.getSourceAmount(), suspended.getChannel());
         BigDecimal targetAmount = suspended.getSourceAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
         remittanceMapper.updateSettlementTerms(suspended.getRemittanceNo(), rate, fee, targetAmount, ComplianceResult.PASS.getCode());
         CrossBorderRemittance current = remittanceMapper.selectByRemittanceNo(suspended.getRemittanceNo());
         ledgerService.debitExisting(current, payer, suspended.getSourceAmount().add(fee));
-        fxQuoteService.markUsed(suspended.getQuoteNo());
+        fxQuoteService.markUsed(quoteNo);
     }
 
     /**

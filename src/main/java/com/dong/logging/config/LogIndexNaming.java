@@ -136,7 +136,13 @@ public class LogIndexNaming {
         if (!matcher.find()) {
             return null;
         }
-        return LocalDate.of(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)));
+        try {
+            return LocalDate.of(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)));
+        } catch (Exception ex) {
+            // 正则只约束位数不约束取值：2026_13_99 这类名字 LocalDate.of 会直接抛异常，
+            // 一条脏索引名不能把整个过期清理任务或 retention 接口打成 500
+            return null;
+        }
     }
 
 }

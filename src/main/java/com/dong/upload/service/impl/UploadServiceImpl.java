@@ -98,6 +98,15 @@ public class UploadServiceImpl implements UploadService {
         }
         String uploadId = uploadIdGenerator.resolve(request.getFileHash(), request.getFileSize(), request.getFileName(), chunkSize);
         UploadTask existed = uploadTaskMapper.selectByUploadId(uploadId);
+        if (existed != null && UploadStatus.of(existed.getStatus()) == UploadStatus.CANCELLED) {
+            // 兜底处理历史取消行：它仍占着 uk_hash_size 唯一键，
+            // 不复活的话同一文件的所有后续上传都会被「task already finished」拒绝
+            uploadTaskMapper.updateStatus(uploadId, UploadStatus.UPLOADING.getCode(), "", 0L);
+            uploadChunkMapper.deleteByUploadId(uploadId);
+            uploadStorage.deleteChunks(uploadId);
+            existed = uploadTaskMapper.selectByUploadId(uploadId);
+            log.info("cancelled upload task reactivated uploadId={}", uploadId);
+        }
         UploadTask task = existed == null ? createTask(request, chunkSize, totalChunks, uploadId) : existed;
         UploadInitResponse response = new UploadInitResponse();
         response.setUploadId(task.getUploadId());
@@ -171,8 +180,12 @@ public class UploadServiceImpl implements UploadService {
         int rows = uploadTaskMapper.updateStatusFromUploading(
                 uploadId, UploadStatus.COMPLETED.getCode(), merged.path(), task.getFileSize());
         if (rows == 0) {
-            // 落败说明被并发请求抢先，或被并发取消；直接把当前状态的结果返回，重试没有意义
-            return requireTask(uploadId).getStoragePath();
+            UploadTask current = requireTask(uploadId);
+            if (UploadStatus.of(current.getStatus()) == UploadStatus.COMPLETED) {
+                return current.getStoragePath();
+            }
+            // 落败且未完成说明被并发取消：把空路径当成功返回会让客户端误以为文件已合并
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "upload task is cancelled");
         }
         uploadStorage.deleteChunks(uploadId);
         log.info("upload completed uploadId={} chunks={} path={}", uploadId, indexes.size(), merged.path());
@@ -219,11 +232,13 @@ public class UploadServiceImpl implements UploadService {
         if (UploadStatus.of(task.getStatus()) == UploadStatus.COMPLETED) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "upload task already completed");
         }
-        uploadTaskMapper.updateStatus(uploadId, UploadStatus.CANCELLED.getCode(), "", 0L);
+        // 直接删除任务行而不是标记 CANCELLED：uploadId 由内容确定性推导，
+        // 取消行会一直占着 uk_hash_size 唯一键，同一文件将永远无法重新上传
         uploadChunkMapper.deleteByUploadId(uploadId);
         uploadStorage.deleteChunks(uploadId);
         uploadStorage.deleteTaskFile(task.getStoragePath());
         uploadStorage.deleteTaskDir(uploadId);
+        uploadTaskMapper.deleteByUploadId(uploadId);
         log.info("upload cancelled uploadId={}", uploadId);
     }
 

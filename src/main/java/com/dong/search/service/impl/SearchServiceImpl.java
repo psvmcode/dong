@@ -419,6 +419,7 @@ public class SearchServiceImpl implements SearchService {
 
     /**
      * 把游标字符串还原成排序值。第 0 位是价格或时间戳（数值），第 1 位是 id（字符串）。
+     * 非法游标是调用方的参数错误，必须报 1000 而不是被外层包装成依赖故障误导排障。
      */
     private List<FieldValue> parseCursor(String sort, String after) {
         if (after == null || after.isBlank()) {
@@ -426,12 +427,16 @@ public class SearchServiceImpl implements SearchService {
         }
         String[] parts = after.split(",");
         List<FieldValue> values = new ArrayList<>();
-        for (int index = 0; index < parts.length; index++) {
-            if (index == 0) {
-                values.add(FieldValue.of(Double.parseDouble(parts[index])));
-            } else {
-                values.add(FieldValue.of(parts[index]));
+        try {
+            for (int index = 0; index < parts.length; index++) {
+                if (index == 0) {
+                    values.add(FieldValue.of(Double.parseDouble(parts[index])));
+                } else {
+                    values.add(FieldValue.of(parts[index]));
+                }
             }
+        } catch (NumberFormatException ex) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "malformed cursor: " + after);
         }
         return values;
     }

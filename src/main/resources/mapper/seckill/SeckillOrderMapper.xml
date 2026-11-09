@@ -53,11 +53,12 @@
         values (#{orderNo}, #{activityId}, #{productId}, #{userId}, #{quantity}, #{amount}, #{status})
     </insert>
 
-    <!-- 推进订单状态 -->
+    <!-- 条件推进订单状态：带期望原状态,调用方以影响行数判定是否被并发推进 -->
     <update id="updateStatus">
         update seckill_order
         set status = #{status}
         where order_no = #{orderNo}
+        and status = #{fromStatus}
     </update>
 
 </mapper>

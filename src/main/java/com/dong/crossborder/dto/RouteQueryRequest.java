@@ -2,6 +2,7 @@ package com.dong.crossborder.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
@@ -12,8 +13,10 @@ import java.math.BigDecimal;
 public class RouteQueryRequest {
 
     /**
-     * 汇款金额。
+     * 汇款金额。@DecimalMin 与 @Digits 对 null 均放行，
+     * 缺 @NotNull 时 null 会一路传进比价逻辑直接 NPE。
      */
+    @NotNull
     @DecimalMin("0.01")
     @Digits(integer = 16, fraction = 2)
     private BigDecimal amount;

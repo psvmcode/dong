@@ -22,6 +22,15 @@ public interface DelayQueueService {
     String offer(String payload, Duration delay);
 
     /**
+     * 补偿重投：只把已落库任务的 payload 重新入队，不新建任务记录。
+     * 走 offer 会插出新行，原记录仍处于待补偿状态，导致表与队列无限膨胀。
+     *
+     * @param payload 任务内容
+     * @param delay   延迟时间
+     */
+    void reoffer(String payload, Duration delay);
+
+    /**
      * 取出已到期的任务，未到期的不返回。
      */
     List<String> take(int limit);

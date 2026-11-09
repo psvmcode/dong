@@ -47,9 +47,10 @@ public interface SettlementBatchMapper {
     int updateStatus(@Param("batchNo") String batchNo, @Param("status") SettlementStatus status);
 
     /**
-     * 更新批次总金额与总笔数。
+     * 原子累加批次总笔数与总金额。传增量而不是绝对值：
+     * 读实体再覆盖写会在并发归批时互相丢失更新。
      */
-    int updateTotal(@Param("batchNo") String batchNo, @Param("totalCount") int totalCount, @Param("totalAmount") java.math.BigDecimal totalAmount);
+    int updateTotal(@Param("batchNo") String batchNo, @Param("count") int count, @Param("amount") java.math.BigDecimal amount);
 
     /**
      * 关闭到期的批次，由定时任务按清算截止时间触发。

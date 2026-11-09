@@ -57,11 +57,18 @@ public class RedPacketConsistencyTask {
 
     /**
      * 对账未结束的红包，无差异时保持安静。
+     * 逐个 try/catch：一个红包的库或 Redis 异常不能中断本轮其余红包的对账。
      */
     @Scheduled(fixedDelayString = "${dong.redpacket.consistency-interval-ms:300000}", initialDelay = 60_000)
     public void reconcile() {
         List<RedPacket> packets = redPacketMapper.selectUnfinished(scanLimit);
-        packets.forEach(this::check);
+        for (RedPacket packet : packets) {
+            try {
+                check(packet);
+            } catch (Exception ex) {
+                log.error("red packet reconciliation failed packetNo={}", packet.getPacketNo(), ex);
+            }
+        }
     }
 
     /**
