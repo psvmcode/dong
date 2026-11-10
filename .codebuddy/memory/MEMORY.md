@@ -72,11 +72,14 @@
   同一份数据 protobuf 110B vs JSON 233B。做性能对照前先确认「寻址」有没有被算进去
 
 ### 前端项目 dong-web
-- `/Users/dong/items/java/dong-web`（同级独立仓库，无远端）；Vue 3 + TS + Vite 6 + Element Plus + Pinia + ECharts
+- `/Users/dong/items/java/dong-web`（同级独立仓库，**有远端** `git@github.com:psvmcode/dong-web.git`，master 可 push）；Vue 3 + TS + Vite 6 + Element Plus + Pinia + ECharts
 - **不改后端任何配置**：vite 代理 `/api` `/actuator` `/v3` → 8090；`DONG_BACKEND_TARGET=http://x:8090 npm run dev`
 - `postQuery` 对应 @RequestParam，`postJson` 对应 @RequestBody；`unwrap()` 把失败也包成 ApiResult（页面要看得到 1004/1005）
-- `npm install` 必须加 `--include=dev`
-- **页面形态（用户明确要求）**：还原成真实产品界面而非调试台；调试信息折叠进右下角「内部链路」抽屉；各场景用自己的配色
+- `npm install` 必须加 `--include=dev`；交付前跑 `npm run build`（内含 vue-tsc 类型检查）
+- **页面形态（2026-11-10 用户明确改口，取代旧要求）**：不要太花里胡哨、一定要实用。统一白底 + 细边框 + 6px 圆角 + 单一主色 `#2f6feb`，颜色只承担语义；禁止渐变、大色块、拟物化外壳、emoji、悬浮位移与动画；数字等宽右对齐
+  - 旧要求「还原真实产品界面、各场景用自己的配色」**已作废**，别再按它做
+  - 保留：调试信息仍折叠进右下角「内部链路」抽屉；真实动作感（抢购/拆红包/补全分面）不退回参数表单
+  - 设计基线见 `src/styles/global.css`；全局 `CopyButton` 在 `main.ts` 注册；`utils/scene.ts` 已停用彩色头像与分类渐变
 
 ### 运行与部署
 - 单份 `src/main/resources/application.yml`，无 profile；`mvn spring-boot:run`（8090）；Knife4j `/doc.html`
