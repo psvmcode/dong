@@ -58,7 +58,6 @@ public class FxExposureServiceImpl implements FxExposureService {
         for (CrossBorderRemittance item : open) {
             byPair.computeIfAbsent(item.getSourceCurrency() + "/" + item.getTargetCurrency(), k -> new ArrayList<>()).add(item);
         }
-
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map.Entry<String, List<CrossBorderRemittance>> entry : byPair.entrySet()) {
             String pair = entry.getKey();

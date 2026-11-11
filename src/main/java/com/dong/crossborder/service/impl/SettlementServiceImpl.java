@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
+import org.springframework.transaction.annotation.Transactional;
 /**
  * SettlementServiceImpl，Settlement 业务服务实现。
  */
@@ -48,7 +48,7 @@ public class SettlementServiceImpl implements SettlementService {
     private final CrossBorderLedgerService ledgerService;
 
     /**
-     * snowflake。
+     * snowflake，雪花发号器，用于生成清算批次号。
      */
     private final Snowflake snowflake;
 
@@ -56,6 +56,7 @@ public class SettlementServiceImpl implements SettlementService {
      * createBatch。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String createBatch(SettlementChannel channel, String currency, long cutoffMinutes) {
         SettlementBatch batch = new SettlementBatch();
         batch.setBatchNo("SB" + snowflake.nextId());
@@ -94,7 +95,11 @@ public class SettlementServiceImpl implements SettlementService {
      * 未扣款或已失败的不能进入，否则会造成渠道侧多放款。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int collect(String batchNo, int limit) {
+        if (limit <= 0 || limit > Constants.MAX_BATCH_SIZE) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "limit out of range");
+        }
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "batch " + batchNo + " not found");
@@ -124,6 +129,7 @@ public class SettlementServiceImpl implements SettlementService {
      * 关闭到期的批次。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int closeOverdue() {
         return batchMapper.closeOverdue(LocalDateTime.now());
     }
@@ -133,6 +139,7 @@ public class SettlementServiceImpl implements SettlementService {
      * 避免手动清算绕过「清算中」状态造成两条路径行为不一致。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int settle(String batchNo) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
@@ -157,6 +164,7 @@ public class SettlementServiceImpl implements SettlementService {
      * 清空全部数据，仅测试场景使用。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int clearAll() {
         return batchMapper.clearAll();
     }

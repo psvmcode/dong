@@ -44,7 +44,7 @@ public class CrossBorderLedgerServiceImpl implements CrossBorderLedgerService {
     private final AccountLedgerMapper ledgerMapper;
 
     /**
-     * snowflake。
+     * snowflake，雪花发号器，用于生成流水编号。
      */
     private final Snowflake snowflake;
 

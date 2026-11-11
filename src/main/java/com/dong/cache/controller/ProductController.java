@@ -13,10 +13,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -95,7 +93,7 @@ public class ProductController {
     /**
      * 更新。先改库再失效缓存，并用延迟双删兜底。
      */
-    @PutMapping("/{id}")
+    @PostMapping("/{id}/update")
     @Operation(summary = "更新商品，先更新数据库再失效缓存")
     public Result<Void> update(@PathVariable
                                @Positive Long id, @Valid @RequestBody ProductSaveRequest request) {
@@ -106,7 +104,7 @@ public class ProductController {
     /**
      * 删除。同样用延迟双删保证各节点缓存一致。
      */
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/delete")
     @Operation(summary = "删除商品，并失效对应缓存")
     public Result<Void> delete(@PathVariable
                                @Positive Long id) {

@@ -40,7 +40,6 @@ public class UserAccountServiceImpl implements UserAccountService {
         if (existing != null) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "account " + userId + " already exists on the replica instance");
         }
-
         UserAccount account = new UserAccount();
         account.setUserId(userId);
         account.setUsername(username);
@@ -63,7 +62,12 @@ public class UserAccountServiceImpl implements UserAccountService {
      */
     @Override
     public List<UserAccount> findAll() {
-        return userAccountMapper.selectAll();
+        List<UserAccount> all = userAccountMapper.selectAll();
+        if (all.size() > Constants.MAX_BATCH_SIZE) {
+            log.warn("accounts exceeds safe limit, truncated: {} > {}", all.size(), Constants.MAX_BATCH_SIZE);
+            return all.subList(0, Constants.MAX_BATCH_SIZE);
+        }
+        return all;
     }
 
     /**
@@ -77,7 +81,6 @@ public class UserAccountServiceImpl implements UserAccountService {
         if (from.getBalance() < amount) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "balance not enough");
         }
-
         userAccountMapper.updateBalance(fromUserId, from.getBalance() - amount);
         userAccountMapper.updateBalance(toUserId, to.getBalance() + amount);
         log.info("transfer on replica instance from={} to={} amount={}", fromUserId, toUserId, amount);

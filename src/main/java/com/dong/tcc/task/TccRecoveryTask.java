@@ -28,9 +28,13 @@ public class TccRecoveryTask {
      */
     @Scheduled(fixedDelay = 30_000, initialDelay = 20_000)
     public void recover() {
-        int recovered = tccCoordinatorService.recoverPending();
-        if (recovered > 0) {
-            log.info("tcc recovery finished, {} transaction(s) settled", recovered);
+        try {
+            int recovered = tccCoordinatorService.recoverPending();
+            if (recovered > 0) {
+                log.info("tcc recovery finished, {} transaction(s) settled", recovered);
+            }
+        } catch (Exception ex) {
+            log.error("recover task failed", ex);
         }
     }
 

@@ -21,7 +21,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-
+import org.springframework.transaction.annotation.Transactional;
 /**
  * 汇率报价实现。
  *
@@ -80,12 +80,12 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     private final DistributedLockService distributedLockService;
 
     /**
-     * snowflake。
+     * snowflake，雪花发号器，用于生成报价编号。
      */
     private final Snowflake snowflake;
 
     /**
-     * quote。
+     * quote，汇率报价数据访问层。
      */
     @Override
     public FxQuoteResponse quote(String sourceCurrency, String targetCurrency, long validSeconds) {
@@ -147,6 +147,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      * markUsed。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void markUsed(String quoteNo) {
         fxQuoteMapper.updateStatus(quoteNo, FxQuoteStatus.USED);
     }
@@ -196,6 +197,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      * 批量标记过期报价。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int expireOverdue() {
         return fxQuoteMapper.expireOverdue(LocalDateTime.now());
     }
@@ -212,6 +214,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      * 清空全部数据，仅测试场景使用。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int clearAll() {
         return fxQuoteMapper.clearAll();
     }
@@ -228,6 +231,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      * 调整牌价。真实系统由交易系统推送，这里提供手动调整的入口。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateRate(String currency, BigDecimal usdRate) {
         requireRate(currency);
         fxRateMapper.updateRate(currency, usdRate);

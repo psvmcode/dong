@@ -28,7 +28,6 @@ import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -131,7 +130,7 @@ public class AgentController {
     /**
      * 删除会话及其消息。
      */
-    @DeleteMapping("/sessions/{sessionNo}")
+    @PostMapping("/sessions/{sessionNo}/delete")
     @Operation(summary = "删除会话及其消息与工具调用记录")
     public Result<Void> removeSession(@PathVariable @NotBlank @Size(max = 32) String sessionNo) {
         checkAvailable();

@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -123,7 +122,7 @@ public class OrderController {
     /**
      * 删除订单及其流转日志，实验环境清理用。
      */
-    @DeleteMapping("/{orderNo}")
+    @PostMapping("/{orderNo}/delete")
     @Operation(summary = "删除订单及其流转日志")
     public Result<Void> remove(@PathVariable @NotBlank @Size(max = 128) String orderNo) {
         orderService.remove(orderNo);

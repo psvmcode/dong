@@ -105,7 +105,6 @@ public class SeckillOrderCreatedHandler implements MessageHandler {
             log.warn("duplicate seckill order rejected orderNo={} activity={} user={}", orderNo, activityId, userId);
             return true;
         }
-
         SeckillOrder order = new SeckillOrder();
         order.setOrderNo(orderNo);
         order.setActivityId(activityId);

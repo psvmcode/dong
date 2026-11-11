@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 /**
  * 经典场景的维护任务。
  *
@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "dong.classic", name = "maintenance-enabled", havingValue = "true", matchIfMissing = true)
 public class ClassicMaintenanceTask {
 
     /**
@@ -68,7 +69,11 @@ public class ClassicMaintenanceTask {
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
     public void flushShortLinkHits() {
-        shortLinkService.flushHitCount();
+        try {
+            shortLinkService.flushHitCount();
+        } catch (Exception ex) {
+            log.error("flushShortLinkHits task failed", ex);
+        }
     }
 
     /**
@@ -81,21 +86,25 @@ public class ClassicMaintenanceTask {
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 90_000)
     public void compensateDelayTasks() {
-        LocalDateTime threshold = LocalDateTime.now().minus(DELAY_GRACE);
-        for (ClassicDelayTask task : delayTaskMapper.selectOverdue(threshold, DELAY_LIMIT)) {
-            try {
-                if (task.getRetryCount() >= MAX_RETRY) {
-                    delayTaskMapper.markFailed(task.getTaskNo());
-                    log.error("delay task retry exhausted, marked failed taskNo={} payload={}", task.getTaskNo(), task.getPayload());
-                    continue;
+        try {
+            LocalDateTime threshold = LocalDateTime.now().minus(DELAY_GRACE);
+            for (ClassicDelayTask task : delayTaskMapper.selectOverdue(threshold, DELAY_LIMIT)) {
+                try {
+                    if (task.getRetryCount() >= MAX_RETRY) {
+                        delayTaskMapper.markFailed(task.getTaskNo());
+                        log.error("delay task retry exhausted, marked failed taskNo={} payload={}", task.getTaskNo(), task.getPayload());
+                        continue;
+                    }
+                    delayQueueService.reoffer(task.getPayload(), REPRIORITIZE_DELAY);
+                    delayTaskMapper.increaseRetry(task.getTaskNo());
+                    delayTaskMapper.postpone(task.getTaskNo(), LocalDateTime.now().plus(REPRIORITIZE_DELAY));
+                    log.warn("delay task re-offered taskNo={} retry={}", task.getTaskNo(), task.getRetryCount() + 1);
+                } catch (Exception ex) {
+                    log.error("compensate delay task failed taskNo={}", task.getTaskNo(), ex);
                 }
-                delayQueueService.reoffer(task.getPayload(), REPRIORITIZE_DELAY);
-                delayTaskMapper.increaseRetry(task.getTaskNo());
-                delayTaskMapper.postpone(task.getTaskNo(), LocalDateTime.now().plus(REPRIORITIZE_DELAY));
-                log.warn("delay task re-offered taskNo={} retry={}", task.getTaskNo(), task.getRetryCount() + 1);
-            } catch (Exception ex) {
-                log.error("compensate delay task failed taskNo={}", task.getTaskNo(), ex);
             }
+        } catch (Exception ex) {
+            log.error("compensateDelayTasks task failed", ex);
         }
     }
 

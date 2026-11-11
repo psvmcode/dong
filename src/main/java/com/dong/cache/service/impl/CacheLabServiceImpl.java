@@ -61,7 +61,6 @@ public class CacheLabServiceImpl implements CacheLabService {
                 }
             }
         }
-
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("requests", count);
         result.put("rejectedOrAbsent", rejected);

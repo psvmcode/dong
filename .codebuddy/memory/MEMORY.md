@@ -20,8 +20,10 @@
 - 全站业务接口一律 **POST**；查询参数走 JSON body + 查询 DTO；分页 DTO 继承 `PageQuery`（改 POST 时注意与已有 POST 同路径撞车，加 `/list` 之类后缀）
 - 可选参数只能用 `@Size`（`@NotBlank` = 必填）；**拒绝取值越界，允许空结果**
 - 错误码只取 `Constants`：1000 参数 / 1001 不存在 / 1002 冲突 / 1003 限流 / 1004 中间件未启用 / 1005 依赖不可用 / 1006 幂等 / 1007 超限
-- **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时返回 1005 而非 1004
+- **改 service impl 别漏 `@ConditionalOnProperty`**：漏了关闭开关时返回 1005 而非 1004。
+  ⚠️ **但不能机械照搬**：agent / upload 的 Controller 是 `private final` 直接注入 service + `@Value` 显式抛 1004，给这些 impl 加开关注解会让 Bean 缺失、应用启动失败（agent 默认 false）。只有 Controller 用 `ObjectProvider` 延迟获取的模块（search / logging）才适合给 impl 加注解
 - 新增走主库的 Mapper 包**必须登记**到 `config/PrimaryMybatisConfig` 的 `@MapperScan`
+- **全站业务接口一律 POST**：把 DELETE/PUT 收敛成 POST 时，同路径已有 POST 会撞车，必须加动作后缀（`/delete`、`/update`、`/cancel`），并同步改 `dong-web` 对应 api 的路径与函数名（`deleteQuery`/`putJson` → `postQuery`/`postJson`）；2026-11-11 已全量收敛完
 
 ### DDL 与目录结构
 - **DDL 唯一权威源 `src/main/resources/db/schema.sql`**，改完必须跑 `./src/main/resources/deploy/gen-initdb.sh` 生成 `initdb/` 与 `initdb-replica/`（生成物，禁手工编辑）

@@ -81,12 +81,12 @@ public class SearchServiceImpl implements SearchService {
     private static final String SUGGESTER_NAME = "product-suggest";
 
     /**
-     * elasticsearchClient。
+     * elasticsearchClient，ES Java API 客户端。
      */
     private final ElasticsearchClient elasticsearchClient;
 
     /**
-     * indexNameResolver。
+     * indexNameResolver，索引别名与版本解析。
      */
     private final IndexNameResolver indexNameResolver;
 

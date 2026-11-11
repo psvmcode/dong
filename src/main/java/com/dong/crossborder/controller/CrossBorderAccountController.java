@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -125,7 +124,7 @@ public class CrossBorderAccountController {
     /**
      * 从制裁名单移除。
      */
-    @DeleteMapping("/sanction")
+    @PostMapping("/sanction/delete")
     @Operation(summary = "从制裁名单移除")
     public Result<Void> removeSanction(@RequestParam @NotBlank @Size(max = 128) String ownerName) {
         complianceService.removeSanction(ownerName);

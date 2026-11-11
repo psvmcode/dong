@@ -117,17 +117,17 @@ public class RemittanceServiceImpl implements RemittanceService {
     private final DistributedLockService distributedLockService;
 
     /**
-     * channelRouter。
+     * channelRouter，渠道路由服务。
      */
     private final ChannelRouter channelRouter;
 
     /**
-     * amlMonitor。
+     * amlMonitor，反洗钱拆分交易监控。
      */
     private final AmlMonitor amlMonitor;
 
     /**
-     * mqFacade。
+     * mqFacade，消息发送门面。
      */
     private final MqFacade mqFacade;
 
@@ -143,7 +143,7 @@ public class RemittanceServiceImpl implements RemittanceService {
     private final com.dong.crossborder.service.RemittanceEventService eventService;
 
     /**
-     * snowflake。
+     * snowflake，雪花发号器，用于生成汇款单号。
      */
     private final Snowflake snowflake;
 
@@ -709,6 +709,7 @@ public class RemittanceServiceImpl implements RemittanceService {
      * 清空全部数据，仅测试场景使用。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int clearAll() {
         int affected = remittanceMapper.clearAll();
         ledgerMapper.clearAll();

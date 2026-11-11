@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-/**
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;/**
  * 四则运算工具。给模型一个算得准的算术通道——
  * 大模型的算术是语言模型「猜」出来的，让它心算多位数乘法，错得很自然也很隐蔽。
  *
@@ -149,7 +149,7 @@ public class MathTool implements AgentTool {
             double value = expression();
             skipWhitespace();
             if (position < text.length()) {
-                throw new IllegalArgumentException("存在无法识别的字符");
+                throw new BusinessException(Constants.CODE_PARAM_INVALID, "unknown character");
             }
             return value;
         }
@@ -216,7 +216,7 @@ public class MathTool implements AgentTool {
         private double factor() {
             skipWhitespace();
             if (position >= text.length()) {
-                throw new IllegalArgumentException("表达式不完整");
+                throw new BusinessException(Constants.CODE_PARAM_INVALID, "incomplete expression");
             }
             char c = text.charAt(position);
             if (c == '-') {
@@ -228,7 +228,7 @@ public class MathTool implements AgentTool {
                 double value = expression();
                 skipWhitespace();
                 if (position >= text.length() || text.charAt(position) != ')') {
-                    throw new IllegalArgumentException("括号不匹配");
+                    throw new BusinessException(Constants.CODE_PARAM_INVALID, "unbalanced parentheses");
                 }
                 position++;
                 return value;
@@ -256,7 +256,7 @@ public class MathTool implements AgentTool {
                 }
             }
             if (begin == position) {
-                throw new IllegalArgumentException("这里应该是一个数字");
+                throw new BusinessException(Constants.CODE_PARAM_INVALID, "number expected");
             }
             return Double.parseDouble(text.substring(begin, position));
         }

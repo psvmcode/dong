@@ -61,13 +61,17 @@ public class RedPacketConsistencyTask {
      */
     @Scheduled(fixedDelayString = "${dong.redpacket.consistency-interval-ms:300000}", initialDelay = 60_000)
     public void reconcile() {
-        List<RedPacket> packets = redPacketMapper.selectUnfinished(scanLimit);
-        for (RedPacket packet : packets) {
-            try {
-                check(packet);
-            } catch (Exception ex) {
-                log.error("red packet reconciliation failed packetNo={}", packet.getPacketNo(), ex);
+        try {
+            List<RedPacket> packets = redPacketMapper.selectUnfinished(scanLimit);
+            for (RedPacket packet : packets) {
+                try {
+                    check(packet);
+                } catch (Exception ex) {
+                    log.error("red packet reconciliation failed packetNo={}", packet.getPacketNo(), ex);
+                }
             }
+        } catch (Exception ex) {
+            log.error("reconcile task failed", ex);
         }
     }
 

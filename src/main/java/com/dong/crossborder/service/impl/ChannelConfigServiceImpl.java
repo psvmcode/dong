@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
-
+import org.springframework.transaction.annotation.Transactional;
 /**
  * 渠道配置实现。
  */
@@ -21,7 +21,7 @@ import java.util.List;
 public class ChannelConfigServiceImpl implements ChannelConfigService {
 
     /**
-     * channelConfigMapper。
+     * channelConfigMapper，MyBatis Mapper 数据访问层。
      */
     private final ChannelConfigMapper channelConfigMapper;
 
@@ -57,6 +57,7 @@ public class ChannelConfigServiceImpl implements ChannelConfigService {
      * 更新渠道参数。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(int channel, Long etaMinutes, BigDecimal perTxLimit, BigDecimal fixedFee, BigDecimal rateFee, Integer enabled) {
         byChannel(channel);
         ChannelConfig config = new ChannelConfig();
@@ -74,6 +75,7 @@ public class ChannelConfigServiceImpl implements ChannelConfigService {
      * 启停渠道。这是渠道故障期间最直接的熔断手段。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void setEnabled(int channel, boolean enabled) {
         byChannel(channel);
         channelConfigMapper.updateEnabled(channel, enabled ? 1 : 2);

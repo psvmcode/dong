@@ -52,21 +52,25 @@ public class SeckillTimeoutTask {
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
     public void releaseUnpaidOrders() {
-        List<SeckillOrder> candidates = seckillOrderMapper.selectTimeoutCandidates(SeckillOrderStatus.PENDING_PAYMENT.getCode(), paymentTimeoutMinutes);
-        if (candidates.isEmpty()) {
-            return;
-        }
-        int released = 0;
-        for (SeckillOrder order : candidates) {
-            try {
-                if (release(order)) {
-                    released++;
-                }
-            } catch (Exception ex) {
-                log.error("release unpaid seckill order failed orderNo={}", order.getOrderNo(), ex);
+        try {
+            List<SeckillOrder> candidates = seckillOrderMapper.selectTimeoutCandidates(SeckillOrderStatus.PENDING_PAYMENT.getCode(), paymentTimeoutMinutes);
+            if (candidates.isEmpty()) {
+                return;
             }
+            int released = 0;
+            for (SeckillOrder order : candidates) {
+                try {
+                    if (release(order)) {
+                        released++;
+                    }
+                } catch (Exception ex) {
+                    log.error("release unpaid seckill order failed orderNo={}", order.getOrderNo(), ex);
+                }
+            }
+            log.info("released {} unpaid seckill orders", released);
+        } catch (Exception ex) {
+            log.error("releaseUnpaidOrders task failed", ex);
         }
-        log.info("released {} unpaid seckill orders", released);
     }
 
     /**

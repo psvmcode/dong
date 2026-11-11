@@ -21,7 +21,7 @@ import java.util.List;
  */ public class RocketMqListener implements RocketMQListener<MessageExt> {
 
     /**
-     * handlers。
+     * handlers，按 topic 路由的消息处理器列表。
      */
     private final List<MessageHandler> handlers;
 

@@ -126,6 +126,9 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public List<OrderResponse> recent(int limit) {
+        if (limit > Constants.MAX_QUERY_LIMIT) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "limit out of range");
+        }
         List<OrderResponse> responses = new ArrayList<>();
         for (TradeOrder order : orderMapper.selectRecent(limit <= 0 ? DEFAULT_RECENT_LIMIT : limit)) {
             responses.add(OrderResponse.from(order));

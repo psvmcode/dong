@@ -13,8 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
-
-/**
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;/**
  * 消息消费实现。所有传输共用同一套处理逻辑，
  * 幂等靠消息日志的唯一索引保证。
  */
@@ -49,7 +49,6 @@ public class MqConsumeServiceImpl implements MqConsumeService {
             log.warn("duplicate message skipped topic={} msgId={}", topic, msgId);
             return true;
         }
-
         int retries = 0;
         while (retries < MAX_RETRY) {
             try {
@@ -72,7 +71,6 @@ public class MqConsumeServiceImpl implements MqConsumeService {
                 log.warn("consume failed topic={} msgId={} attempt={} reason={}", topic, msgId, retries, ex.getMessage());
             }
         }
-
         MqMessageLog deadLetter = new MqMessageLog();
         deadLetter.setMsgId(msgId);
         deadLetter.setTopic(topic);
@@ -96,6 +94,9 @@ public class MqConsumeServiceImpl implements MqConsumeService {
      */
     @Override
     public List<MqMessageLog> recent(int limit) {
+        if (limit <= 0 || limit > Constants.MAX_QUERY_LIMIT) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "limit out of range");
+        }
         return mqMessageLogMapper.selectRecent(limit);
     }
 

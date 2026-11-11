@@ -54,7 +54,7 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
     private final com.dong.crossborder.service.FxQuoteService fxQuoteService;
 
     /**
-     * snowflake。
+     * snowflake，雪花发号器，用于生成账户编号。
      */
     private final Snowflake snowflake;
 
@@ -202,6 +202,7 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
      * 清空全部数据，仅测试场景使用。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int clearAll() {
         int affected = accountMapper.clearAll();
         ledgerMapper.clearAll();

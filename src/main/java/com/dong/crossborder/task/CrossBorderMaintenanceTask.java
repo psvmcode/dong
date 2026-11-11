@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
-
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 /**
  * 跨境支付维护任务。这五个兜底动作缺一不可：
  * 汇率过期保证过期报价不再可被锁定；
@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "dong.crossborder", name = "maintenance-enabled", havingValue = "true", matchIfMissing = true)
 public class CrossBorderMaintenanceTask {
 
     /**
@@ -54,12 +55,12 @@ public class CrossBorderMaintenanceTask {
     private final CrossBorderRemittanceMapper remittanceMapper;
 
     /**
-     * mqFacade。
+     * mqFacade，消息发送门面。
      */
     private final MqFacade mqFacade;
 
     /**
-     * reconciliationService。
+     * reconciliationService，对账业务服务层。
      */
     private final ReconciliationService reconciliationService;
 
@@ -125,9 +126,13 @@ public class CrossBorderMaintenanceTask {
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
     public void expireQuotes() {
-        int expired = fxQuoteService.expireOverdue();
-        if (expired > 0) {
-            log.info("expired {} fx quotes", expired);
+        try {
+            int expired = fxQuoteService.expireOverdue();
+            if (expired > 0) {
+                log.info("expired {} fx quotes", expired);
+            }
+        } catch (Exception ex) {
+            log.error("expireQuotes task failed", ex);
         }
     }
 
@@ -136,9 +141,13 @@ public class CrossBorderMaintenanceTask {
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 90_000)
     public void closeBatches() {
-        int closed = settlementService.closeOverdue();
-        if (closed > 0) {
-            log.info("closed {} settlement batches", closed);
+        try {
+            int closed = settlementService.closeOverdue();
+            if (closed > 0) {
+                log.info("closed {} settlement batches", closed);
+            }
+        } catch (Exception ex) {
+            log.error("closeBatches task failed", ex);
         }
     }
 
@@ -155,40 +164,44 @@ public class CrossBorderMaintenanceTask {
      */
     @Scheduled(fixedDelay = 30_000, initialDelay = 45_000)
     public void compensateSettlementMessages() {
-        List<CrossBorderRemittance> pending = new ArrayList<>();
-        pending.addAll(remittanceMapper.selectByStatus(RemittanceStatus.FUNDS_DEBITED, 50));
-        pending.addAll(remittanceMapper.selectByStatus(RemittanceStatus.SETTLING, 50));
-        if (pending.isEmpty()) {
-            return;
-        }
-        compensationRounds.increment();
-        LocalDateTime threshold = LocalDateTime.now().minus(COMPENSATION_IDLE);
-        for (CrossBorderRemittance remittance : pending) {
-            if (remittance.getCreateTime() != null && remittance.getCreateTime().isAfter(threshold)) {
-                skippedInQuietPeriod.increment();
-                continue;
+        try {
+            List<CrossBorderRemittance> pending = new ArrayList<>();
+            pending.addAll(remittanceMapper.selectByStatus(RemittanceStatus.FUNDS_DEBITED, 50));
+            pending.addAll(remittanceMapper.selectByStatus(RemittanceStatus.SETTLING, 50));
+            if (pending.isEmpty()) {
+                return;
             }
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("remittanceNo", remittance.getRemittanceNo());
-            payload.put("batchNo", remittance.getBatchNo());
-            payload.put("targetAmount", remittance.getTargetAmount().toPlainString());
-            payload.put("payeeAccountId", remittance.getPayeeAccountId());
-            payload.put("currency", remittance.getTargetCurrency());
-            payload.put("channel", remittance.getChannel().getCode());
-            payload.put("occurredAt", LocalDateTime.now().toString());
-            int retried = remittance.getRetryCount() == null ? 0 : remittance.getRetryCount();
-            if (retried >= MAX_COMPENSATION_RETRIES) {
-                abandonedRemittance.increment();
-                log.error("compensation abandoned after {} retries remittanceNo={} status={}, " + "manual retry available at POST /api/crossborder/remittance/{}/retry", retried, remittance.getRemittanceNo(), remittance.getStatus(), remittance.getRemittanceNo());
-                continue;
+            compensationRounds.increment();
+            LocalDateTime threshold = LocalDateTime.now().minus(COMPENSATION_IDLE);
+            for (CrossBorderRemittance remittance : pending) {
+                if (remittance.getCreateTime() != null && remittance.getCreateTime().isAfter(threshold)) {
+                    skippedInQuietPeriod.increment();
+                    continue;
+                }
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("remittanceNo", remittance.getRemittanceNo());
+                payload.put("batchNo", remittance.getBatchNo());
+                payload.put("targetAmount", remittance.getTargetAmount().toPlainString());
+                payload.put("payeeAccountId", remittance.getPayeeAccountId());
+                payload.put("currency", remittance.getTargetCurrency());
+                payload.put("channel", remittance.getChannel().getCode());
+                payload.put("occurredAt", LocalDateTime.now().toString());
+                int retried = remittance.getRetryCount() == null ? 0 : remittance.getRetryCount();
+                if (retried >= MAX_COMPENSATION_RETRIES) {
+                    abandonedRemittance.increment();
+                    log.error("compensation abandoned after {} retries remittanceNo={} status={}, " + "manual retry available at POST /api/crossborder/remittance/{}/retry", retried, remittance.getRemittanceNo(), remittance.getStatus(), remittance.getRemittanceNo());
+                    continue;
+                }
+                try {
+                    mqFacade.sendOrdered("cross-border-settlement", remittance.getRemittanceNo(), JsonUtils.toJson(payload), String.valueOf(remittance.getPayeeAccountId()));
+                    remittanceMapper.increaseRetryCount(remittance.getRemittanceNo());
+                    compensatedMessages.increment();
+                } catch (Exception ex) {
+                    log.error("compensation send failed remittanceNo={}", remittance.getRemittanceNo(), ex);
+                }
             }
-            try {
-                mqFacade.sendOrdered("cross-border-settlement", remittance.getRemittanceNo(), JsonUtils.toJson(payload), String.valueOf(remittance.getPayeeAccountId()));
-                remittanceMapper.increaseRetryCount(remittance.getRemittanceNo());
-                compensatedMessages.increment();
-            } catch (Exception ex) {
-                log.error("compensation send failed remittanceNo={}", remittance.getRemittanceNo(), ex);
-            }
+        } catch (Exception ex) {
+            log.error("compensateSettlementMessages task failed", ex);
         }
     }
 
@@ -201,28 +214,32 @@ public class CrossBorderMaintenanceTask {
      */
     @Scheduled(cron = "0 0 3 * * *")
     public void dailyReconcile() {
-        LocalDateTime since = LocalDateTime.now().minusDays(RECON_WINDOW_DAYS);
-        int reconciled = 0;
-        for (SettlementBatchResponse batch : settlementService.findAll()) {
-            if (batch.getStatus() == SettlementStatus.OPEN) {
-                continue;
-            }
-            if (batch.getCutoffTime() == null || batch.getCutoffTime().isBefore(since)) {
-                continue;
-            }
-            try {
-                ReconReportResponse report = reconciliationService.reconcile(batch.getBatchNo(), 0.0);
-                reconciled++;
-                if (report.getDiffCount() > 0) {
-                    unmatchedBatches.increment();
-                    log.error("reconciliation diff found batchNo={} diffCount={} unhandled={}", batch.getBatchNo(), report.getDiffCount(), report.getUnhandledCount());
+        try {
+            LocalDateTime since = LocalDateTime.now().minusDays(RECON_WINDOW_DAYS);
+            int reconciled = 0;
+            for (SettlementBatchResponse batch : settlementService.findAll()) {
+                if (batch.getStatus() == SettlementStatus.OPEN) {
+                    continue;
                 }
-            } catch (Exception ex) {
-                log.error("daily reconcile failed batchNo={}", batch.getBatchNo(), ex);
+                if (batch.getCutoffTime() == null || batch.getCutoffTime().isBefore(since)) {
+                    continue;
+                }
+                try {
+                    ReconReportResponse report = reconciliationService.reconcile(batch.getBatchNo(), 0.0);
+                    reconciled++;
+                    if (report.getDiffCount() > 0) {
+                        unmatchedBatches.increment();
+                        log.error("reconciliation diff found batchNo={} diffCount={} unhandled={}", batch.getBatchNo(), report.getDiffCount(), report.getUnhandledCount());
+                    }
+                } catch (Exception ex) {
+                    log.error("daily reconcile failed batchNo={}", batch.getBatchNo(), ex);
+                }
             }
-        }
-        if (reconciled > 0) {
-            log.info("daily reconciliation finished, {} batch(es) reconciled", reconciled);
+            if (reconciled > 0) {
+                log.info("daily reconciliation finished, {} batch(es) reconciled", reconciled);
+            }
+        } catch (Exception ex) {
+            log.error("dailyReconcile task failed", ex);
         }
     }
 
@@ -232,14 +249,18 @@ public class CrossBorderMaintenanceTask {
      */
     @Scheduled(fixedDelay = 300_000, initialDelay = 120_000)
     public void detectStuckRemittance() {
-        LocalDateTime threshold = LocalDateTime.now().minus(STUCK_THRESHOLD);
-        long debited = remittanceMapper.countStuckBefore(RemittanceStatus.FUNDS_DEBITED, threshold);
-        long settling = remittanceMapper.countStuckBefore(RemittanceStatus.SETTLING, threshold);
-        if (debited + settling == 0) {
-            return;
+        try {
+            LocalDateTime threshold = LocalDateTime.now().minus(STUCK_THRESHOLD);
+            long debited = remittanceMapper.countStuckBefore(RemittanceStatus.FUNDS_DEBITED, threshold);
+            long settling = remittanceMapper.countStuckBefore(RemittanceStatus.SETTLING, threshold);
+            if (debited + settling == 0) {
+                return;
+            }
+            stuckRounds.increment();
+            log.error("stuck remittance detected debited={} settling={} olderThan={}", debited, settling, threshold);
+        } catch (Exception ex) {
+            log.error("detectStuckRemittance task failed", ex);
         }
-        stuckRounds.increment();
-        log.error("stuck remittance detected debited={} settling={} olderThan={}", debited, settling, threshold);
     }
 
     /**

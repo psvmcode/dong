@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-
-/**
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;/**
  * 样本日志生成实现。
  *
  * <p>生成的日志走完整链路：真的经过 logback、真的进缓冲、真的由刷写任务写进 ES，
@@ -58,6 +58,9 @@ public class LogSampleServiceImpl implements LogSampleService {
      */
     @Override
     public int generate(int count, boolean withException, boolean withTrace) {
+        if (count <= 0 || count > Constants.MAX_BATCH_SIZE) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "count out of range");
+        }
         ThreadLocalRandom random = ThreadLocalRandom.current();
         try {
             for (int index = 0; index < count; index++) {

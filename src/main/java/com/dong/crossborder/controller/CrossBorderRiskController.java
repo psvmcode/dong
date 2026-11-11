@@ -13,7 +13,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -87,7 +86,7 @@ public class CrossBorderRiskController {
     /**
      * 清空监控数据，仅实验环境使用。
      */
-    @DeleteMapping("/aml")
+    @PostMapping("/aml")
     @Operation(summary = "清空 AML 监控数据")
     public Result<Void> resetAml() {
         amlMonitor.reset();

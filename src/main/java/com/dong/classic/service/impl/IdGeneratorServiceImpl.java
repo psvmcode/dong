@@ -89,7 +89,6 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
             default -> throw new BusinessException(Constants.CODE_PARAM_INVALID,
                     "unknown strategy " + strategy + ", use snowflake | segment | redis | uuid");
         }
-
         double elapsed = (System.nanoTime() - start) / 1_000_000.0;
         persist(strategy, count, last.get(), elapsed);
         Map<String, Object> result = new LinkedHashMap<>();

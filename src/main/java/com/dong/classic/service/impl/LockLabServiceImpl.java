@@ -133,7 +133,6 @@ public class LockLabServiceImpl implements LockLabService {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
-
         long actual = Long.parseLong(redisService.get(key).orElse("0"));
         redisService.delete(key);
         Map<String, Object> result = new LinkedHashMap<>();

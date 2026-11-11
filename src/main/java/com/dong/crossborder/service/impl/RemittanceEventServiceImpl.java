@@ -23,7 +23,7 @@ import java.util.List;
 public class RemittanceEventServiceImpl implements RemittanceEventService {
 
     /**
-     * eventMapper。
+     * eventMapper，MyBatis Mapper 数据访问层。
      */
     private final RemittanceEventMapper eventMapper;
 

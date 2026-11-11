@@ -21,7 +21,6 @@ import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -93,7 +92,7 @@ public class UploadController {
         return Result.success(uploadService.page(query));
     }
 
-    @DeleteMapping("/{uploadId}")
+    @PostMapping("/{uploadId}/cancel")
     @Operation(summary = "取消上传任务，清理分片记录与文件")
     public Result<Void> cancel(@PathVariable @NotBlank @Size(max = 64) String uploadId) {
         checkAvailable();

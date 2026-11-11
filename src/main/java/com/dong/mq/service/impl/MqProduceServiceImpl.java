@@ -19,7 +19,7 @@ import java.util.Map;
 public class MqProduceServiceImpl implements MqProduceService {
 
     /**
-     * messageProducer。
+     * messageProducer，消息发送抽象层。
      */
     private final MessageProducer messageProducer;
 

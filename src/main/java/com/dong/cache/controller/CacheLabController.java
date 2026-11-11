@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -123,7 +122,7 @@ public class CacheLabController {
     /**
      * 清除缓存，用于缓存失效演练。
      */
-    @DeleteMapping("/probe")
+    @PostMapping("/probe/delete")
     @Operation(summary = "删除缓存并广播失效事件到其他节点")
     public Result<Void> evict(@RequestParam
                               @NotBlank @Size(max = 128) String key) {
