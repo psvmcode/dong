@@ -21,7 +21,7 @@ public interface CrossBorderReconMapper {
      * 查询某批次已结算的汇款单，作为对账的本地侧数据源。
      * 只取已结算的单子，未结算的不参与对账。
      */
-    List<CrossBorderRemittance> selectSettledByBatch(@Param("batchNo") String batchNo, @Param("status") RemittanceStatus status);
+    List<CrossBorderRemittance> selectSettledByBatch(@Param("batchNo") String batchNo, @Param("status") RemittanceStatus status, @Param("limit") int limit);
 
     /**
      * 查询某账户某时间段的贷方流水总额，用于与渠道回单的入账金额比对。

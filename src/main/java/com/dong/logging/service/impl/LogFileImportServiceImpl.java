@@ -129,6 +129,7 @@ public class LogFileImportServiceImpl implements LogFileImportService {
         }
         LocalDate cutoff = cutoffDate();
         ImportSink sink = new ImportSink(ingestService, naming, naming.dailyIndex(cutoff));
+        List<LogImportState> pendingStates = new ArrayList<>();
         long remaining = maxLines;
         int handled = 0;
         for (Path file : collectFiles(root, cutoff)) {
@@ -145,10 +146,14 @@ public class LogFileImportServiceImpl implements LogFileImportService {
             long startLine = startLineOf(state, size, compressed);
             ReadResult result = readFile(file, startLine, remaining, sink);
             remaining -= result.lines;
-            saveState(stateOf(file, startLine + result.lines, size, result.finished));
+            pendingStates.add(stateOf(file, startLine + result.lines, size, result.finished));
         }
         sink.flush();
         ingestService.refresh();
+        // 位点必须在最后一批 bulk 真正落进 ES 之后再推进，否则失败时尾批日志永久不再被读
+        for (LogImportState state : pendingStates) {
+            saveState(state);
+        }
         response.setFiles(handled);
         response.setParsed(sink.parsed());
         response.setIndexed(sink.indexed());
@@ -281,10 +286,20 @@ public class LogFileImportServiceImpl implements LogFileImportService {
      */
     private BufferedReader openReader(Path file) throws IOException {
         InputStream stream = Files.newInputStream(file);
-        if (file.getFileName().toString().endsWith(GZ_SUFFIX)) {
-            return new BufferedReader(new InputStreamReader(new GZIPInputStream(stream), StandardCharsets.UTF_8));
+        try {
+            if (file.getFileName().toString().endsWith(GZ_SUFFIX)) {
+                return new BufferedReader(new InputStreamReader(new GZIPInputStream(stream), StandardCharsets.UTF_8));
+            }
+            return new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException ex) {
+            // 损坏的 gz 会在构造 GZIPInputStream 时失败，此时 try-with-resources 尚未接管 stream
+            try {
+                stream.close();
+            } catch (IOException closeEx) {
+                ex.addSuppressed(closeEx);
+            }
+            throw ex;
         }
-        return new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
     }
 
     /**

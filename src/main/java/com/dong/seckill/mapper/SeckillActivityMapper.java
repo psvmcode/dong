@@ -18,9 +18,12 @@ public interface SeckillActivityMapper {
     SeckillActivity selectById(@Param("id") Long id);
 
     /**
-     * 查询所有记录。
+     * 查询活动列表，SQL 层按上限截断，避免先把整表读进内存再在 Java 侧截断。
+     *
+     * @param limit 最大条数
+     * @return 活动列表
      */
-    List<SeckillActivity> selectAll();
+    List<SeckillActivity> selectAll(@Param("limit") int limit);
 
     /**
      * 插入记录，返回影响行数。

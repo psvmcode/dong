@@ -51,12 +51,13 @@
         limit 1
     </select>
 
-    <!-- 全部批次 -->
+    <!-- 批次列表，在 SQL 层封顶 -->
     <select id="selectAll" resultMap="batchMap">
         select id, batch_no, channel, currency, total_count, total_amount, status, cutoff_time,
         create_time, update_time
         from cross_border_settlement_batch
         order by id desc
+        limit #{limit}
     </select>
 
     <!-- 创建批次 -->

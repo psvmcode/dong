@@ -18,9 +18,12 @@ public interface UserAccountMapper {
     UserAccount selectByUserId(@Param("userId") Long userId);
 
     /**
-     * 查询所有记录。
+     * 查询账户列表，SQL 层按上限截断，避免先把整表读进内存再在 Java 侧截断。
+     *
+     * @param limit 最大条数
+     * @return 账户列表
      */
-    List<UserAccount> selectAll();
+    List<UserAccount> selectAll(@Param("limit") int limit);
 
     /**
      * 插入记录，返回影响行数。

@@ -101,9 +101,19 @@ public class CrossBorderSettlementHandler implements MessageHandler {
      */
     @Override
     public boolean handle(String key, String payload) {
+        if (payload == null || payload.isBlank()) {
+            log.error("settlement message payload is empty");
+            return false;
+        }
         Map<String, Object> message = JsonUtils.fromJson(payload, new TypeReference<>() {
         });
-        String remittanceNo = String.valueOf(message.get("remittanceNo"));
+        Object remittanceNoValue = message == null ? null : message.get("remittanceNo");
+        if (remittanceNoValue == null) {
+            // 非法消息不能当成「查不到单子」确认消费，否则这笔清算永久丢失
+            log.error("settlement message missing remittanceNo, payload={}", payload);
+            return false;
+        }
+        String remittanceNo = String.valueOf(remittanceNoValue);
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);
         if (remittance == null) {
             skipped.increment();

@@ -162,10 +162,10 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     @Override
     public BigDecimal currentRate(String sourceCurrency, String targetCurrency) {
         String cacheKey = RATE_CACHE_PREFIX + sourceCurrency + ":" + targetCurrency;
-        return redisService.get(cacheKey).map(BigDecimal::new).orElseGet(() -> {
+        return cachedRate(cacheKey).orElseGet(() -> {
             try (var handle = distributedLockService.tryLock(cacheKey + ":lock", Duration.ofSeconds(5), Duration.ofSeconds(2))) {
                 if (handle.isAcquired()) {
-                    return redisService.get(cacheKey).map(BigDecimal::new).orElseGet(() -> {
+                    return cachedRate(cacheKey).orElseGet(() -> {
                         BigDecimal rate = midRate(sourceCurrency, targetCurrency);
                         redisService.set(cacheKey, rate.toPlainString(), RATE_CACHE_TTL);
                         return rate;
@@ -177,12 +177,32 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     }
 
     /**
+     * 读缓存里的中间价。缓存值被写脏时不能让询价接口 500，按未命中处理重新回源。
+     *
+     * @param cacheKey 缓存键
+     * @return 缓存的汇率
+     */
+    private java.util.Optional<BigDecimal> cachedRate(String cacheKey) {
+        return redisService.get(cacheKey).flatMap(value -> {
+            try {
+                return java.util.Optional.of(new BigDecimal(value));
+            } catch (NumberFormatException ex) {
+                log.warn("invalid cached fx rate key={} value={}", cacheKey, value);
+                return java.util.Optional.empty();
+            }
+        });
+    }
+
+    /**
      * 手续费按渠道区分。SWIFT 要经过代理行，成本最高；
      * CIPS 走人民币清算更便宜；本地清算成本最低。
      * 都由固定费加比例费构成，费率取自渠道配置表以便运营调整。
      */
     @Override
     public BigDecimal fee(BigDecimal sourceAmount, SettlementChannel channel) {
+        if (sourceAmount == null || sourceAmount.signum() < 0) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "invalid source amount");
+        }
         if (channel == null) {
             channel = SettlementChannel.SWIFT;
         }
@@ -224,7 +244,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     @Override
     public List<com.dong.crossborder.dto.FxRateResponse> allRates() {
-        return fxRateMapper.selectAll().stream().map(com.dong.crossborder.dto.FxRateResponse::from).toList();
+        return fxRateMapper.selectAll(com.dong.common.constant.Constants.MAX_BATCH_SIZE).stream().map(com.dong.crossborder.dto.FxRateResponse::from).toList();
     }
 
     /**
@@ -233,11 +253,38 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateRate(String currency, BigDecimal usdRate) {
+        if (usdRate == null || usdRate.signum() <= 0) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "fx rate must be positive");
+        }
         requireRate(currency);
         fxRateMapper.updateRate(currency, usdRate);
-        // 中间价有缓存，改牌价后必须失效，否则询价仍在用旧价
-        redisService.delete(RATE_CACHE_PREFIX + currency);
+        // 中间价缓存的键是 source:target，改一种牌价会影响所有含它的组合，
+        // 只删 prefix+currency 这个精确键实际上一个缓存也删不掉
+        invalidateRateCache();
         log.info("fx rate updated currency={} usdRate={}", currency, usdRate);
+    }
+
+    /**
+     * 失效全部中间价缓存。用 scan 而不是 keys，避免大库上阻塞 Redis 主线程。
+     */
+    private void invalidateRateCache() {
+        try (var cursor = redisService.template().scan(org.springframework.data.redis.core.ScanOptions.scanOptions().match(RATE_CACHE_PREFIX + "*").count(100).build())) {
+            java.util.List<String> keys = new java.util.ArrayList<>(500);
+            int scanned = 0;
+            while (cursor.hasNext() && scanned < 10_000) {
+                keys.add(cursor.next());
+                scanned++;
+                if (keys.size() >= 500) {
+                    redisService.template().delete(keys);
+                    keys.clear();
+                }
+            }
+            if (!keys.isEmpty()) {
+                redisService.template().delete(keys);
+            }
+        } catch (Exception ex) {
+            log.warn("failed to invalidate fx rate cache", ex);
+        }
     }
 
     /**
@@ -245,7 +292,7 @@ public class FxQuoteServiceImpl implements FxQuoteService {
      */
     @Override
     public java.util.Set<String> supportedCurrencies() {
-        return fxRateMapper.selectAll().stream().map(com.dong.crossborder.entity.FxRate::getCurrency).collect(java.util.stream.Collectors.toSet());
+        return fxRateMapper.selectAll(com.dong.common.constant.Constants.MAX_BATCH_SIZE).stream().map(com.dong.crossborder.entity.FxRate::getCurrency).collect(java.util.stream.Collectors.toSet());
     }
 
     /**
@@ -254,6 +301,10 @@ public class FxQuoteServiceImpl implements FxQuoteService {
     private BigDecimal midRate(String sourceCurrency, String targetCurrency) {
         BigDecimal sourceToUsd = requireRate(sourceCurrency).getUsdRate();
         BigDecimal targetToUsd = requireRate(targetCurrency).getUsdRate();
+        if (sourceToUsd.signum() <= 0 || targetToUsd.signum() <= 0) {
+            // 牌价为 0 会让交叉汇率除零，整条询价链路抛 ArithmeticException
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "fx rate must be positive");
+        }
         return targetToUsd.divide(sourceToUsd, 8, RoundingMode.HALF_UP);
     }
 

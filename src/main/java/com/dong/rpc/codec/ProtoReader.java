@@ -55,7 +55,12 @@ public final class ProtoReader {
      * @return tag
      */
     public int readTag() {
-        return (int) readVarInt64();
+        long tag = readVarInt64();
+        // varint 是 64 位，直接强转 int 会把超长 tag 静默截断成另一个合法字段号
+        if (tag <= 0 || tag > Integer.MAX_VALUE) {
+            throw new ProtoCodecException("field tag out of int range: " + tag);
+        }
+        return (int) tag;
     }
 
     /**
@@ -100,10 +105,12 @@ public final class ProtoReader {
      * @return 值
      */
     public byte[] readBytes() {
-        int length = (int) readVarInt64();
-        if (length < 0 || length > data.length - position) {
-            throw new ProtoCodecException("length prefixed field exceeds remaining bytes, length=" + length);
+        long rawLength = readVarInt64();
+        // 先用 64 位比较再缩成 int，直接强转会把超长长度截断成一个合法值
+        if (rawLength < 0 || rawLength > data.length - position) {
+            throw new ProtoCodecException("length prefixed field exceeds remaining bytes, length=" + rawLength);
         }
+        int length = (int) rawLength;
         byte[] value = Arrays.copyOfRange(data, position, position + length);
         position += length;
         return value;

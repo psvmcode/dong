@@ -20,7 +20,7 @@ public interface ChannelConfigMapper {
     /**
      * 查询全部配置，管理接口使用。
      */
-    List<ChannelConfig> selectAll();
+    List<ChannelConfig> selectAll(@Param("limit") int limit);
 
     /**
      * 只查启用的渠道，路由打分时用——停用的渠道等于熔断。

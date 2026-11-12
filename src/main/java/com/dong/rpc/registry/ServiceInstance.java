@@ -48,12 +48,21 @@ public class ServiceInstance {
      * @return 实例
      */
     public static ServiceInstance parse(String serviceName, String address) {
+        if (address == null) {
+            throw new IllegalArgumentException("illegal service address null");
+        }
         int separator = address.lastIndexOf(':');
         if (separator <= 0) {
             throw new IllegalArgumentException("illegal service address " + address);
         }
         String host = address.substring(0, separator);
-        int port = Integer.parseInt(address.substring(separator + 1));
+        int port;
+        try {
+            port = Integer.parseInt(address.substring(separator + 1));
+        } catch (NumberFormatException ex) {
+            // 注册中心里的地址可能被写脏，不能让一次解析异常打断整个服务发现
+            throw new IllegalArgumentException("illegal service address " + address, ex);
+        }
         return new ServiceInstance(serviceName, host, port);
     }
 

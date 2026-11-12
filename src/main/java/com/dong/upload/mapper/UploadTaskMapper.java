@@ -82,6 +82,17 @@ public interface UploadTaskMapper {
                                   @Param("storagePath") String storagePath, @Param("uploadedBytes") Long uploadedBytes);
 
     /**
+     * 只从「已取消」复活任务，靠影响行数判定谁抢到清理权。
+     *
+     * <p>并发 init 同一个已取消任务时，用无条件的 updateStatus 会让后一个请求
+     * 删掉前一个刚写入的分片记录与分片文件。
+     *
+     * @param uploadId 任务号
+     * @return 影响行数，1 表示本次请求获得清理权
+     */
+    int updateStatusFromCancelled(@Param("uploadId") String uploadId);
+
+    /**
      * 分页查询任务列表。
      *
      * @param status  状态过滤，null 表示不过滤

@@ -98,8 +98,16 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
      */
     @Override
     public long countBetween(String page, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "from and to are required");
+        }
         if (from.isAfter(to)) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "from must not be after to");
+        }
+        long days = to.toEpochDay() - from.toEpochDay() + 1;
+        if (days > RETENTION.toDays()) {
+            // datesUntil 会为每一天生成一个 key，跨几十年的一次请求就能生成数百万个 key
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "uv range must not exceed " + RETENTION.toDays() + " days");
         }
         List<String> keys = from.datesUntil(to.plusDays(1)).map(date -> keyOf(page, date)).toList();
         if (keys.isEmpty()) {

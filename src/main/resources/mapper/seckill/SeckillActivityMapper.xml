@@ -31,12 +31,13 @@
         where id = #{id}
     </select>
 
-    <!-- 全部活动列表 -->
+    <!-- 活动列表，在 SQL 层封顶 -->
     <select id="selectAll" resultMap="activityMap">
         select
         <include refid="activityColumns"/>
         from seckill_activity
         order by id desc
+        limit #{limit}
     </select>
 
     <!-- 新增秒杀活动 -->

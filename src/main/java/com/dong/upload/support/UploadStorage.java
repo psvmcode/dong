@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -173,7 +174,7 @@ public class UploadStorage {
      * @return 分片目录路径
      */
     private Path chunkDir(String uploadId) {
-        return Paths.get(storageDir).resolve("chunks").resolve(uploadId).normalize();
+        return guarded(Paths.get(storageDir).resolve("chunks").resolve(String.valueOf(uploadId)).normalize());
     }
 
     /**
@@ -184,7 +185,23 @@ public class UploadStorage {
      * @return 目标文件路径
      */
     private Path taskFile(String uploadId, String fileName) {
-        return Paths.get(storageDir).resolve("files").resolve(uploadId).resolve(safeName(fileName)).normalize();
+        return guarded(Paths.get(storageDir).resolve("files").resolve(String.valueOf(uploadId)).resolve(safeName(fileName)).normalize());
+    }
+
+    /**
+     * 校验拼接出来的路径仍在存储根目录内。
+     *
+     * <p>uploadId 也会参与路径拼接，库里被写入 ../ 之类的脏值时不拦住，
+     * 删除动作就能删到存储根目录之外。
+     *
+     * @param target 待校验路径
+     * @return 校验通过的路径
+     */
+    private Path guarded(Path target) {
+        if (!isInsideStorage(target)) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "upload path escapes storage dir");
+        }
+        return target;
     }
 
     /**
@@ -214,11 +231,21 @@ public class UploadStorage {
         if (fileName == null || fileName.isEmpty()) {
             return "unnamed";
         }
-        String name = Paths.get(fileName).getFileName().toString().replaceAll("[\\\\/:*?\"<>|]", "_");
-        if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
+        try {
+            Path base = Paths.get(fileName).getFileName();
+            // 纯根路径（"/"、"///"）没有文件名元素，getFileName 返回 null
+            if (base == null) {
+                return "unnamed";
+            }
+            String name = base.toString().replaceAll("[\\\\/:*?\"<>|]", "_");
+            if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
+                return "unnamed";
+            }
+            return name;
+        } catch (InvalidPathException ex) {
+            // 含 NUL 等非法字符时 Paths.get 抛 unchecked，回落成固定名而不是让请求 500
             return "unnamed";
         }
-        return name;
     }
 
     /**

@@ -175,8 +175,16 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
             log.warn("malformed red packet item in queue packetNo={} value={}", packetNo, result);
             return GrabReservation.of(GrabStatus.NOT_PREPARED);
         }
-        int seq = Integer.parseInt(result.substring(0, separator));
-        long amount = Long.parseLong(result.substring(separator + 1));
+        int seq;
+        long amount;
+        try {
+            seq = Integer.parseInt(result.substring(0, separator));
+            amount = Long.parseLong(result.substring(separator + 1));
+        } catch (NumberFormatException ex) {
+            // 队列元素被写脏时 Lua 已经弹出并扣过计数，抛异常会让这份预扣彻底丢失
+            log.error("malformed red packet item packetNo={} value={}", packetNo, result, ex);
+            return GrabReservation.of(GrabStatus.NOT_PREPARED);
+        }
         return GrabReservation.grabbed(amount, seq, false);
     }
 
@@ -198,7 +206,15 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
     @Override
     public int remainCount(String packetNo) {
         String value = redisService.get(COUNT + packetNo).orElse(null);
-        return value == null ? -1 : Integer.parseInt(value);
+        if (value == null) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            log.warn("invalid red packet count packetNo={} value={}", packetNo, value);
+            return -1;
+        }
     }
 
     /**
@@ -207,7 +223,15 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
     @Override
     public long remainAmount(String packetNo) {
         String value = redisService.get(AMOUNT + packetNo).orElse(null);
-        return value == null ? -1L : Long.parseLong(value);
+        if (value == null) {
+            return -1L;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            log.warn("invalid red packet amount packetNo={} value={}", packetNo, value);
+            return -1L;
+        }
     }
 
     /**

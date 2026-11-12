@@ -62,12 +62,7 @@ public class UserAccountServiceImpl implements UserAccountService {
      */
     @Override
     public List<UserAccount> findAll() {
-        List<UserAccount> all = userAccountMapper.selectAll();
-        if (all.size() > Constants.MAX_BATCH_SIZE) {
-            log.warn("accounts exceeds safe limit, truncated: {} > {}", all.size(), Constants.MAX_BATCH_SIZE);
-            return all.subList(0, Constants.MAX_BATCH_SIZE);
-        }
-        return all;
+        return userAccountMapper.selectAll(Constants.MAX_BATCH_SIZE);
     }
 
     /**
@@ -76,10 +71,19 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional(transactionManager = "replicaTransactionManager", rollbackFor = Exception.class)
     public long transfer(Long fromUserId, Long toUserId, long amount) {
+        if (amount <= 0) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "transfer amount must be positive");
+        }
+        if (fromUserId != null && fromUserId.equals(toUserId)) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "cannot transfer to the same account");
+        }
         UserAccount from = requireAccount(fromUserId);
         UserAccount to = requireAccount(toUserId);
         if (from.getBalance() < amount) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "balance not enough");
+        }
+        if (to.getBalance() > Long.MAX_VALUE - amount) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "target balance overflow");
         }
         userAccountMapper.updateBalance(fromUserId, from.getBalance() - amount);
         userAccountMapper.updateBalance(toUserId, to.getBalance() + amount);

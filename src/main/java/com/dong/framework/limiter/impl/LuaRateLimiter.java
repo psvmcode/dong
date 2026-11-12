@@ -50,7 +50,7 @@ public class LuaRateLimiter implements RateLimiter {
             local idx = math.floor(now / windowMs)
             local data = redis.call('HMGET', KEYS[1], 'idx', 'count')
             local curIdx = tonumber(data[1])
-            local count = tonumber(data[2])
+            local count = tonumber(data[2]) or 0
             if curIdx == nil or curIdx ~= idx then
                 curIdx = idx
                 count = 0
@@ -102,7 +102,7 @@ public class LuaRateLimiter implements RateLimiter {
             local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
             local data = redis.call('HMGET', KEYS[1], 'tokens', 'ts')
             local tokens = tonumber(data[1])
-            local ts = tonumber(data[2])
+            local ts = tonumber(data[2]) or now
             if tokens == nil then
                 tokens = capacity
                 ts = now
@@ -134,7 +134,7 @@ public class LuaRateLimiter implements RateLimiter {
             local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
             local data = redis.call('HMGET', KEYS[1], 'water', 'ts')
             local water = tonumber(data[1])
-            local ts = tonumber(data[2])
+            local ts = tonumber(data[2]) or now
             if water == nil then
                 water = 0
                 ts = now

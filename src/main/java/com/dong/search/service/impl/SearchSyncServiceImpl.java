@@ -61,6 +61,11 @@ public class SearchSyncServiceImpl implements SearchSyncService {
      */
     @Override
     public int syncAll() {
+        long count = productMapper.countAll();
+        if (count > Constants.MAX_BATCH_SIZE) {
+            // 全量重建要把整表读进内存再一次性 bulk，超容量必须先拦住
+            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "too many products to sync at once: " + count);
+        }
         List<Product> products = productMapper.selectAll();
         List<ProductDocument> documents = products.stream().map(this::toDocument).toList();
         searchService.bulkIndex(documents);
@@ -107,11 +112,13 @@ public class SearchSyncServiceImpl implements SearchSyncService {
      * @return 对账报告
      */
     private ConsistencyReport reconcile(boolean repair) {
-        List<Product> products = productMapper.selectAll();
+        long dbCount = productMapper.countAll();
         long esCount = searchService.count();
-        if (products.size() > MAX_RECONCILE_SIZE || esCount > MAX_RECONCILE_SIZE) {
-            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "too many rows to reconcile safely: db=" + products.size() + ", es=" + esCount + ", limit=" + MAX_RECONCILE_SIZE);
+        if (dbCount > MAX_RECONCILE_SIZE || esCount > MAX_RECONCILE_SIZE) {
+            // 先查 count 再决定是否捞全量，否则上限检查发生在整表已经进内存之后
+            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "too many rows to reconcile safely: db=" + dbCount + ", es=" + esCount + ", limit=" + MAX_RECONCILE_SIZE);
         }
+        List<Product> products = productMapper.selectAll();
 
         Map<String, ProductDocument> documents = searchService.listAll(MAX_RECONCILE_SIZE);
         Set<String> dbIds = products.stream().map(product -> String.valueOf(product.getId())).collect(Collectors.toSet());

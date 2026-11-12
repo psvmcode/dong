@@ -38,6 +38,10 @@ public class LocalRateLimiter implements RateLimiter {
      */
     @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
+        if (rule.window().isZero() || rule.window().isNegative() || rule.limit() <= 0 || permits <= 0) {
+            // 零窗口会让固定窗口除零、令牌桶算出 Infinity/NaN，直接拒绝而不是抛 ArithmeticException
+            return false;
+        }
         return switch (rule.algorithm()) {
             case TOKEN_BUCKET -> acquireTokenBucket(key, rule, permits);
             case FIXED_WINDOW -> acquireFixedWindow(key, rule);
@@ -71,7 +75,7 @@ public class LocalRateLimiter implements RateLimiter {
      * 因此允许突发流量，只要桶里有存货。
      */
     private boolean acquireTokenBucket(String key, RateLimitRule rule, long permits) {
-        double refillPerNanos = (double) rule.limit() / rule.window().toNanos();
+        double refillPerNanos = (double) rule.limit() / Math.max(1L, rule.window().toNanos());
         long now = System.nanoTime();
         AtomicBoolean allowed = new AtomicBoolean(false);
         buckets.asMap().compute(key, (ignored, existing) -> {
@@ -92,7 +96,7 @@ public class LocalRateLimiter implements RateLimiter {
      * 最多可以放过两倍配额。
      */
     private boolean acquireFixedWindow(String key, RateLimitRule rule) {
-        long windowIndex = System.currentTimeMillis() / rule.window().toMillis();
+        long windowIndex = System.currentTimeMillis() / Math.max(1L, rule.window().toMillis());
         String windowKey = key + ":" + windowIndex;
         AtomicBoolean allowed = new AtomicBoolean(false);
         buckets.asMap().compute(windowKey, (ignored, existing) -> {

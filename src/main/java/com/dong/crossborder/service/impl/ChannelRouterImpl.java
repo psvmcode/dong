@@ -93,7 +93,7 @@ public class ChannelRouterImpl implements ChannelRouter {
     public Map<String, Object> scoreAll(BigDecimal sourceAmount, boolean urgent) {
         BigDecimal weight = urgent ? URGENT_ETA_WEIGHT : ETA_WEIGHT;
         Map<String, Object> scores = new LinkedHashMap<>();
-        for (ChannelConfig config : channelConfigMapper.selectAll()) {
+        for (ChannelConfig config : channelConfigMapper.selectAll(com.dong.common.constant.Constants.MAX_BATCH_SIZE)) {
             SettlementChannel channel = SettlementChannel.of(config.getChannel());
             // 停用渠道展示出来但标记为不合格，便于运营看到熔断状态
             boolean qualified = config.getEnabled() == 1 && sourceAmount.compareTo(config.getPerTxLimit()) <= 0;

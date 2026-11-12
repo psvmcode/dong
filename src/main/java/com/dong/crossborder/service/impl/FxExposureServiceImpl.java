@@ -1,5 +1,6 @@
 package com.dong.crossborder.service.impl;
 
+import com.dong.common.exception.BusinessException;
 import com.dong.crossborder.entity.CrossBorderRemittance;
 import com.dong.crossborder.enums.RemittanceStatus;
 import com.dong.crossborder.mapper.CrossBorderRemittanceMapper;
@@ -65,12 +66,27 @@ public class FxExposureServiceImpl implements FxExposureService {
             BigDecimal lockedNotional = BigDecimal.ZERO;
             BigDecimal weightedRate = BigDecimal.ZERO;
             for (CrossBorderRemittance item : items) {
+                if (item.getSourceAmount() == null || item.getExchangeRate() == null) {
+                    log.warn("fx exposure skip remittance with null amount or rate pair={}", pair);
+                    continue;
+                }
                 lockedNotional = lockedNotional.add(item.getSourceAmount());
                 weightedRate = weightedRate.add(item.getExchangeRate().multiply(item.getSourceAmount()));
             }
             BigDecimal avgLockedRate = lockedNotional.signum() == 0 ? BigDecimal.ZERO : weightedRate.divide(lockedNotional, 8, RoundingMode.HALF_UP);
-            String[] parts = pair.split("/");
-            BigDecimal current = fxQuoteService.currentRate(parts[0], parts[1]);
+            String[] parts = pair.split("/", -1);
+            if (parts.length < 2 || parts[0].isBlank() || parts[1].isBlank()) {
+                // 脏币种对不能让整个敞口接口 500，跳过这一组继续统计其余货币对
+                log.warn("fx exposure skip invalid currency pair={}", pair);
+                continue;
+            }
+            BigDecimal current;
+            try {
+                current = fxQuoteService.currentRate(parts[0], parts[1]);
+            } catch (BusinessException ex) {
+                log.warn("fx exposure skip unsupported currency pair={} reason={}", pair, ex.getMessage());
+                continue;
+            }
             BigDecimal floating = lockedNotional.multiply(avgLockedRate.subtract(current)).setScale(2, RoundingMode.HALF_UP);
             boolean alert = lockedNotional.compareTo(EXPOSURE_ALERT) > 0;
             Map<String, Object> row = new LinkedHashMap<>();

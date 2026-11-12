@@ -19,11 +19,12 @@
         where user_id = #{userId}
     </select>
 
-    <!-- 全部账户 -->
+    <!-- 账户列表，在 SQL 层封顶 -->
     <select id="selectAll" resultMap="accountMap">
         select id, user_id, username, balance, create_time, update_time
         from user_account
         order by id asc
+        limit #{limit}
     </select>
 
     <!-- 创建账户 -->

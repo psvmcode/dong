@@ -114,8 +114,10 @@ public class AmlMonitorImpl implements AmlMonitor {
         String key = keyOf(payerAccountId);
         Map<String, String> entries = redisService.hashGetAll(key);
         Set<String> under = redisService.template().opsForSet().members(key + ":under");
-        long totalCents = Long.parseLong(entries.getOrDefault("totalCents", "0"));
-        return Map.of("payerAccountId", payerAccountId, "totalCount", Long.parseLong(entries.getOrDefault("count", "0")), "totalAmount", BigDecimal.valueOf(totalCents, 2), "underLineCount", Long.parseLong(entries.getOrDefault("underCount", "0")), "underLineAmounts", under == null ? List.of() : new ArrayList<>(under), "date", LocalDate.now().toString());
+        long totalCents = parseLong(entries == null ? null : entries.get("totalCents"));
+        long totalCount = parseLong(entries == null ? null : entries.get("count"));
+        long underLineCount = parseLong(entries == null ? null : entries.get("underCount"));
+        return Map.of("payerAccountId", payerAccountId, "totalCount", totalCount, "totalAmount", BigDecimal.valueOf(totalCents, 2), "underLineCount", underLineCount, "underLineAmounts", under == null ? List.of() : new ArrayList<>(under), "date", LocalDate.now().toString());
     }
 
     /**
@@ -130,12 +132,38 @@ public class AmlMonitorImpl implements AmlMonitor {
                 continue;
             }
             Map<String, String> entries = redisService.hashGetAll(key);
-            if (Long.parseLong(entries.getOrDefault("underCount", "0")) >= STRUCTURING_COUNT_THRESHOLD) {
-                String accountId = key.substring(key.lastIndexOf(':') + 1);
-                flagged.add(Map.of("payerAccountId", Long.parseLong(accountId), "underCount", entries.getOrDefault("underCount", "0"), "totalCents", entries.getOrDefault("totalCents", "0")));
+            String underCountText = entries == null ? "0" : entries.getOrDefault("underCount", "0");
+            String totalCentsText = entries == null ? "0" : entries.getOrDefault("totalCents", "0");
+            if (parseLong(underCountText) >= STRUCTURING_COUNT_THRESHOLD) {
+                long payerAccountId = parseLong(key.substring(key.lastIndexOf(':') + 1));
+                if (payerAccountId <= 0) {
+                    // scan 命中的可能是同前缀的非账户键，一个脏 key 不能让整个列表 500
+                    log.warn("skip invalid aml key={}", key);
+                    continue;
+                }
+                flagged.add(Map.of("payerAccountId", payerAccountId, "underCount", underCountText, "totalCents", totalCentsText));
             }
         }
         return flagged;
+    }
+
+    /**
+     * 安全解析 Redis 里的计数值。
+     *
+     * <p>Redis 是共享存储，hash 里出现非数字时不能让查询接口整体 500，按 0 处理即可。
+     *
+     * @param value 原始字符串
+     * @return 解析后的长整型，非法值返回 0
+     */
+    private static long parseLong(String value) {
+        if (value == null) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            return 0L;
+        }
     }
 
     /**

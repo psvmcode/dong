@@ -212,12 +212,16 @@ public class ProductServiceImpl implements ProductService {
      * @return 预热商品数量
      */
     private int doWarmUp() {
-        List<Product> products = productMapper.selectAll();
+        if (productMapper.countAll() > Constants.MAX_BATCH_SIZE) {
+            // 预热会把商品与 id 全量读进内存，只预热一部分会让布隆误拒其余 id
+            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "too many products to warm up safely");
+        }
+        List<Product> products = productMapper.selectTop(Constants.MAX_BATCH_SIZE);
         products.forEach(product -> multiLevelCache.get(cacheKey(product.getId()), Product.class, PRODUCT_TTL,
                 () -> product));
         try {
             RBloomFilter<String> filter = bloomFilter();
-            productMapper.selectAllIds().forEach(id -> filter.add(String.valueOf(id)));
+            products.forEach(product -> filter.add(String.valueOf(product.getId())));
         } catch (Exception ex) {
             // 预热没写进过滤器，后果是 guarded 模式会误拒真实 id，
             // 这比让整个预热失败要好，而且可以重跑一次修复
@@ -255,8 +259,14 @@ public class ProductServiceImpl implements ProductService {
     private RBloomFilter<String> bloomFilter() {
         RBloomFilter<String> filter = productBloom;
         if (filter == null) {
-            filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
-            productBloom = filter;
+            synchronized (this) {
+                filter = productBloom;
+                if (filter == null) {
+                    // 并发首次访问时单检查会让多个线程各自发一次 getOrCreate/tryInit
+                    filter = bloomFilterService.getOrCreate(BLOOM_NAME, BLOOM_EXPECTED, BLOOM_FALSE_POSITIVE);
+                    productBloom = filter;
+                }
+            }
         }
         return filter;
     }

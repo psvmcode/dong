@@ -42,6 +42,12 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private static final String HISTORY = "lab:rank:history:";
 
     /**
+     * 结算时单批扫描的成员数。周榜人数没有上限，
+     * 一次性 entryRange(0, -1) 会把整榜读进内存并攒出等量的 pipeline 命令。
+     */
+    private static final int SETTLE_BATCH = 500;
+
+    /**
      * Redisson 客户端。
      */
     private final RedissonClient redissonClient;
@@ -206,9 +212,13 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     public Long settleWeekly(String board, LocalDate date) {
         RScoredSortedSet<String> weekly = redissonClient.getScoredSortedSet(weeklyKeyOf(board, date));
         RScoredSortedSet<String> history = redissonClient.getScoredSortedSet(HISTORY + board);
-        Collection<ScoredEntry<String>> entries = weekly.entryRange(0, -1);
-        if (entries != null && !entries.isEmpty()) {
-            // 合并进一次 pipeline，榜单有多少人就省多少次往返。
+        // 周榜人数没有上限，按固定页大小分段扫描，每段一次 pipeline，避免整榜进内存
+        int offset = 0;
+        while (true) {
+            Collection<ScoredEntry<String>> entries = weekly.entryRange(offset, offset + SETTLE_BATCH - 1);
+            if (entries == null || entries.isEmpty()) {
+                break;
+            }
             // 这里必须用 addScore 的批量版而不是 addAll：结算是累加，
             // addAll 的语义是覆盖，会把上周的历史分抹掉
             RBatch redisBatch = redissonClient.createBatch();
@@ -216,6 +226,10 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                 redisBatch.<String>getScoredSortedSet(HISTORY + board).addScoreAsync(entry.getValue(), entry.getScore());
             }
             redisBatch.execute();
+            if (entries.size() < SETTLE_BATCH) {
+                break;
+            }
+            offset += SETTLE_BATCH;
         }
         long size = history.size();
         log.info("weekly board settled board={} historySize={}", board, size);

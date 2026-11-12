@@ -30,7 +30,10 @@ public class ClientIpResolver {
         }
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+            String first = forwarded.split(",", 2)[0].trim();
+            if (!first.isEmpty()) {
+                return first;
+            }
         }
         String real = request.getHeader("X-Real-IP");
         if (real != null && !real.isBlank()) {

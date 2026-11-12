@@ -91,6 +91,10 @@ public class UploadServiceImpl implements UploadService {
             return instantResponse(completed);
         }
         int chunkSize = request.getChunkSize() == null ? defaultChunkSize : request.getChunkSize();
+        if (chunkSize <= 0 || chunkSize > Constants.MAX_CHUNK_SIZE) {
+            // 配置值不走请求 DTO 的校验注解，误配成 0 会让下面的除法直接抛 ArithmeticException
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "invalid chunk size " + chunkSize);
+        }
         int totalChunks = (int) ((request.getFileSize() + chunkSize - 1) / chunkSize);
         if (totalChunks > Constants.MAX_CHUNK_COUNT) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID,
@@ -100,12 +104,14 @@ public class UploadServiceImpl implements UploadService {
         UploadTask existed = uploadTaskMapper.selectByUploadId(uploadId);
         if (existed != null && UploadStatus.of(existed.getStatus()) == UploadStatus.CANCELLED) {
             // 兜底处理历史取消行：它仍占着 uk_hash_size 唯一键，
-            // 不复活的话同一文件的所有后续上传都会被「task already finished」拒绝
-            uploadTaskMapper.updateStatus(uploadId, UploadStatus.UPLOADING.getCode(), "", 0L);
-            uploadChunkMapper.deleteByUploadId(uploadId);
-            uploadStorage.deleteChunks(uploadId);
+            // 不复活的话同一文件的所有后续上传都会被「task already finished」拒绝。
+            // 只有抢到状态推进的请求才能清旧分片，否则并发 init 会删掉对方刚写入的分片
+            if (uploadTaskMapper.updateStatusFromCancelled(uploadId) > 0) {
+                uploadChunkMapper.deleteByUploadId(uploadId);
+                uploadStorage.deleteChunks(uploadId);
+                log.info("cancelled upload task reactivated uploadId={}", uploadId);
+            }
             existed = uploadTaskMapper.selectByUploadId(uploadId);
-            log.info("cancelled upload task reactivated uploadId={}", uploadId);
         }
         UploadTask task = existed == null ? createTask(request, chunkSize, totalChunks, uploadId) : existed;
         UploadInitResponse response = new UploadInitResponse();

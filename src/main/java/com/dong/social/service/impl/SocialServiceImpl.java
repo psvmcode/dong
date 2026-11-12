@@ -88,7 +88,7 @@ public class SocialServiceImpl implements SocialService {
         }
         followingSet(followerId).add(followeeId);
         followerSet(followeeId).add(followerId);
-        socialTimelineService.rebuildTimelineFor(followerId, socialRelationMapper.selectFollowees(followerId));
+        socialTimelineService.rebuildTimelineFor(followerId, socialRelationMapper.selectFollowees(followerId, Constants.MAX_BATCH_SIZE));
         log.info("user {} followed {}", followerId, followeeId);
     }
 
@@ -101,7 +101,7 @@ public class SocialServiceImpl implements SocialService {
         socialRelationMapper.delete(followerId, followeeId);
         followingSet(followerId).remove(followeeId);
         followerSet(followeeId).remove(followerId);
-        socialTimelineService.rebuildTimelineFor(followerId, socialRelationMapper.selectFollowees(followerId));
+        socialTimelineService.rebuildTimelineFor(followerId, socialRelationMapper.selectFollowees(followerId, Constants.MAX_BATCH_SIZE));
         log.info("user {} unfollowed {}", followerId, followeeId);
     }
 
@@ -119,7 +119,9 @@ public class SocialServiceImpl implements SocialService {
     @Override
     public List<Long> followees(Long followerId) {
         Collection<Long> cached = followingSet(followerId).readAll();
-        return cached == null || cached.isEmpty() ? socialRelationMapper.selectFollowees(followerId) : List.copyOf(cached);
+        List<Long> result = cached == null || cached.isEmpty()
+                ? socialRelationMapper.selectFollowees(followerId, Constants.MAX_BATCH_SIZE) : List.copyOf(cached);
+        return cap(result);
     }
 
     /**
@@ -128,7 +130,24 @@ public class SocialServiceImpl implements SocialService {
     @Override
     public List<Long> followers(Long followeeId) {
         Collection<Long> cached = followerSet(followeeId).readAll();
-        return cached == null || cached.isEmpty() ? socialRelationMapper.selectFollowers(followeeId) : List.copyOf(cached);
+        List<Long> result = cached == null || cached.isEmpty()
+                ? socialRelationMapper.selectFollowers(followeeId, Constants.MAX_BATCH_SIZE) : List.copyOf(cached);
+        return cap(result);
+    }
+
+    /**
+     * 关系列表统一封顶。Redis 的 readAll 一次取回整个 Set，
+     * 大 V 发布动态时不能让这个列表继续扩散成超大 IN 子句或超大响应体。
+     *
+     * @param result 待返回的关系列表
+     * @return 封顶后的列表
+     */
+    private List<Long> cap(List<Long> result) {
+        if (result.size() <= Constants.MAX_BATCH_SIZE) {
+            return result;
+        }
+        log.warn("social relation list exceeds safe limit, truncated: {} > {}", result.size(), Constants.MAX_BATCH_SIZE);
+        return result.subList(0, Constants.MAX_BATCH_SIZE);
     }
 
     /**

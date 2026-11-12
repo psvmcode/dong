@@ -73,7 +73,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         if (batch.getStatus() == SettlementStatus.OPEN) {
             throw new IllegalStateException("batch " + batchNo + " is still open, close it before reconciling");
         }
-        List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED);
+        List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED, com.dong.common.constant.Constants.MAX_BATCH_SIZE);
         if (batch.getStatus() == SettlementStatus.CLOSED) {
             boolean allSettled = localItems.stream().allMatch(item -> item.getStatus() == RemittanceStatus.SETTLED);
             if (allSettled && !localItems.isEmpty()) {
@@ -123,7 +123,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
      */
     @Override
     public List<Map<String, Object>> generateChannelStatement(String batchNo, double errorRate) {
-        List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED);
+        List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED, com.dong.common.constant.Constants.MAX_BATCH_SIZE);
         List<Map<String, Object>> statement = new ArrayList<>();
         for (CrossBorderRemittance local : localItems) {
             if (errorRate > 0 && ThreadLocalRandom.current().nextDouble() < errorRate) {
@@ -160,7 +160,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         if (batch == null) {
             throw new IllegalArgumentException("batch " + batchNo + " not found");
         }
-        List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED);
+        List<CrossBorderRemittance> localItems = reconMapper.selectSettledByBatch(batchNo, RemittanceStatus.SETTLED, com.dong.common.constant.Constants.MAX_BATCH_SIZE);
         List<ReconDiff> diffs = reconDiffMapper.selectByBatchNo(batchNo);
         int matched = localItems.size() - (int) diffs.stream().filter(d -> d.getDiffType() == ReconDiffType.MISSING_IN_CHANNEL || d.getDiffType() == ReconDiffType.AMOUNT_MISMATCH).count();
         return buildReport(batch, localItems, List.of(), matched, diffs);

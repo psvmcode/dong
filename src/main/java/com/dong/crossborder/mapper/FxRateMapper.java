@@ -21,7 +21,7 @@ public interface FxRateMapper {
     /**
      * 查询全部牌价，管理接口使用。
      */
-    List<FxRate> selectAll();
+    List<FxRate> selectAll(@Param("limit") int limit);
 
     /**
      * 新增牌价。

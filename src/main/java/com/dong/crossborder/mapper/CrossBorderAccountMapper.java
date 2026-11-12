@@ -26,7 +26,7 @@ public interface CrossBorderAccountMapper {
     /**
      * 查询所有记录。
      */
-    List<CrossBorderAccount> selectAll();
+    List<CrossBorderAccount> selectAll(@Param("limit") int limit);
 
     /**
      * 按 id 批量查询。列表场景一次性取回，避免逐条查询造成的 N+1。

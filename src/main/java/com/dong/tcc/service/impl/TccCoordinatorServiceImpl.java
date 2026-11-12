@@ -352,9 +352,18 @@ public class TccCoordinatorServiceImpl implements TccCoordinatorService {
      * 恢复路径不能因为一条坏 payload 就中断整批事务的恢复。
      */
     private Map<String, Object> payloadOf(TccBranch branch) {
-        Map<String, Object> payload = JsonUtils.fromJson(branch.getPayload(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-        });
-        return payload == null ? Map.of() : payload;
+        if (branch.getPayload() == null || branch.getPayload().isBlank()) {
+            return Map.of();
+        }
+        try {
+            Map<String, Object> payload = JsonUtils.fromJson(branch.getPayload(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+            });
+            return payload == null ? Map.of() : payload;
+        } catch (RuntimeException ex) {
+            // 一条坏 payload 不能让整批悬挂事务的恢复全部回滚
+            log.error("tcc branch payload is not valid json branch={}", branch.getBranchId(), ex);
+            return Map.of();
+        }
     }
 
     /**

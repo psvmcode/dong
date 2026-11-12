@@ -87,7 +87,7 @@ public class SettlementServiceImpl implements SettlementService {
      */
     @Override
     public List<SettlementBatchResponse> findAll() {
-        return batchMapper.selectAll().stream().map(SettlementBatchResponse::from).toList();
+        return batchMapper.selectAll(Constants.MAX_BATCH_SIZE).stream().map(SettlementBatchResponse::from).toList();
     }
 
     /**

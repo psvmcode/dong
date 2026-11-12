@@ -185,6 +185,10 @@ public class SearchServiceImpl implements SearchService {
     public long deleteExcept(Iterable<String> keepIds) {
         List<String> ids = new ArrayList<>();
         keepIds.forEach(ids::add);
+        // 保留名单会被整体塞进一个 ids 查询，超过该规模会撞上 ES 的 max_terms_count
+        if (ids.size() > Constants.MAX_BATCH_SIZE) {
+            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "too many ids to keep: " + ids.size());
+        }
         try {
             var response = elasticsearchClient.deleteByQuery(request -> request.index(indexName()).refresh(true).query(query -> query.bool(bool -> bool.mustNot(mustNot -> mustNot.ids(idsQuery -> idsQuery.values(ids))))));
             long deleted = response.deleted() == null ? 0L : response.deleted();

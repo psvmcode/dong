@@ -38,6 +38,7 @@
         where batch_no = #{batchNo}
         and status = #{status}
         order by id asc
+        limit #{limit}
     </select>
 
     <!-- 时间段内贷方累计，与渠道回单比对 -->

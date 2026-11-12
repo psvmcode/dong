@@ -30,7 +30,7 @@ public class ChannelConfigServiceImpl implements ChannelConfigService {
      */
     @Override
     public List<ChannelConfig> all() {
-        return channelConfigMapper.selectAll();
+        return channelConfigMapper.selectAll(com.dong.common.constant.Constants.MAX_BATCH_SIZE);
     }
 
     /**

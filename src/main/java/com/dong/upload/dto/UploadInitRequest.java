@@ -4,6 +4,7 @@ import com.dong.common.constant.Constants;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -30,6 +31,7 @@ public class UploadInitRequest {
     /**
      * 文件总大小，单位字节。
      */
+    @NotNull
     @Min(1)
     @Max(Constants.MAX_FILE_SIZE)
     private Long fileSize;

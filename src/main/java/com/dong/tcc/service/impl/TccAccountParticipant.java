@@ -81,7 +81,18 @@ public class TccAccountParticipant implements TccParticipant {
      * 从 payload 中读取长整型值。
      */
     private long longValue(Map<String, Object> payload, String key) {
-        return Long.parseLong(String.valueOf(payload.get(key)));
+        Object value = payload == null ? null : payload.get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value == null) {
+            throw new com.dong.common.exception.BusinessException(com.dong.common.constant.Constants.CODE_PARAM_INVALID, "tcc payload missing " + key);
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            throw new com.dong.common.exception.BusinessException(com.dong.common.constant.Constants.CODE_PARAM_INVALID, "tcc payload invalid " + key);
+        }
     }
 
 }

@@ -32,6 +32,7 @@
         <include refid="columns"/>
         from cross_border_fx_rate
         order by currency asc
+        limit #{limit}
     </select>
 
     <insert id="insert" parameterType="com.dong.crossborder.entity.FxRate"

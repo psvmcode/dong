@@ -111,7 +111,7 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
      */
     @Override
     public List<AccountResponse> findAll() {
-        return accountMapper.selectAll().stream().map(AccountResponse::from).toList();
+        return accountMapper.selectAll(com.dong.common.constant.Constants.MAX_BATCH_SIZE).stream().map(AccountResponse::from).toList();
     }
 
     /**

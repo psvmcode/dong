@@ -26,9 +26,12 @@ public interface SettlementBatchMapper {
     List<SettlementBatch> selectByStatus(@Param("status") SettlementStatus status, @Param("limit") int limit);
 
     /**
-     * 查询所有记录。
+     * 查询批次列表，SQL 层按上限截断，避免定时任务把历史批次全量读进内存。
+     *
+     * @param limit 最大条数
+     * @return 批次列表
      */
-    List<SettlementBatch> selectAll();
+    List<SettlementBatch> selectAll(@Param("limit") int limit);
 
     /**
      * 查询某渠道某币种当前打开的批次。实时清算的汇款单入账时自动归入，

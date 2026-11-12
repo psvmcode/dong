@@ -86,11 +86,14 @@ public class RateLimitAspect {
         EvaluationContext context = new StandardEvaluationContext();
         String[] parameterNames = NAME_DISCOVERER.getParameterNames(method);
         if (parameterNames != null) {
-            for (int i = 0; i < parameterNames.length; i++) {
+            int bound = Math.min(parameterNames.length, args == null ? 0 : args.length);
+            for (int i = 0; i < bound; i++) {
                 context.setVariable(parameterNames[i], args[i]);
             }
         }
-        return EXPRESSION_CACHE.computeIfAbsent(expression, PARSER::parseExpression).getValue(context, String.class);
+        String resolved = EXPRESSION_CACHE.computeIfAbsent(expression, PARSER::parseExpression).getValue(context, String.class);
+        // SpEL 取到 null 字段时不能把 null 当限流键，Caffeine 的 compute(null, ...) 会抛 NPE
+        return resolved == null || resolved.isBlank() ? "unknown:" + expression : resolved;
     }
 
 }

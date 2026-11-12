@@ -80,6 +80,17 @@
           and status = 0
     </update>
 
+    <!-- 从取消态复活任务，where 里带状态做 CAS，只有抢到的请求才允许清旧分片 -->
+    <update id="updateStatusFromCancelled">
+        update upload_task
+        set status         = 0,
+            storage_path   = '',
+            uploaded_bytes = 0,
+            update_time    = now()
+        where upload_id = #{uploadId}
+          and status = 2
+    </update>
+
     <!-- 分页查询任务列表 -->
     <select id="selectByPage" resultMap="uploadTaskMap">
         select

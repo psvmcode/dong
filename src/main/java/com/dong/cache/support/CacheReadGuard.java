@@ -210,9 +210,15 @@ public class CacheReadGuard {
         try {
             String key = MISS_PREFIX + clientIp;
             Long count = redisService.increment(key);
-            // 第一次计数时顺带设过期，之后每次自增都会沿用窗口
-            if (count != null && count == 1L) {
-                redisService.expire(key, Duration.ofSeconds(scanWindowSeconds));
+            // 每次都刷新 TTL：只在 count==1 时设置的话，自增成功而 expire 失败会留下
+            // 一个永不过期的 key，计数单调增长后该 IP 每次 miss 都会被重新封禁
+            if (count != null) {
+                try {
+                    redisService.expire(key, Duration.ofSeconds(scanWindowSeconds));
+                } catch (Exception ttlEx) {
+                    log.warn("cache guard expire failed key={}, falling back to local counter", key, ttlEx);
+                    throw ttlEx;
+                }
             }
             return count == null ? 0L : count;
         } catch (Exception ex) {

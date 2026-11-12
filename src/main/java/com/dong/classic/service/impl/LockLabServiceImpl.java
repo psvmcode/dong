@@ -133,7 +133,7 @@ public class LockLabServiceImpl implements LockLabService {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
-        long actual = Long.parseLong(redisService.get(key).orElse("0"));
+        long actual = readCount(key);
         redisService.delete(key);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("mode", guarded ? "redisson-lock" : "no-lock");
@@ -194,8 +194,26 @@ public class LockLabServiceImpl implements LockLabService {
      * 这正是这个实验要演示的问题。
      */
     private void increment(String key) {
-        long current = Long.parseLong(redisService.get(key).orElse("0"));
+        long current = readCount(key);
         redisService.set(key, String.valueOf(current + 1));
+    }
+
+    /**
+     * 安全读取计数键。
+     *
+     * <p>实验键可能被外部写入或残留脏值，parseLong 抛异常会让整轮实验结果丢失。
+     *
+     * @param key Redis 键
+     * @return 计数值，非法内容按 0 处理
+     */
+    private long readCount(String key) {
+        String value = redisService.get(key).orElse("0");
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            log.warn("invalid lock lab counter key={} value={}", key, value);
+            return 0L;
+        }
     }
 
     /**

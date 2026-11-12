@@ -77,14 +77,29 @@ public class TccInventoryParticipant implements TccParticipant {
      * 从 payload 中读取长整型值。
      */
     private Long longValue(Map<String, Object> payload, String key) {
-        return Long.valueOf(String.valueOf(payload.get(key)));
+        Object value = payload == null ? null : payload.get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "tcc payload missing " + key);
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "tcc payload invalid " + key);
+        }
     }
 
     /**
      * 从 payload 中读取整型值。
      */
     private int intValue(Map<String, Object> payload, String key) {
-        return Integer.parseInt(String.valueOf(payload.get(key)));
+        long value = longValue(payload, key);
+        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "tcc payload out of int range " + key);
+        }
+        return (int) value;
     }
 
 }

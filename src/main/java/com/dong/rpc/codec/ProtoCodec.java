@@ -35,6 +35,12 @@ public final class ProtoCodec {
     private static final int MAX_REPEATED_ELEMENTS = 10_000;
 
     /**
+     * 单帧内允许出现的字段总数上限。跳过未知字段和非 repeated 字段也要计数，
+     * 否则一个塞满微型字段的合法帧能把 EventLoop 的 CPU 占满。
+     */
+    private static final int MAX_FIELDS = 100_000;
+
+    /**
      * 空字节。
      */
     private static final byte[] EMPTY = new byte[0];
@@ -90,7 +96,11 @@ public final class ProtoCodec {
         Object target = schema.newInstance();
         ProtoReader reader = new ProtoReader(data);
         int repeatedElements = 0;
+        int fields = 0;
         while (reader.hasNext()) {
+            if (++fields > MAX_FIELDS) {
+                throw new ProtoCodecException("fields exceed " + MAX_FIELDS + ", possible malicious payload");
+            }
             int tag = reader.readTag();
             int order = tag >>> 3;
             WireType wireType = WireType.of(tag & 7);

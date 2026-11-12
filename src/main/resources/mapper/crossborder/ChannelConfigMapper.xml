@@ -33,6 +33,7 @@
         <include refid="columns"/>
         from cross_border_channel_config
         order by channel asc
+        limit #{limit}
     </select>
 
     <select id="selectEnabled" resultMap="channelMap">

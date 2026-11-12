@@ -25,18 +25,20 @@
         and followee_id = #{followeeId}
     </select>
 
-    <!-- 查关注列表 -->
+    <!-- 查关注列表，在 SQL 层封顶 -->
     <select id="selectFollowees" resultType="java.lang.Long">
         select followee_id
         from social_relation
         where follower_id = #{followerId}
+        limit #{limit}
     </select>
 
-    <!-- 查粉丝列表 -->
+    <!-- 查粉丝列表，在 SQL 层封顶 -->
     <select id="selectFollowers" resultType="java.lang.Long">
         select follower_id
         from social_relation
         where followee_id = #{followeeId}
+        limit #{limit}
     </select>
 
     <!-- 关注数 -->

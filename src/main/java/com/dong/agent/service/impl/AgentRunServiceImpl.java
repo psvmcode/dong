@@ -44,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -413,8 +414,14 @@ public class AgentRunServiceImpl implements AgentRunService {
             AgentEventSink sink = (event, data) -> emitter.send(SseEmitter.event().name(event).data(data));
             AgentRunRecorder recorder = new AgentRunRecorder(messageMapper, toolCallMapper, toolRegistry,
                     runNo, sessionNo, startSeq + 1, sink);
-            // 连接断开必须置取消标记：否则循环在后台继续跑，是最浪费的一种泄漏
-            emitter.onCompletion(() -> markCancelled(runNo));
+            // 连接断开必须置取消标记：否则循环在后台继续跑，是最浪费的一种泄漏。
+            // 但正常 complete() 也会触发 onCompletion，刚挂起等待确认的运行不能被改成 CANCELLED
+            AtomicBoolean closedNormally = new AtomicBoolean(false);
+            emitter.onCompletion(() -> {
+                if (!closedNormally.get()) {
+                    markCancelled(runNo);
+                }
+            });
             emitter.onTimeout(() -> markCancelled(runNo));
             emitter.onError(e -> markCancelled(runNo));
             AgentRunContext context = buildContext(runNo, sessionNo, request, history);
@@ -438,6 +445,7 @@ public class AgentRunServiceImpl implements AgentRunService {
                     }
                 } finally {
                     activeRuns.decrementAndGet();
+                    closedNormally.set(true);
                     emitter.complete();
                 }
             });
@@ -703,7 +711,9 @@ public class AgentRunServiceImpl implements AgentRunService {
             if (total <= historyWindow) {
                 return;
             }
-            List<AgentMessage> older = messageMapper.selectBySession(sessionNo, 0, total - historyWindow);
+            // 摘要只需要窗口外的近期历史，长会话不能把窗口外全部消息一次读进内存
+            int olderLimit = Math.min(total - historyWindow, Constants.MAX_BATCH_SIZE);
+            List<AgentMessage> older = messageMapper.selectBySession(sessionNo, 0, olderLimit);
             List<ChatMessage> history = new ArrayList<>();
             for (AgentMessage message : older) {
                 ChatMessage converted = convert(message);

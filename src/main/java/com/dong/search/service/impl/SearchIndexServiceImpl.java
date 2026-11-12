@@ -172,7 +172,14 @@ public class SearchIndexServiceImpl implements SearchIndexService {
         if (!elasticsearchClient.indices().exists(request -> request.index(target)).value()) {
             createIndex(target);
             var reindex = elasticsearchClient.reindex(request -> request.source(source -> source.index(legacyIndex)).dest(dest -> dest.index(target)).refresh(true));
-            log.info("migrated {} docs from legacy index {} to {}", reindex.total(), legacyIndex, target);
+            long total = reindex.total() == null ? 0L : reindex.total();
+            long failures = reindex.failures() == null ? 0L : reindex.failures().size();
+            long moved = (reindex.created() == null ? 0L : reindex.created()) + (reindex.updated() == null ? 0L : reindex.updated());
+            if (failures > 0 || moved < total) {
+                // 搬不完就保留 legacy 索引，删掉它等于把这些文档永久丢掉
+                throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "legacy reindex lost " + (total - moved + failures) + " docs");
+            }
+            log.info("migrated {} docs from legacy index {} to {}", total, legacyIndex, target);
         }
         elasticsearchClient.indices().delete(request -> request.index(legacyIndex));
     }

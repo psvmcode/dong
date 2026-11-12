@@ -182,12 +182,7 @@ public class SeckillServiceImpl implements SeckillService {
      */
     @Override
     public List<SeckillActivity> activities() {
-        List<SeckillActivity> all = seckillActivityMapper.selectAll();
-        if (all.size() > Constants.MAX_BATCH_SIZE) {
-            log.warn("activities exceeds safe limit, truncated: {} > {}", all.size(), Constants.MAX_BATCH_SIZE);
-            return all.subList(0, Constants.MAX_BATCH_SIZE);
-        }
-        return all;
+        return seckillActivityMapper.selectAll(Constants.MAX_BATCH_SIZE);
     }
 
     /**

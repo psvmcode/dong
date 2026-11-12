@@ -48,10 +48,20 @@ public class ProductSearchRpcService implements ProductQueryService {
         if (searchService == null) {
             throw new BusinessException(Constants.CODE_MIDDLEWARE_DISABLED, "set dong.elasticsearch.enabled=true first");
         }
+        if (request == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "rpc query request is null");
+        }
+        // RPC 请求绕过 Controller 的 @Valid，分页与关键字必须在这里手动封顶
+        int pageNum = Math.min(Math.max(request.getPageNum(), 1), Constants.MAX_PAGE_NUM);
+        int pageSize = Math.min(Math.max(request.getPageSize(), 1), Constants.MAX_PAGE_SIZE);
+        String keyword = request.getKeyword() == null ? "" : request.getKeyword();
+        if (keyword.length() > Constants.MAX_TEXT_LENGTH) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "keyword exceeds max length");
+        }
         ProductSearchRequest searchRequest = new ProductSearchRequest();
-        searchRequest.setKeyword(request.getKeyword());
-        searchRequest.setPageNum(request.getPageNum());
-        searchRequest.setPageSize(request.getPageSize());
+        searchRequest.setKeyword(keyword);
+        searchRequest.setPageNum(pageNum);
+        searchRequest.setPageSize(pageSize);
         ProductSearchResponse searchResponse = searchService.search(searchRequest);
         ProductQueryResponse response = new ProductQueryResponse();
         response.setTotal(searchResponse.getTotal());

@@ -174,30 +174,35 @@ public class CrossBorderMaintenanceTask {
             compensationRounds.increment();
             LocalDateTime threshold = LocalDateTime.now().minus(COMPENSATION_IDLE);
             for (CrossBorderRemittance remittance : pending) {
-                if (remittance.getCreateTime() != null && remittance.getCreateTime().isAfter(threshold)) {
-                    skippedInQuietPeriod.increment();
-                    continue;
-                }
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("remittanceNo", remittance.getRemittanceNo());
-                payload.put("batchNo", remittance.getBatchNo());
-                payload.put("targetAmount", remittance.getTargetAmount().toPlainString());
-                payload.put("payeeAccountId", remittance.getPayeeAccountId());
-                payload.put("currency", remittance.getTargetCurrency());
-                payload.put("channel", remittance.getChannel().getCode());
-                payload.put("occurredAt", LocalDateTime.now().toString());
-                int retried = remittance.getRetryCount() == null ? 0 : remittance.getRetryCount();
-                if (retried >= MAX_COMPENSATION_RETRIES) {
-                    abandonedRemittance.increment();
-                    log.error("compensation abandoned after {} retries remittanceNo={} status={}, " + "manual retry available at POST /api/crossborder/remittance/{}/retry", retried, remittance.getRemittanceNo(), remittance.getStatus(), remittance.getRemittanceNo());
-                    continue;
-                }
                 try {
+                    if (remittance.getCreateTime() != null && remittance.getCreateTime().isAfter(threshold)) {
+                        skippedInQuietPeriod.increment();
+                        continue;
+                    }
+                    if (remittance.getRemittanceNo() == null || remittance.getTargetAmount() == null || remittance.getChannel() == null) {
+                        // 一条脏记录不能中断整轮补偿，否则后面的单子永远排在它后面
+                        log.warn("skip compensation with incomplete remittance id={}", remittance.getId());
+                        continue;
+                    }
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("remittanceNo", remittance.getRemittanceNo());
+                    payload.put("batchNo", remittance.getBatchNo());
+                    payload.put("targetAmount", remittance.getTargetAmount().toPlainString());
+                    payload.put("payeeAccountId", remittance.getPayeeAccountId());
+                    payload.put("currency", remittance.getTargetCurrency());
+                    payload.put("channel", remittance.getChannel().getCode());
+                    payload.put("occurredAt", LocalDateTime.now().toString());
+                    int retried = remittance.getRetryCount() == null ? 0 : remittance.getRetryCount();
+                    if (retried >= MAX_COMPENSATION_RETRIES) {
+                        abandonedRemittance.increment();
+                        log.error("compensation abandoned after {} retries remittanceNo={} status={}, " + "manual retry available at POST /api/crossborder/remittance/{}/retry", retried, remittance.getRemittanceNo(), remittance.getStatus(), remittance.getRemittanceNo());
+                        continue;
+                    }
                     mqFacade.sendOrdered("cross-border-settlement", remittance.getRemittanceNo(), JsonUtils.toJson(payload), String.valueOf(remittance.getPayeeAccountId()));
                     remittanceMapper.increaseRetryCount(remittance.getRemittanceNo());
                     compensatedMessages.increment();
                 } catch (Exception ex) {
-                    log.error("compensation send failed remittanceNo={}", remittance.getRemittanceNo(), ex);
+                    log.error("compensation failed remittanceNo={}", remittance.getRemittanceNo(), ex);
                 }
             }
         } catch (Exception ex) {

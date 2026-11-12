@@ -196,7 +196,15 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
         try (InputStream in = response.body();
              BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             String line;
+            long deadline = System.nanoTime() + readTimeout.toNanos();
             while ((line = reader.readLine()) != null) {
+                // HttpRequest.timeout 只覆盖到拿到响应头，之后上游持续吐数据也会拖住线程
+                if (System.nanoTime() > deadline) {
+                    throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "llm stream exceeded read timeout");
+                }
+                if (line.length() > Constants.MAX_TEXT_LENGTH * 16) {
+                    throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "llm stream line too large");
+                }
                 if (!line.startsWith("data:")) {
                     continue;
                 }
@@ -241,6 +249,9 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
                     // 否则多个调用的分片全落到 0 号、参数互相拼接成非法 JSON
                     JsonNode indexNode = call.path("index");
                     int index = indexNode.isMissingNode() || indexNode.isNull() ? pending.size() : indexNode.asInt();
+                    if (!pending.containsKey(index) && pending.size() >= Constants.MAX_BATCH_SIZE) {
+                        throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "too many streamed tool calls");
+                    }
                     PendingTool item = pending.computeIfAbsent(index, key -> new PendingTool());
                     if (!call.path("id").isMissingNode() && !call.path("id").isNull()) {
                         item.id = call.path("id").asText();
@@ -252,7 +263,12 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
                         }
                         JsonNode arguments = function.path("arguments");
                         if (!arguments.isMissingNode() && !arguments.isNull()) {
-                            item.arguments.append(arguments.asText());
+                            String fragment = arguments.asText();
+                            if (item.arguments.length() + fragment.length() > Constants.MAX_TEXT_LENGTH) {
+                                // 兼容网关持续吐分片时参数会无限拼接，必须在流式阶段封顶
+                                throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "streamed tool arguments too long");
+                            }
+                            item.arguments.append(fragment);
                         }
                     }
                 }
@@ -354,9 +370,11 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
         try (InputStream stream = in;
              BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             StringBuilder text = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null && text.length() < 512) {
-                text.append(line);
+            char[] buffer = new char[256];
+            int read;
+            // 错误响应可能是单行几十 MB，用 readLine 会把整行读进内存；按固定缓冲截取前 512 字符
+            while (text.length() < 512 && (read = reader.read(buffer, 0, Math.min(buffer.length, 512 - text.length()))) != -1) {
+                text.append(buffer, 0, read);
             }
             return text.toString();
         } catch (Exception e) {

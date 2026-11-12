@@ -45,6 +45,7 @@
         daily_limit, single_limit, status, create_time, update_time
         from cross_border_account
         order by id asc
+        limit #{limit}
     </select>
 
     <!-- 按 id 批量查，列表场景避免 N+1 -->

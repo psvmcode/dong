@@ -122,7 +122,14 @@ public class SeckillStockServiceImpl implements SeckillStockService {
      */
     @Override
     public int available(Long activityId) {
-        return Integer.parseInt(redisService.get(stockKey(activityId)).orElse("-1"));
+        String value = redisService.get(stockKey(activityId)).orElse("-1");
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            // 库存键被写脏时不能让补偿与超时回收任务整体失败，-1 走「未预热」分支
+            log.warn("invalid seckill stock value activity={} value={}", activityId, value);
+            return -1;
+        }
     }
 
     /**

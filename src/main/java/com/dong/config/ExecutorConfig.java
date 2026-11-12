@@ -57,9 +57,20 @@ public class ExecutorConfig {
     public static class DelayedTaskRunner {
 
         /**
+         * 在途延迟任务上限。ScheduledThreadPoolExecutor 的延迟队列无法设置有界容量，
+         * 只能在提交侧计数：写缓存双删在高并发下会一直往队列里塞任务。
+         */
+        private static final int MAX_PENDING = 10_000;
+
+        /**
          * 调度器。
          */
         private final ScheduledExecutorService scheduler;
+
+        /**
+         * 在途任务计数。
+         */
+        private final java.util.concurrent.atomic.AtomicLong pending = new java.util.concurrent.atomic.AtomicLong();
 
         /**
          * 构造延迟任务执行器。
@@ -77,7 +88,23 @@ public class ExecutorConfig {
          * @param task  待执行任务
          */
         public void runAfter(Duration delay, Runnable task) {
-            scheduler.schedule(task, delay.toMillis(), TimeUnit.MILLISECONDS);
+            if (pending.incrementAndGet() > MAX_PENDING) {
+                pending.decrementAndGet();
+                org.slf4j.LoggerFactory.getLogger(DelayedTaskRunner.class).warn("too many pending delayed tasks, task dropped");
+                return;
+            }
+            try {
+                scheduler.schedule(() -> {
+                    try {
+                        task.run();
+                    } finally {
+                        pending.decrementAndGet();
+                    }
+                }, delay.toMillis(), TimeUnit.MILLISECONDS);
+            } catch (RuntimeException ex) {
+                pending.decrementAndGet();
+                org.slf4j.LoggerFactory.getLogger(DelayedTaskRunner.class).error("failed to schedule delayed task", ex);
+            }
         }
 
     }

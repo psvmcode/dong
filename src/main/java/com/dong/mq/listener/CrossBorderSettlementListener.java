@@ -39,10 +39,17 @@ import java.util.List;
      */
     @Override
     public void onMessage(MessageExt message) {
-        String body = new String(message.getBody(), StandardCharsets.UTF_8);
+        byte[] raw = message.getBody();
+        String body = raw == null ? "" : new String(raw, StandardCharsets.UTF_8);
         String topic = message.getTopic();
         String key = message.getKeys() == null ? String.valueOf(message.getMsgId()) : message.getKeys();
-        handlers.stream().filter(handler -> handler.topic().equals(topic)).forEach(handler -> handler.handle(key, body));
+        List<MessageHandler> matched = handlers.stream().filter(handler -> handler.topic().equals(topic)).toList();
+        for (MessageHandler handler : matched) {
+            if (!handler.handle(key, body)) {
+                // 返回 false 说明连死信都没落成功，必须让容器重投，否则消息被静默 ACK
+                throw new IllegalStateException("settlement handler failed topic=" + topic + " handler=" + handler.getClass().getSimpleName());
+            }
+        }
         log.info("cross border settlement message received key={} topic={}", key, topic);
     }
 

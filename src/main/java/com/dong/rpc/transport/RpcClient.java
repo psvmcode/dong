@@ -162,8 +162,14 @@ public class RpcClient {
         CompletableFuture<RpcResponse> future = new CompletableFuture<>();
         pending.put(request.getRequestId(), future);
         try {
+            byte[] body = ProtoCodec.encode(request);
+            if (body.length > maxFrameLength - 4) {
+                // 超长帧会被对端 LengthFieldBasedFrameDecoder 判为 TooLongFrameException 并关连接，
+                // 该连接上其它并发请求会一起丢失，必须本地先快速失败
+                return RpcResponse.fail(request.getRequestId(), RpcStatus.SERVER_ERROR, "request frame exceeds " + maxFrameLength + " bytes");
+            }
             Channel channel = channel(instance);
-            channel.writeAndFlush(Unpooled.wrappedBuffer(ProtoCodec.encode(request))).addListener(f -> {
+            channel.writeAndFlush(Unpooled.wrappedBuffer(body)).addListener(f -> {
                 // 写失败立即失败，不再干等满超时才返回
                 if (!f.isSuccess()) {
                     future.completeExceptionally(f.cause());

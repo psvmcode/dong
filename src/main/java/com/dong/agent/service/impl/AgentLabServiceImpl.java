@@ -67,6 +67,12 @@ public class AgentLabServiceImpl implements AgentLabService {
     private static final int E8_CONCURRENCY = 10;
 
     /**
+     * 单次实验允许的模式数上限。模式与轮次相乘就是完整 Agent 运行次数，
+     * 不封顶的话一次请求能把线程池和数据库连接池长时间占满。
+     */
+    private static final int MAX_MODES = 16;
+
+    /**
      * runService，业务服务层。
      */
     private final AgentRunService runService;
@@ -120,8 +126,14 @@ public class AgentLabServiceImpl implements AgentLabService {
     @Override
     public LabRunResponse run(String experiment, LabRunRequest request) {
         String key = experiment == null ? "" : experiment.trim().toUpperCase();
+        if (request == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "lab run request is null");
+        }
         List<String> modes = request.getModes() == null || request.getModes().isEmpty()
-                ? defaultModes(key) : request.getModes();
+                ? defaultModes(key) : request.getModes().stream().filter(mode -> mode != null).map(String::trim).filter(mode -> !mode.isEmpty()).distinct().toList();
+        if (modes.isEmpty() || modes.size() > MAX_MODES) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "modes must contain 1.." + MAX_MODES + " valid values");
+        }
         int rounds = request.roundCount();
         LabRunResponse response = new LabRunResponse();
         response.setExperiment(key);
@@ -341,39 +353,45 @@ public class AgentLabServiceImpl implements AgentLabService {
         // 后面的任务接着补位，并发上限看着生效其实没有
         CountDownLatch ready = new CountDownLatch(1);
         List<CompletableFuture<Void>> futures = new ArrayList<>(E8_CONCURRENCY);
-        for (int i = 0; i < E8_CONCURRENCY; i++) {
-            int index = i;
-            futures.add(CompletableFuture.runAsync(() -> {
-                try {
-                    ready.await();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                RunRequest request = request(prompt + "（并发 " + index + "）", "e8", mode, round);
-                // 幂等键带时间戳，否则第二次跑同一个实验会撞上第一次留下的记录
-                request.setClientToken("lab-e8-" + mode + "-" + round + "-" + index + "-" + System.nanoTime());
-                try {
-                    if (bounded) {
-                        runService.run(request);
-                    } else {
-                        runService.runUngated(request);
+        try {
+            for (int i = 0; i < E8_CONCURRENCY; i++) {
+                int index = i;
+                futures.add(CompletableFuture.runAsync(() -> {
+                    try {
+                        ready.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
-                    done.incrementAndGet();
-                } catch (BusinessException e) {
-                    if (e.getCode() == Constants.CODE_TOO_MANY_REQUESTS) {
-                        rejected.incrementAndGet();
-                    } else {
-                        log.warn("agent lab E8 run failed index={} code={}", index, e.getCode());
+                    RunRequest request = request(prompt + "（并发 " + index + "）", "e8", mode, round);
+                    // 幂等键带时间戳，否则第二次跑同一个实验会撞上第一次留下的记录
+                    request.setClientToken("lab-e8-" + mode + "-" + round + "-" + index + "-" + System.nanoTime());
+                    try {
+                        if (bounded) {
+                            runService.run(request);
+                        } else {
+                            runService.runUngated(request);
+                        }
+                        done.incrementAndGet();
+                    } catch (BusinessException e) {
+                        if (e.getCode() == Constants.CODE_TOO_MANY_REQUESTS) {
+                            rejected.incrementAndGet();
+                        } else {
+                            log.warn("agent lab E8 run failed index={} code={}", index, e.getCode());
+                        }
                     }
-                }
-            }, executor));
+                }, executor));
+            }
+        } finally {
+            // 提交过程中一旦抛异常，闸门必须照样放行，否则已提交的任务永远卡在 await
+            ready.countDown();
         }
-        ready.countDown();
         for (CompletableFuture<Void> future : futures) {
             try {
-                future.get();
+                // HTTP 线程不能无限等：工具池被父任务占满时子任务可能排队很久
+                future.get(120, java.util.concurrent.TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.warn("agent lab E8 task failed", e);
+                future.cancel(true);
             }
         }
         long elapsed = System.currentTimeMillis() - start;

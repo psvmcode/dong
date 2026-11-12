@@ -132,6 +132,10 @@ public class RocketMqProducer implements MessageProducer {
 
         @Override
         public org.apache.rocketmq.common.message.MessageQueue select(java.util.List<org.apache.rocketmq.common.message.MessageQueue> queues, org.apache.rocketmq.common.message.Message message, Object argument) {
+            if (queues == null || queues.isEmpty()) {
+                // topic 路由未就绪时 floorMod(x, 0) 会抛 ArithmeticException，给出可诊断的失败
+                throw new IllegalStateException("rocketmq topic route not ready, no queue available");
+            }
             int index = Math.floorMod(String.valueOf(argument).hashCode(), queues.size());
             return queues.get(index);
         }
