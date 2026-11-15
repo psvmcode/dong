@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdDailyStatMapper">
+
+    <resultMap id="statMap" type="com.dong.ad.entity.AdDailyStat">
+        <id column="id" property="id"/>
+        <result column="stat_date" property="statDate"/>
+        <result column="campaign_id" property="campaignId"/>
+        <result column="budget_cents" property="budgetCents"/>
+        <result column="impressions" property="impressions"/>
+        <result column="clicks" property="clicks"/>
+        <result column="charge_cents" property="chargeCents"/>
+        <result column="rejected_cents" property="rejectedCents"/>
+        <result column="rejected_count" property="rejectedCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="statColumns">
+        id, stat_date, campaign_id, budget_cents, impressions, clicks, charge_cents, rejected_cents,
+        rejected_count, create_time, update_time
+    </sql>
+
+    <!-- 查某计划某天的汇总行 -->
+    <select id="selectByDateAndCampaign" resultMap="statMap">
+        select
+        <include refid="statColumns"/>
+        from ad_daily_stat
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+    </select>
+
+    <!-- 分页查日报表 -->
+    <select id="selectByPage" resultMap="statMap">
+        select
+        <include refid="statColumns"/>
+        from ad_daily_stat
+        <where>
+            <if test="dateFrom != null">
+                and stat_date &gt;= #{dateFrom}
+            </if>
+            <if test="dateTo != null">
+                and stat_date &lt;= #{dateTo}
+            </if>
+            <if test="campaignId != null">
+                and campaign_id = #{campaignId}
+            </if>
+        </where>
+        order by stat_date desc, id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计分页总数 -->
+    <select id="countByPage" resultType="java.lang.Long">
+        select count(*)
+        from ad_daily_stat
+        <where>
+            <if test="dateFrom != null">
+                and stat_date &gt;= #{dateFrom}
+            </if>
+            <if test="dateTo != null">
+                and stat_date &lt;= #{dateTo}
+            </if>
+            <if test="campaignId != null">
+                and campaign_id = #{campaignId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 初始化当天汇总行，重复初始化不覆盖已有计数 -->
+    <insert id="insertIfAbsent">
+        insert into ad_daily_stat (stat_date, campaign_id, budget_cents)
+        values (#{statDate}, #{campaignId}, #{budgetCents})
+        on duplicate key update id = id
+    </insert>
+
+    <!-- 条件累加已计费流水，日预算充足条件写在 where 里 -->
+    <update id="accumulateCharged">
+        update ad_daily_stat
+        set impressions = impressions + #{impressions},
+        clicks = clicks + #{clicks},
+        charge_cents = charge_cents + #{amountCents}
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+        and charge_cents + #{amountCents} &lt;= budget_cents
+    </update>
+
+    <!-- 只累加效果数据，不产生金额 -->
+    <update id="accumulateEffect">
+        update ad_daily_stat
+        set impressions = impressions + #{impressions},
+        clicks = clicks + #{clicks}
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+    </update>
+
+    <!-- 累加被护栏拒绝的事件，效果数据照常统计 -->
+    <update id="accumulateRejected">
+        update ad_daily_stat
+        set impressions = impressions + #{impressions},
+        clicks = clicks + #{clicks},
+        rejected_cents = rejected_cents + #{amountCents},
+        rejected_count = rejected_count + 1
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+    </update>
+
+    <!-- 调整日预算后刷新当天快照 -->
+    <update id="updateBudgetSnapshot">
+        update ad_daily_stat
+        set budget_cents = #{budgetCents}
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+    </update>
+
+    <!-- 对账后以流水为权威源覆盖汇总行，预算快照保留原值 -->
+    <update id="overwrite">
+        update ad_daily_stat
+        set impressions = #{stat.impressions},
+        clicks = #{stat.clicks},
+        charge_cents = #{stat.chargeCents},
+        rejected_cents = #{stat.rejectedCents},
+        rejected_count = #{stat.rejectedCount}
+        where stat_date = #{stat.statDate}
+        and campaign_id = #{stat.campaignId}
+    </update>
+
+</mapper>

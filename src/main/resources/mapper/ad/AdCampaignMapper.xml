@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdCampaignMapper">
+
+    <resultMap id="campaignMap" type="com.dong.ad.entity.AdCampaign">
+        <id column="id" property="id"/>
+        <result column="campaign_no" property="campaignNo"/>
+        <result column="advertiser_id" property="advertiserId"/>
+        <result column="name" property="name"/>
+        <result column="daily_budget_cents" property="dailyBudgetCents"/>
+        <result column="total_budget_cents" property="totalBudgetCents"/>
+        <result column="spent_total_cents" property="spentTotalCents"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="delivery_hours" property="deliveryHours"/>
+        <result column="status" property="status" javaType="com.dong.ad.enums.AdCampaignStatus"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="campaignColumns">
+        id, campaign_no, advertiser_id, name, daily_budget_cents, total_budget_cents, spent_total_cents,
+        start_date, end_date, delivery_hours, status, version, create_time, update_time
+    </sql>
+
+    <!-- 按主键查计划 -->
+    <select id="selectById" resultMap="campaignMap">
+        select
+        <include refid="campaignColumns"/>
+        from ad_campaign
+        where id = #{id}
+    </select>
+
+    <!-- 按编号查计划 -->
+    <select id="selectByNo" resultMap="campaignMap">
+        select
+        <include refid="campaignColumns"/>
+        from ad_campaign
+        where campaign_no = #{campaignNo}
+    </select>
+
+    <!-- 分页查计划 -->
+    <select id="selectByPage" resultMap="campaignMap">
+        select
+        <include refid="campaignColumns"/>
+        from ad_campaign
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="advertiserId != null">
+                and advertiser_id = #{advertiserId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (name like concat('%', #{keyword}, '%') or campaign_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计分页总数 -->
+    <select id="countByPage" resultType="java.lang.Long">
+        select count(*)
+        from ad_campaign
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="advertiserId != null">
+                and advertiser_id = #{advertiserId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (name like concat('%', #{keyword}, '%') or campaign_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <!-- 召回候选：投放中且当前日期落在投放窗口内 -->
+    <select id="selectDeliverable" resultMap="campaignMap">
+        select
+        <include refid="campaignColumns"/>
+        from ad_campaign
+        where status = #{status}
+        and start_date &lt;= #{date}
+        and end_date &gt;= #{date}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 对账用全量计划，SQL 层封顶 -->
+    <select id="selectAll" resultMap="campaignMap">
+        select
+        <include refid="campaignColumns"/>
+        from ad_campaign
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 新建计划 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdCampaign"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_campaign (campaign_no, advertiser_id, name, daily_budget_cents, total_budget_cents,
+        spent_total_cents, start_date, end_date, delivery_hours, status, version)
+        values (#{campaignNo}, #{advertiserId}, #{name}, #{dailyBudgetCents}, #{totalBudgetCents},
+        #{spentTotalCents}, #{startDate}, #{endDate}, #{deliveryHours}, #{status}, #{version})
+    </insert>
+
+    <!-- 条件推进状态：期望状态与版本号同时写进 where -->
+    <update id="updateStatus">
+        update ad_campaign
+        set status = #{status},
+        version = version + 1
+        where id = #{id}
+        and status = #{expectedStatus}
+        and version = #{expectedVersion}
+    </update>
+
+    <!-- 调整预算与投放窗口，只更新传进来的字段 -->
+    <update id="updateConfig">
+        update ad_campaign
+        <set>
+            <if test="campaign.dailyBudgetCents != null">
+                daily_budget_cents = #{campaign.dailyBudgetCents},
+            </if>
+            <if test="campaign.totalBudgetCents != null">
+                total_budget_cents = #{campaign.totalBudgetCents},
+            </if>
+            <if test="campaign.endDate != null">
+                end_date = #{campaign.endDate},
+            </if>
+            <if test="campaign.deliveryHours != null">
+                delivery_hours = #{campaign.deliveryHours},
+            </if>
+            version = version + 1
+        </set>
+        where id = #{campaign.id}
+        and version = #{expectedVersion}
+    </update>
+
+    <!-- 条件累加累计花费，总预算约束写进 where -->
+    <update id="addSpent">
+        update ad_campaign
+        set spent_total_cents = spent_total_cents + #{amountCents},
+        version = version + 1
+        where id = #{id}
+        and spent_total_cents + #{amountCents} &lt;= total_budget_cents
+    </update>
+
+    <!-- 并发补偿：回退刚累加的累计花费，带充足条件防减成负数 -->
+    <update id="subtractSpent">
+        update ad_campaign
+        set spent_total_cents = spent_total_cents - #{amountCents},
+        version = version + 1
+        where id = #{id}
+        and spent_total_cents >= #{amountCents}
+    </update>
+
+    <!-- 对账后以流水为权威源覆盖累计花费 -->
+    <update id="overwriteSpent">
+        update ad_campaign
+        set spent_total_cents = #{spentTotalCents},
+        version = version + 1
+        where id = #{id}
+    </update>
+
+</mapper>

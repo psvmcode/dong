@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdChargeRecordMapper">
+
+    <resultMap id="chargeMap" type="com.dong.ad.entity.AdChargeRecord">
+        <id column="id" property="id"/>
+        <result column="event_id" property="eventId"/>
+        <result column="trace_id" property="traceId"/>
+        <result column="stat_date" property="statDate"/>
+        <result column="campaign_id" property="campaignId"/>
+        <result column="unit_id" property="unitId"/>
+        <result column="creative_id" property="creativeId"/>
+        <result column="advertiser_id" property="advertiserId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="amount_cents" property="amountCents"/>
+        <result column="status" property="status"/>
+        <result column="charge_mode" property="chargeMode"/>
+        <result column="reject_reason" property="rejectReason"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="chargeColumns">
+        id, event_id, trace_id, stat_date, campaign_id, unit_id, creative_id, advertiser_id, event_type,
+        amount_cents, status, charge_mode, reject_reason, create_time
+    </sql>
+
+    <!-- 新增流水，幂等由 uk_charge_event 保证 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdChargeRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_charge_record (event_id, trace_id, stat_date, campaign_id, unit_id, creative_id,
+        advertiser_id, event_type, amount_cents, status, charge_mode, reject_reason)
+        values (#{eventId}, #{traceId}, #{statDate}, #{campaignId}, #{unitId}, #{creativeId},
+        #{advertiserId}, #{eventType}, #{amountCents}, #{status}, #{chargeMode}, #{rejectReason})
+    </insert>
+
+    <!-- 按幂等键查重 -->
+    <select id="countByEventId" resultType="java.lang.Long">
+        select count(*)
+        from ad_charge_record
+        where event_id = #{eventId}
+    </select>
+
+    <!-- 按归属日统计流水数，超限必须对账报错而不是截断 -->
+    <select id="countByStatDate" resultType="java.lang.Long">
+        select count(*)
+        from ad_charge_record
+        where stat_date = #{statDate}
+    </select>
+
+    <!-- 取某归属日全部流水，SQL 层封顶 -->
+    <select id="selectByStatDate" resultMap="chargeMap">
+        select
+        <include refid="chargeColumns"/>
+        from ad_charge_record
+        where stat_date = #{statDate}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 统计计划累计已计费金额，对账回写计划表用 -->
+    <select id="sumByCampaign" resultType="java.lang.Long">
+        select coalesce(sum(amount_cents), 0)
+        from ad_charge_record
+        where campaign_id = #{campaignId}
+        and status = 2
+    </select>
+
+</mapper>

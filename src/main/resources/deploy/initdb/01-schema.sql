@@ -787,3 +787,165 @@ create table if not exists upload_chunk
 ) engine = innodb
   default charset = utf8mb4
   comment = '已接收的分片记录。断点续传时把它们组成 uploadedChunks 返回给前端';
+
+-- ----------------------------------------------------------------------------
+-- 广告投放：账户 / 计划 / 单元 / 创意 / 事件 / 计费流水 / 日汇总
+-- 金额一律 bigint 存分，避免浮点在扣费与对账时累积误差
+-- ----------------------------------------------------------------------------
+
+create table if not exists ad_advertiser
+(
+    id            bigint unsigned not null auto_increment                  comment '主键',
+    advertiser_no varchar(32)     not null                                 comment '广告主编号',
+    name          varchar(128)    not null default ''                      comment '广告主名称',
+    balance_cents bigint          not null default 0                       comment '账户可用余额，单位分',
+    status        tinyint         not null default 1                       comment '状态：0 冻结 1 正常',
+    version       int             not null default 0                       comment '乐观锁版本号',
+    create_time   datetime        not null default current_timestamp       comment '创建时间',
+    update_time   datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_advertiser_no (advertiser_no)                              comment '广告主编号唯一',
+    key idx_status (status)                                                  comment '按状态筛出可投放的广告主'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '广告主账户。日预算管花费节奏，账户余额才是最终付款能力，两者都要卡';
+
+create table if not exists ad_campaign
+(
+    id                 bigint unsigned not null auto_increment                  comment '主键',
+    campaign_no        varchar(32)     not null                                 comment '推广计划编号',
+    advertiser_id      bigint unsigned not null                                 comment '所属广告主 id',
+    name               varchar(128)    not null default ''                      comment '计划名称',
+    daily_budget_cents bigint          not null default 0                       comment '日预算，单位分',
+    total_budget_cents bigint          not null default 0                       comment '总预算，单位分',
+    spent_total_cents  bigint          not null default 0                       comment '累计已计费金额，单位分',
+    start_date         date            not null                                 comment '投放开始日期',
+    end_date           date            not null                                 comment '投放结束日期',
+    delivery_hours     varchar(24)     not null default '111111111111111111111111' comment '可投放时段，24 位 0/1 字符串，按小时',
+    status             tinyint         not null default 0                       comment '状态：0 草稿 1 待审核 2 已通过 3 投放中 4 已暂停 5 已驳回 6 已结束',
+    version            int             not null default 0                       comment '乐观锁版本号，状态迁移与预算回写靠它防并发覆盖',
+    create_time        datetime        not null default current_timestamp       comment '创建时间',
+    update_time        datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_campaign_no (campaign_no)                                     comment '计划编号唯一',
+    key idx_advertiser (advertiser_id)                                          comment '按广告主查计划',
+    key idx_status_date (status, start_date, end_date)                          comment '召回时按状态与投放日期筛候选'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '推广计划。今日花费不落这张表，而是按天落在 ad_daily_stat，天然避开日切重置的竞态';
+
+create table if not exists ad_unit
+(
+    id           bigint unsigned not null auto_increment                  comment '主键',
+    unit_no      varchar(32)     not null                                 comment '广告单元编号',
+    campaign_id  bigint unsigned not null                                 comment '所属推广计划 id',
+    name         varchar(128)    not null default ''                      comment '单元名称',
+    targeting    varchar(4096)   not null default '{}'                    comment '定向条件 JSON：regions/tags/devices/keywords，空数组表示不限',
+    bid_type     tinyint         not null default 1                       comment '计费类型：1 CPC 点击计费 2 CPM 曝光计费',
+    bid_cents    bigint          not null default 0                       comment '出价，单位分；CPM 表示每千次曝光价格',
+    floor_cents  bigint          not null default 1                       comment '保留价，单位分，广义二价的最小成交价',
+    pctr         int             not null default 100                     comment '预估点击率，万分比，100 表示 1%',
+    status       tinyint         not null default 1                       comment '状态：0 暂停 1 启用',
+    version      int             not null default 0                       comment '乐观锁版本号',
+    create_time  datetime        not null default current_timestamp       comment '创建时间',
+    update_time  datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_unit_no (unit_no)                                          comment '单元编号唯一',
+    key idx_campaign_status (campaign_id, status)                            comment '召回时按计划取启用单元'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '广告单元。定向与出价在这一层，一次召回的竞价值由 bid * pctr 得出';
+
+create table if not exists ad_creative
+(
+    id            bigint unsigned not null auto_increment                  comment '主键',
+    creative_no   varchar(32)     not null                                 comment '创意编号',
+    unit_id       bigint unsigned not null                                 comment '所属广告单元 id',
+    title         varchar(255)    not null default ''                      comment '创意标题',
+    image_url     varchar(512)    not null default ''                      comment '素材地址',
+    landing_url   varchar(512)    not null default ''                      comment '落地页地址',
+    status        tinyint         not null default 0                       comment '审核状态：0 待审核 1 已通过 2 已驳回',
+    reject_reason varchar(128)    not null default ''                      comment '驳回原因',
+    version       int             not null default 0                       comment '乐观锁版本号',
+    create_time   datetime        not null default current_timestamp       comment '创建时间',
+    update_time   datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_creative_no (creative_no)                                  comment '创意编号唯一',
+    key idx_unit_status (unit_id, status)                                    comment '按单元取已过审创意'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '广告创意。未过审的创意不参与召回，计划上线时至少要有一条已过审创意';
+
+create table if not exists ad_event
+(
+    id             bigint unsigned not null auto_increment                  comment '主键',
+    trace_id       varchar(64)     not null                                 comment '投放链路 id，一次请求一个，串联请求、曝光与点击',
+    event_id       varchar(64)     not null                                 comment '事件幂等键，客户端重试必须复用',
+    event_type     tinyint         not null default 0                       comment '类型：0 投放请求（令牌） 1 曝光 2 点击',
+    campaign_id    bigint unsigned not null                                 comment '计划 id，事件上冗余避免异步计费时反查令牌',
+    unit_id        bigint unsigned not null                                 comment '单元 id',
+    creative_id    bigint unsigned not null                                 comment '创意 id',
+    advertiser_id  bigint unsigned not null                                 comment '广告主 id',
+    user_id        bigint unsigned not null                                 comment '触达用户 id',
+    region         varchar(64)     not null default ''                      comment '请求地域',
+    device         varchar(64)     not null default ''                      comment '请求设备',
+    ip             varchar(64)     not null default ''                      comment '请求 IP',
+    bid_cents      bigint          not null default 0                       comment '胜出单元原始出价，单位分',
+    clearing_cents bigint          not null default 0                       comment '本笔成交金额，已含广义二价与 CPM 折算，单位分，服务端签发不可由客户端改写',
+    charge_status  tinyint         not null default 0                       comment '计费状态：0 无需计费 1 待计费 2 已计费 3 已拒绝',
+    valid          tinyint         not null default 1                       comment '是否有效：0 无效流量 1 有效',
+    reject_reason  varchar(64)     not null default ''                      comment '无效或拒绝原因，便于排查与对账',
+    charge_mode    varchar(8)      not null default 'db'                    comment '预算闸门路径：redis 预扣 或 db 条件扣减降级',
+    expire_time    datetime        null                                     comment '令牌过期时间，仅 event_type=0 有值',
+    create_time    datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    unique key uk_trace_type (trace_id, event_type)                          comment '同一链路同一类型事件只能有一次，防换 eventId 重放刷量',
+    unique key uk_event_id (event_id)                                        comment '事件幂等键唯一，客户端重试直接落这里',
+    key idx_charge_scan (charge_status, create_time)                         comment '按待计费状态扫漏单，交给补偿任务重投',
+    key idx_campaign_time (campaign_id, create_time)                         comment '按计划查链路事件'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '投放事件与令牌合一。REQUEST 行就是服务端签发的令牌，成交价与有效期都在上面';
+
+create table if not exists ad_charge_record
+(
+    id            bigint unsigned not null auto_increment                  comment '主键',
+    event_id      varchar(64)     not null                                 comment '事件幂等键，与 ad_event 一一对应',
+    trace_id      varchar(64)     not null                                 comment '投放链路 id',
+    stat_date     date            not null                                 comment '归属日期，按事件日期而非落库日期，跨日补偿不会串账',
+    campaign_id   bigint unsigned not null                                 comment '计划 id',
+    unit_id       bigint unsigned not null                                 comment '单元 id',
+    creative_id   bigint unsigned not null                                 comment '创意 id',
+    advertiser_id bigint unsigned not null                                 comment '广告主 id',
+    event_type    tinyint         not null default 0                       comment '触发计费的事件类型：1 曝光 2 点击',
+    amount_cents  bigint          not null default 0                       comment '实扣金额，单位分',
+    status        tinyint         not null default 2                       comment '状态：2 已入账（含 0 元效果事件） 3 已拒绝（预算或余额不足）',
+    charge_mode   varchar(8)      not null default 'db'                    comment '预算闸门路径：redis 预扣 或 db 条件扣减降级',
+    reject_reason varchar(64)     not null default ''                      comment '拒绝原因',
+    create_time   datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    unique key uk_charge_event (event_id)                                    comment '一条事件最多一条流水，消息重投靠它幂等',
+    key idx_stat_campaign (stat_date, campaign_id)                           comment '对账按日期与计划聚合权威流水'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '计费流水，金额的唯一权威源。Redis 闸门只是副本，对账以本表重算为准';
+
+create table if not exists ad_daily_stat
+(
+    id              bigint unsigned not null auto_increment                  comment '主键',
+    stat_date       date            not null                                 comment '统计日期',
+    campaign_id     bigint unsigned not null                                 comment '计划 id',
+    budget_cents    bigint          not null default 0                       comment '当日预算快照，单位分，用于把充足条件写进扣减 where',
+    impressions     bigint          not null default 0                       comment '有效曝光数',
+    clicks          bigint          not null default 0                       comment '有效点击数',
+    charge_cents    bigint          not null default 0                       comment '已计费金额，单位分',
+    rejected_cents  bigint          not null default 0                       comment '被预算或余额挡下的金额，单位分，衡量护栏拦下了多少',
+    rejected_count  bigint          not null default 0                       comment '被挡下的笔数',
+    create_time     datetime        not null default current_timestamp       comment '创建时间',
+    update_time     datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_date_campaign (stat_date, campaign_id)                      comment '一天一个计划一行，条件更新靠它做日预算原子扣减',
+    key idx_date (stat_date)                                                 comment '按日期查报表与对账'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '投放日汇总。按天分行，跨日不重置任何字段，日切不再需要定时任务';

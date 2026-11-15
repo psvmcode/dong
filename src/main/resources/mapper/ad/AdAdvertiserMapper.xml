@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdAdvertiserMapper">
+
+    <resultMap id="advertiserMap" type="com.dong.ad.entity.AdAdvertiser">
+        <id column="id" property="id"/>
+        <result column="advertiser_no" property="advertiserNo"/>
+        <result column="name" property="name"/>
+        <result column="balance_cents" property="balanceCents"/>
+        <result column="status" property="status"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="advertiserColumns">
+        id, advertiser_no, name, balance_cents, status, version, create_time, update_time
+    </sql>
+
+    <!-- 按主键查账户 -->
+    <select id="selectById" resultMap="advertiserMap">
+        select
+        <include refid="advertiserColumns"/>
+        from ad_advertiser
+        where id = #{id}
+    </select>
+
+    <!-- 按编号查账户 -->
+    <select id="selectByNo" resultMap="advertiserMap">
+        select
+        <include refid="advertiserColumns"/>
+        from ad_advertiser
+        where advertiser_no = #{advertiserNo}
+    </select>
+
+    <!-- 分页查账户，空条件返回全部 -->
+    <select id="selectByPage" resultMap="advertiserMap">
+        select
+        <include refid="advertiserColumns"/>
+        from ad_advertiser
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (name like concat('%', #{keyword}, '%') or advertiser_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计分页总数，条件与列表保持一致 -->
+    <select id="countByPage" resultType="java.lang.Long">
+        select count(*)
+        from ad_advertiser
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (name like concat('%', #{keyword}, '%') or advertiser_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <!-- 开立账户 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdAdvertiser"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_advertiser (advertiser_no, name, balance_cents, status, version)
+        values (#{advertiserNo}, #{name}, #{balanceCents}, #{status}, #{version})
+    </insert>
+
+    <!-- 充值，冻结账户不接受 -->
+    <update id="addBalance">
+        update ad_advertiser
+        set balance_cents = balance_cents + #{amountCents},
+        version = version + 1
+        where id = #{id}
+        and status = #{status}
+    </update>
+
+    <!-- 条件扣余额，余额充足与账户正常都写进 where -->
+    <update id="deductBalance">
+        update ad_advertiser
+        set balance_cents = balance_cents - #{amountCents},
+        version = version + 1
+        where id = #{id}
+        and status = #{status}
+        and balance_cents >= #{amountCents}
+    </update>
+
+</mapper>

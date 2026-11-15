@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdEventMapper">
+
+    <resultMap id="eventMap" type="com.dong.ad.entity.AdEvent">
+        <id column="id" property="id"/>
+        <result column="trace_id" property="traceId"/>
+        <result column="event_id" property="eventId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="campaign_id" property="campaignId"/>
+        <result column="unit_id" property="unitId"/>
+        <result column="creative_id" property="creativeId"/>
+        <result column="advertiser_id" property="advertiserId"/>
+        <result column="user_id" property="userId"/>
+        <result column="region" property="region"/>
+        <result column="device" property="device"/>
+        <result column="ip" property="ip"/>
+        <result column="bid_cents" property="bidCents"/>
+        <result column="clearing_cents" property="clearingCents"/>
+        <result column="charge_status" property="chargeStatus"/>
+        <result column="valid" property="valid"/>
+        <result column="reject_reason" property="rejectReason"/>
+        <result column="charge_mode" property="chargeMode"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="eventColumns">
+        id, trace_id, event_id, event_type, campaign_id, unit_id, creative_id, advertiser_id, user_id,
+        region, device, ip, bid_cents, clearing_cents, charge_status, valid, reject_reason, charge_mode,
+        expire_time, create_time
+    </sql>
+
+    <!-- 按幂等键查事件，重放判定入口 -->
+    <select id="selectByEventId" resultMap="eventMap">
+        select
+        <include refid="eventColumns"/>
+        from ad_event
+        where event_id = #{eventId}
+    </select>
+
+    <!-- 查某链路某类型的事件，REQUEST 类型即令牌 -->
+    <select id="selectByTraceAndType" resultMap="eventMap">
+        select
+        <include refid="eventColumns"/>
+        from ad_event
+        where trace_id = #{traceId}
+        and event_type = #{eventType}
+    </select>
+
+    <!-- 统计某链路某类型事件数 -->
+    <select id="countByTraceAndType" resultType="java.lang.Long">
+        select count(*)
+        from ad_event
+        where trace_id = #{traceId}
+        and event_type = #{eventType}
+    </select>
+
+    <!-- 分页查事件 -->
+    <select id="selectByPage" resultMap="eventMap">
+        select
+        <include refid="eventColumns"/>
+        from ad_event
+        <where>
+            <if test="campaignId != null">
+                and campaign_id = #{campaignId}
+            </if>
+            <if test="traceId != null and traceId != ''">
+                and trace_id = #{traceId}
+            </if>
+            <if test="valid != null">
+                and valid = #{valid}
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计分页总数 -->
+    <select id="countByPage" resultType="java.lang.Long">
+        select count(*)
+        from ad_event
+        <where>
+            <if test="campaignId != null">
+                and campaign_id = #{campaignId}
+            </if>
+            <if test="traceId != null and traceId != ''">
+                and trace_id = #{traceId}
+            </if>
+            <if test="valid != null">
+                and valid = #{valid}
+            </if>
+        </where>
+    </select>
+
+    <!-- 扫超时待计费事件，按 id 升序保证补投顺序稳定 -->
+    <select id="selectPending" resultMap="eventMap">
+        select
+        <include refid="eventColumns"/>
+        from ad_event
+        where charge_status = #{chargeStatus}
+        and valid = 1
+        and create_time &lt; #{before}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 查链路下全部事件，链路诊断用 -->
+    <select id="selectByTrace" resultMap="eventMap">
+        select
+        <include refid="eventColumns"/>
+        from ad_event
+        where trace_id = #{traceId}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 新增事件，两条唯一键在这里兜住重放与换 key 刷量 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdEvent"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_event (trace_id, event_id, event_type, campaign_id, unit_id, creative_id, advertiser_id,
+        user_id, region, device, ip, bid_cents, clearing_cents, charge_status, valid, reject_reason,
+        charge_mode, expire_time)
+        values (#{traceId}, #{eventId}, #{eventType}, #{campaignId}, #{unitId}, #{creativeId}, #{advertiserId},
+        #{userId}, #{region}, #{device}, #{ip}, #{bidCents}, #{clearingCents}, #{chargeStatus}, #{valid},
+        #{rejectReason}, #{chargeMode}, #{expireTime})
+    </insert>
+
+    <!-- 回写计费处置结论 -->
+    <update id="updateChargeStatus">
+        update ad_event
+        set charge_status = #{chargeStatus},
+        reject_reason = #{rejectReason}
+        where id = #{id}
+    </update>
+
+    <!-- 补偿投递前重新占位，避免同一批事件被重复投递 -->
+    <update id="markPending">
+        update ad_event
+        set charge_status = #{chargeStatus}
+        where id = #{id}
+    </update>
+
+</mapper>

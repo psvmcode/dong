@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>广告投放实验台</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #fff; color: #1f2329; font-size: 13px; }
+        .top { border-bottom: 1px solid #e5e6eb; padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: sticky; top: 0; background: #fff; z-index: 10; }
+        .top h1 { font-size: 16px; font-weight: 600; }
+        .top .sub { color: #86909c; font-size: 12px; flex: 1; }
+        .badge { border: 1px solid #e5e6eb; border-radius: 6px; padding: 3px 9px; color: #4e5969; font-size: 12px; }
+        .badge.ok { border-color: #b7e0c2; color: #1a7f43; }
+        .badge.err { border-color: #f3c2c0; color: #c0362f; }
+        input, select { border: 1px solid #dcdfe6; border-radius: 6px; padding: 5px 9px; font-size: 13px; font-family: inherit; background: #fff; color: #1f2329; }
+        input:focus, select:focus { outline: none; border-color: #2f6feb; }
+        button { border: 1px solid #dcdfe6; background: #fff; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px; font-family: inherit; color: #1f2329; }
+        button:hover { border-color: #2f6feb; color: #2f6feb; }
+        button.primary { background: #2f6feb; border-color: #2f6feb; color: #fff; }
+        button.primary:hover { background: #2559c4; color: #fff; }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        .wrap { padding: 16px 20px 48px; max-width: 1180px; }
+        .card { border: 1px solid #e5e6eb; border-radius: 6px; padding: 14px 16px; margin-bottom: 14px; }
+        .card h2 { font-size: 13px; font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .card h2 .hint { color: #86909c; font-weight: normal; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px; }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field label { color: #86909c; font-size: 12px; }
+        .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .msg { margin-top: 10px; padding: 8px 10px; border: 1px solid #e5e6eb; border-radius: 6px; color: #4e5969; font-size: 12px; white-space: pre-wrap; word-break: break-word; display: none; }
+        .msg.show { display: block; }
+        .msg.error { border-color: #f3c2c0; color: #c0362f; }
+        .msg.ok { border-color: #b7e0c2; color: #1a7f43; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { text-align: left; color: #86909c; font-weight: normal; padding: 6px 8px; border-bottom: 1px solid #e5e6eb; white-space: nowrap; }
+        td { padding: 6px 8px; border-bottom: 1px solid #f2f3f5; vertical-align: top; word-break: break-word; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; font-family: Menlo, Consolas, monospace; }
+        .muted { color: #86909c; }
+        .steps { margin-top: 10px; font-size: 12px; color: #4e5969; }
+        .steps div { padding: 3px 0; border-bottom: 1px solid #f2f3f5; }
+        .steps .fail { color: #c0362f; }
+        .kvs { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 10px; }
+        .kv { border: 1px solid #f0f1f3; border-radius: 6px; padding: 8px 10px; }
+        .kv .k { color: #86909c; font-size: 11px; }
+        .kv .v { font-size: 14px; font-variant-numeric: tabular-nums; font-family: Menlo, Consolas, monospace; margin-top: 3px; }
+        .drawer { position: fixed; top: 0; right: 0; width: 560px; max-width: 94vw; height: 100vh; background: #fff; border-left: 1px solid #e5e6eb; box-shadow: -4px 0 16px rgba(0,0,0,.06); transform: translateX(100%); transition: transform .18s; display: flex; flex-direction: column; z-index: 40; }
+        .drawer.open { transform: translateX(0); }
+        .drawer header { padding: 12px 16px; border-bottom: 1px solid #e5e6eb; display: flex; justify-content: space-between; align-items: center; }
+        .drawer .body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+        .trace { border-bottom: 1px solid #f2f3f5; padding: 8px 0; font-family: Menlo, Consolas, monospace; font-size: 11px; }
+        .trace .line { color: #4e5969; word-break: break-all; }
+        .trace pre { white-space: pre-wrap; word-break: break-all; color: #4e5969; margin-top: 4px; }
+        .trace .bad { color: #c0362f; }
+        .float-btn { position: fixed; right: 18px; bottom: 18px; z-index: 30; }
+    </style>
+</head>
+<body>
+
+<div class="top">
+    <h1>广告投放实验台</h1>
+    <span class="sub">开户 / 计划审核 → 定向召回与二价竞价 → 曝光点击 → 预算护栏 → 异步计费 → 流水对账</span>
+    <span class="badge" id="moduleState">未检查</span>
+    <button onclick="openDrawer()">内部链路</button>
+</div>
+
+<div class="wrap">
+    <div class="card">
+        <h2>1. 搭建投放计划<span class="hint">金额按元填写，服务端统一换算成分</span></h2>
+        <div class="grid">
+            <div class="field"><label>广告主名称</label><input id="advName" value="演示广告主"></div>
+            <div class="field"><label>初始充值（元）</label><input id="balance" type="number" value="1000"></div>
+            <div class="field"><label>日预算（元）</label><input id="dailyBudget" type="number" value="20"></div>
+            <div class="field"><label>总预算（元）</label><input id="totalBudget" type="number" value="500"></div>
+            <div class="field"><label>计费类型</label><select id="bidType"><option value="1">CPC 点击计费</option><option value="2">CPM 曝光计费</option></select></div>
+            <div class="field"><label>出价（分）</label><input id="bid" type="number" value="300"></div>
+            <div class="field"><label>地域定向（逗号分隔，空为不限）</label><input id="regions" value=""></div>
+            <div class="field"><label>关键词定向（逗号分隔，空为不限）</label><input id="keywords" value=""></div>
+        </div>
+        <div class="acts">
+            <button class="primary" id="buildBtn" onclick="buildAll()">一键搭建并上线</button>
+            <button onclick="campaignDetail()">查看计划详情</button>
+            <button onclick="runtime()">运行时状态</button>
+        </div>
+        <div class="steps" id="steps"></div>
+        <div class="msg" id="buildMsg"></div>
+    </div>
+
+    <div class="card">
+        <h2>2. 投放链路<span class="hint">同一 traceId 依次请求、曝光、点击；重复上报请保留同一个 eventId</span></h2>
+        <div class="grid">
+            <div class="field"><label>用户 id</label><input id="userId" type="number" value="10001"></div>
+            <div class="field"><label>地域</label><input id="reqRegion" value="shanghai"></div>
+            <div class="field"><label>人群标签（逗号分隔）</label><input id="reqTags" value="vip"></div>
+            <div class="field"><label>设备</label><input id="reqDevice" value="ios"></div>
+            <div class="field"><label>搜索关键词</label><input id="reqKeyword" value=""></div>
+            <div class="field"><label>UA（填 spider 可测无效流量）</label><input id="reqUa" value="Mozilla/5.0"></div>
+            <div class="field"><label>事件幂等键</label><input id="eventId" value=""></div>
+            <div class="field"><label>traceId</label><input id="traceId" placeholder="发起请求后自动填入" readonly></div>
+        </div>
+        <div class="acts">
+            <button class="primary" onclick="delivery()">发起广告请求</button>
+            <button onclick="report('impression')">上报曝光</button>
+            <button onclick="report('click')">上报点击</button>
+            <button onclick="queryEvents()">查询链路事件</button>
+        </div>
+        <div class="kvs" id="deliveryKvs"></div>
+        <div class="msg" id="deliveryMsg"></div>
+        <div id="eventTable"></div>
+    </div>
+
+    <div class="card">
+        <h2>3. 预算与报表<span class="hint">日报表来自日汇总，对账以计费流水为权威源</span></h2>
+        <div class="acts">
+            <button class="primary" onclick="daily()">查询日报表</button>
+            <button onclick="reconcile()">手动对账</button>
+            <button onclick="budgetProbe()">换 eventId 重放探测</button>
+        </div>
+        <div id="reportTable"></div>
+        <div class="msg" id="reportMsg"></div>
+    </div>
+
+    <div class="card">
+        <h2>4. 并发计费对照<span class="hint">同一批任务分别用 redis / db 重跑，对比耗时与库内金额是否超预算</span></h2>
+        <div class="grid">
+            <div class="field"><label>并发线程数</label><input id="threads" type="number" value="16"></div>
+            <div class="field"><label>每线程点击数</label><input id="loops" type="number" value="10"></div>
+            <div class="field"><label>预算闸门</label><select id="mode"><option value="redis">redis Lua 预扣</option><option value="db">纯数据库条件扣减</option></select></div>
+        </div>
+        <div class="acts">
+            <button class="primary" id="burstBtn" onclick="burst()">运行对照实验</button>
+        </div>
+        <div id="burstTable"></div>
+        <div class="msg" id="burstMsg"></div>
+    </div>
+</div>
+
+<button class="float-btn" onclick="openDrawer()">内部链路</button>
+
+<div class="drawer" id="drawer">
+    <header><strong>内部链路</strong><button onclick="closeDrawer()">关闭</button></header>
+    <div class="body" id="traceBody"></div>
+</div>
+
+<script>
+    const API = '/api/ad';
+    const state = { advertiserId: null, campaignId: null, unitId: null, creativeId: null, traceId: null, traces: [] };
+
+    function yuan(value) { return Math.round(Number(value || 0) * 100); }
+    function fen(value) { return (Number(value || 0) / 100).toFixed(2); }
+    function today() { return new Date().toISOString().slice(0, 10); }
+    function future(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
+    function split(value) { return String(value || '').split(',').map(s => s.trim()).filter(Boolean); }
+    function newEventId() { return 'WEB-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
+    function esc(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+
+    async function call(path, body) {
+        const started = performance.now();
+        let json;
+        try {
+            const res = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+            json = await res.json();
+        } catch (ex) {
+            json = { code: -1, message: String(ex) };
+        }
+        state.traces.unshift({ path, body, json, millis: Math.round(performance.now() - started) });
+        if (state.traces.length > 60) { state.traces.pop(); }
+        renderTraces();
+        return json;
+    }
+
+    function show(id, text, kind) {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.className = 'msg show' + (kind ? ' ' + kind : '');
+    }
+
+    function step(text, failed) {
+        const el = document.getElementById('steps');
+        const row = document.createElement('div');
+        row.textContent = text;
+        if (failed) { row.className = 'fail'; }
+        el.appendChild(row);
+    }
+
+    function table(target, columns, rows) {
+        const el = document.getElementById(target);
+        if (!rows || rows.length === 0) { el.innerHTML = '<div class="muted" style="padding:8px 2px">暂无数据</div>'; return; }
+        let html = '<table><thead><tr>' + columns.map(c => '<th>' + esc(c.label) + '</th>').join('') + '</tr></thead><tbody>';
+        rows.forEach(row => {
+            html += '<tr>' + columns.map(c => '<td' + (c.num ? ' class="num"' : '') + '>' + esc(c.render ? c.render(row) : row[c.key]) + '</td>').join('') + '</tr>';
+        });
+        el.innerHTML = html + '</tbody></table>';
+    }
+
+    function kvs(pairs) {
+        document.getElementById('deliveryKvs').innerHTML = pairs.map(p =>
+            '<div class="kv"><div class="k">' + esc(p[0]) + '</div><div class="v">' + esc(p[1]) + '</div></div>').join('');
+    }
+
+    function renderTraces() {
+        document.getElementById('traceBody').innerHTML = state.traces.map(t =>
+            '<div class="trace"><div class="line' + (t.json.code !== 0 ? ' bad' : '') + '">POST ' + esc(t.path) + ' · ' + t.millis + 'ms · code=' + t.json.code + '</div>' +
+            '<pre>请求 ' + esc(JSON.stringify(t.body)) + '\n响应 ' + esc(JSON.stringify(t.json.data == null ? { message: t.json.message } : t.json.data)) + '</pre></div>').join('');
+    }
+
+    function openDrawer() { document.getElementById('drawer').classList.add('open'); }
+    function closeDrawer() { document.getElementById('drawer').classList.remove('open'); }
+
+    async function buildAll() {
+        const btn = document.getElementById('buildBtn');
+        btn.disabled = true;
+        document.getElementById('steps').innerHTML = '';
+        try {
+            const balance = yuan(document.getElementById('balance').value);
+            const daily = yuan(document.getElementById('dailyBudget').value);
+            const total = yuan(document.getElementById('totalBudget').value);
+            if (balance <= 0 || daily <= 0 || total <= 0 || daily > total) { return show('buildMsg', '日预算不能大于总预算，且各金额须大于 0', 'error'); }
+            const flows = [
+                ['开户', '/manage/advertiser/create', () => ({ name: document.getElementById('advName').value, balanceCents: balance }), 'advertiserId'],
+                ['建计划', '/manage/campaign/create', () => ({ advertiserId: state.advertiserId, name: '双十一推广计划', dailyBudgetCents: daily, totalBudgetCents: total, startDate: today(), endDate: future(30) }), 'campaignId'],
+                ['建单元', '/manage/unit/create', () => ({ campaignId: state.campaignId, name: '核心人群单元', regions: split(document.getElementById('regions').value), tags: [], devices: [], keywords: split(document.getElementById('keywords').value), bidType: Number(document.getElementById('bidType').value), bidCents: Number(document.getElementById('bid').value), floorCents: 1, pctr: 500 }), 'unitId'],
+                ['建创意', '/manage/creative/create', () => ({ unitId: state.unitId, title: '限时优惠，立即查看', imageUrl: '', landingUrl: 'https://example.com/promo' }), 'creativeId']
+            ];
+            for (const [label, path, payload, key] of flows) {
+                const json = await call(path, payload());
+                if (json.code !== 0) { step(label + ' 失败：' + json.message, true); return show('buildMsg', label + '失败：' + json.message, 'error'); }
+                state[key] = json.data;
+                step(label + ' 完成，id=' + json.data);
+            }
+            const reviews = [
+                ['创意过审', '/manage/creative/review', { id: state.creativeId, decision: 'approve' }],
+                ['提交审核', '/manage/campaign/transition', { id: state.campaignId, event: 'SUBMIT' }],
+                ['审核通过', '/manage/campaign/transition', { id: state.campaignId, event: 'APPROVE' }],
+                ['开始投放', '/manage/campaign/transition', { id: state.campaignId, event: 'START' }]
+            ];
+            for (const [label, path, body] of reviews) {
+                const json = await call(path, body);
+                if (json.code !== 0) { step(label + ' 失败：' + json.message, true); return show('buildMsg', label + '失败：' + json.message, 'error'); }
+                step(label + ' 完成');
+            }
+            show('buildMsg', '搭建完成：计划 ' + state.campaignId + ' 已投放中，可直接发起广告请求', 'ok');
+        } finally { btn.disabled = false; }
+    }
+
+    async function campaignDetail() {
+        if (!state.campaignId) { return show('buildMsg', '请先搭建计划', 'error'); }
+        const json = await call('/manage/campaign/detail', { id: state.campaignId });
+        if (json.code !== 0) { return show('buildMsg', json.message, 'error'); }
+        const d = json.data;
+        show('buildMsg', '状态 ' + d.status + ' · 日预算 ' + fen(d.dailyBudgetCents) + ' 元 · 今日已花 ' + fen(d.todayChargeCents) + ' 元 · 累计已花 ' + fen(d.spentTotalCents) + ' 元 · 版本 ' + d.version, 'ok');
+    }
+
+    async function runtime() {
+        const json = await call('/manage/runtime', {});
+        if (json.code !== 0) { return show('buildMsg', json.message, 'error'); }
+        const d = json.data;
+        const badge = document.getElementById('moduleState');
+        badge.textContent = d.enabled ? '模块已启用' : '模块已关闭';
+        badge.className = 'badge ' + (d.enabled ? 'ok' : 'err');
+        show('buildMsg', JSON.stringify({ mq: d.mq, chargeConsumer: d.chargeConsumer, filtered: d.filtered, rejected: d.rejected, redisFallbacks: d.redisFallbacks, mqFallbacks: d.mqFallbacks }, null, 2), 'ok');
+    }
+
+    function deliveryBody() {
+        return {
+            userId: Number(document.getElementById('userId').value),
+            placement: 'home-banner',
+            region: document.getElementById('reqRegion').value,
+            tags: split(document.getElementById('reqTags').value),
+            device: document.getElementById('reqDevice').value,
+            keywords: split(document.getElementById('reqKeyword').value),
+            ip: '10.0.0.8',
+            userAgent: document.getElementById('reqUa').value,
+            maxCandidates: 5
+        };
+    }
+
+    async function delivery() {
+        const json = await call('/delivery/request', deliveryBody());
+        if (json.code !== 0) { return show('deliveryMsg', json.message, 'error'); }
+        const d = json.data;
+        if (!d.matched) {
+            kvs([['结果', '未胜出'], ['原因', d.reason], ['候选数', d.candidateCount || 0]]);
+            return show('deliveryMsg', '未胜出：' + d.reason + '；过滤诊断见内部链路', 'error');
+        }
+        state.traceId = d.traceId;
+        document.getElementById('traceId').value = d.traceId;
+        if (!document.getElementById('eventId').value) { document.getElementById('eventId').value = newEventId(); }
+        kvs([['traceId', d.traceId], ['计划 / 单元', d.campaignId + ' / ' + d.unitId], ['创意', d.creativeId + ' ' + d.title],
+            ['计费类型', d.bidType], ['原始出价', fen(d.bidCents) + ' 元'], ['二价成交', fen(d.clearingCents) + ' 元'],
+            ['竞价值', d.score], ['候选数', d.candidateCount]]);
+        show('deliveryMsg', '已签发令牌，有效期至 ' + d.expireTime + '；点击链路细节见内部链路', 'ok');
+    }
+
+    function eventBody() {
+        return {
+            traceId: state.traceId,
+            eventId: document.getElementById('eventId').value,
+            userId: Number(document.getElementById('userId').value),
+            ip: '10.0.0.8',
+            userAgent: document.getElementById('reqUa').value
+        };
+    }
+
+    async function report(type) {
+        if (!state.traceId) { return show('deliveryMsg', '请先发起广告请求', 'error'); }
+        const json = await call('/delivery/event/' + type, eventBody());
+        if (json.code !== 0) { return show('deliveryMsg', json.message, 'error'); }
+        const d = json.data;
+        kvs([['事件', d.eventType], ['接受', String(d.accepted)], ['重放', String(d.duplicate)],
+            ['计费状态', d.chargeStatus || '-'], ['本笔金额', fen(d.chargeCents) + ' 元'], ['闸门', d.chargeMode || '-'], ['结论', d.reason]]);
+        show('deliveryMsg', d.reason + '；chargePath=' + ((d.diagnostics || {}).chargePath || '-') + '，重复上报请保留同一个 eventId', d.accepted ? 'ok' : 'error');
+    }
+
+    async function queryEvents() {
+        if (!state.traceId) { return show('deliveryMsg', '请先发起广告请求', 'error'); }
+        const json = await call('/delivery/event/query', { target: 'event', traceId: state.traceId, pageNum: 1, pageSize: 20 });
+        if (json.code !== 0) { return show('deliveryMsg', json.message, 'error'); }
+        table('eventTable', [
+            { label: '类型', render: r => r.eventType }, { label: '事件键', key: 'eventId' },
+            { label: '有效', render: r => r.valid }, { label: '计费状态', render: r => r.chargeStatus },
+            { label: '金额(分)', key: 'clearingCents', num: true }, { label: '闸门', render: r => r.chargeMode },
+            { label: '原因', render: r => r.rejectReason }
+        ], json.data.list);
+    }
+
+    async function daily() {
+        const json = await call('/report/daily', { dateFrom: future(-6), dateTo: today(), pageNum: 1, pageSize: 20 });
+        if (json.code !== 0) { return show('reportMsg', json.message, 'error'); }
+        table('reportTable', [
+            { label: '日期', key: 'statDate' }, { label: '计划', key: 'campaignId', num: true },
+            { label: '曝光', key: 'impressions', num: true }, { label: '点击', key: 'clicks', num: true },
+            { label: '花费(元)', render: r => fen(r.chargeCents), num: true },
+            { label: '拦下(元)', render: r => fen(r.rejectedCents), num: true },
+            { label: 'CTR', render: r => (r.ctr * 100).toFixed(2) + '%', num: true },
+            { label: '预算使用', render: r => (r.budgetUsage * 100).toFixed(1) + '%', num: true },
+            { label: '超投', render: r => r.overspend ? '是' : '否' }
+        ], json.data.list);
+        show('reportMsg', '共 ' + json.data.total + ' 行', 'ok');
+    }
+
+    async function reconcile() {
+        const json = await call('/report/reconcile', { statDate: today(), resendPending: true });
+        if (json.code !== 0) { return show('reportMsg', json.message, 'error'); }
+        const d = json.data;
+        table('reportTable', [
+            { label: '对账日期', key: 'statDate' }, { label: '流水数', key: 'chargeRecords', num: true },
+            { label: '汇总行', key: 'stats', num: true }, { label: '修正行', key: 'correctedStats', num: true },
+            { label: '补投', key: 'resentEvents', num: true }, { label: '重建副本', key: 'rebuiltBudgets', num: true },
+            { label: '超投(分)', key: 'overspendCents', num: true }, { label: '耗时(ms)', key: 'elapsedMillis', num: true }
+        ], [d]);
+        show('reportMsg', (d.details || []).length ? d.details.join('\n') : '无差异，权威流水与日汇总一致', d.overspendCents > 0 ? 'error' : 'ok');
+    }
+
+    async function budgetProbe() {
+        if (!state.campaignId || !state.traceId) { return show('reportMsg', '请先完成搭建，并在已上报一次点击后再试', 'error'); }
+        const body = eventBody();
+        body.eventId = newEventId();
+        const json = await call('/delivery/event/click', body);
+        if (json.code !== 0) { return show('reportMsg', json.message, 'error'); }
+        const d = json.data;
+        show('reportMsg', '换 eventId 重放同一点击：' + d.reason + '。若此前已点过一次，应被 uk_trace_type 拦下；再看日报表的「拦下」列', d.accepted ? 'error' : 'ok');
+        await daily();
+    }
+
+    async function burst() {
+        if (!state.campaignId) { return show('burstMsg', '请先搭建计划', 'error'); }
+        const btn = document.getElementById('burstBtn');
+        btn.disabled = true;
+        show('burstMsg', '实验进行中，正在预生成链路与并发点击…');
+        try {
+            const json = await call('/report/lab/burst', {
+                campaignId: state.campaignId,
+                threads: Number(document.getElementById('threads').value),
+                loopsPerThread: Number(document.getElementById('loops').value),
+                mode: document.getElementById('mode').value
+            });
+            if (json.code !== 0) { return show('burstMsg', json.message, 'error'); }
+            const d = json.data;
+            table('burstTable', [
+                { label: '闸门', key: 'mode' }, { label: '任务数', key: 'total', num: true },
+                { label: '接受', key: 'accepted', num: true }, { label: '拒绝', key: 'rejected', num: true },
+                { label: '过滤', key: 'filtered', num: true }, { label: '异常', key: 'errors', num: true },
+                { label: '耗时(ms)', key: 'elapsedMillis', num: true },
+                { label: '单笔(ms)', render: r => r.avgMillis.toFixed(2), num: true },
+                { label: '库内花费(元)', render: r => fen(r.dbChargeCents), num: true },
+                { label: '日预算(元)', render: r => fen(r.budgetCents), num: true },
+                { label: '超投', render: r => r.overspend ? '是' : '否' }
+            ], [d]);
+            const notes = Object.values(d.notes || {}).join(' / ');
+            show('burstMsg', notes, d.overspend ? 'error' : 'ok');
+        } finally { btn.disabled = false; }
+    }
+
+    document.getElementById('eventId').value = newEventId();
+    runtime();
+</script>
+
+</body>
+</html>

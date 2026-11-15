@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdCreativeMapper">
+
+    <resultMap id="creativeMap" type="com.dong.ad.entity.AdCreative">
+        <id column="id" property="id"/>
+        <result column="creative_no" property="creativeNo"/>
+        <result column="unit_id" property="unitId"/>
+        <result column="title" property="title"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="landing_url" property="landingUrl"/>
+        <result column="status" property="status"/>
+        <result column="reject_reason" property="rejectReason"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="creativeColumns">
+        id, creative_no, unit_id, title, image_url, landing_url, status, reject_reason, version, create_time, update_time
+    </sql>
+
+    <!-- 按主键查创意 -->
+    <select id="selectById" resultMap="creativeMap">
+        select
+        <include refid="creativeColumns"/>
+        from ad_creative
+        where id = #{id}
+    </select>
+
+    <!-- 批量取候选单元下的过审创意 -->
+    <select id="selectApprovedByUnitIds" resultMap="creativeMap">
+        select
+        <include refid="creativeColumns"/>
+        from ad_creative
+        where status = #{status}
+        and unit_id in
+        <foreach collection="unitIds" item="unitId" open="(" separator="," close=")">
+            #{unitId}
+        </foreach>
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 分页查创意 -->
+    <select id="selectByPage" resultMap="creativeMap">
+        select
+        <include refid="creativeColumns"/>
+        from ad_creative
+        <where>
+            <if test="unitId != null">
+                and unit_id = #{unitId}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (title like concat('%', #{keyword}, '%') or creative_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计分页总数 -->
+    <select id="countByPage" resultType="java.lang.Long">
+        select count(*)
+        from ad_creative
+        <where>
+            <if test="unitId != null">
+                and unit_id = #{unitId}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (title like concat('%', #{keyword}, '%') or creative_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计单元下的过审创意数 -->
+    <select id="countByUnit" resultType="java.lang.Long">
+        select count(*)
+        from ad_creative
+        where unit_id = #{unitId}
+        and status = #{status}
+    </select>
+
+    <!-- 查单元下全部创意 -->
+    <select id="selectByUnit" resultMap="creativeMap">
+        select
+        <include refid="creativeColumns"/>
+        from ad_creative
+        where unit_id = #{unitId}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 新建创意，初始为待审核 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdCreative"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_creative (creative_no, unit_id, title, image_url, landing_url, status, reject_reason, version)
+        values (#{creativeNo}, #{unitId}, #{title}, #{imageUrl}, #{landingUrl}, #{status}, #{rejectReason}, #{version})
+    </insert>
+
+    <!-- 条件推进审核状态 -->
+    <update id="updateStatus">
+        update ad_creative
+        set status = #{status},
+        reject_reason = #{rejectReason},
+        version = version + 1
+        where id = #{id}
+        and version = #{expectedVersion}
+    </update>
+
+</mapper>

@@ -132,6 +132,30 @@ public final class Constants {
      */
     public static final long MAX_WINDOW_SECONDS = 86_400L;
 
+    /**
+     * 单条定向条件里的取值个数上限。
+     * 定向 JSON 会被反序列化后逐项匹配，不封顶等于允许一次请求带十万个人群标签。
+     */
+    public static final int MAX_TARGETING_ITEMS = 50;
+
+    /**
+     * 报表按天查询的跨度上限，31 天。
+     * 报表要逐日组装返回对象，跨度不设限会把内存与响应时间一起拖垮。
+     */
+    public static final int MAX_REPORT_DAYS = 31;
+
+    /**
+     * 单笔金额上限，单位分，即 100 万元。
+     * 预算、出价、充值都用它封顶，避免溢出后条件更新把预算扣成负数。
+     */
+    public static final long MAX_MONEY_CENTS = 100_000_000L;
+
+    /**
+     * 频次控制上限，单用户单计划每日曝光次数。
+     * 只是防止配置成天文数字让 Redis 计数毫无意义，不是业务建议值。
+     */
+    public static final int MAX_FREQUENCY_CAP = 100;
+
     private Constants() {
     }
 

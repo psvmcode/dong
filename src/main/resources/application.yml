@@ -323,3 +323,32 @@ dong:
     consistency-task-enabled: true
     consistency-interval-ms: 300000
     consistency-scan-limit: 50
+
+  ad:
+    # 广告投放模块总开关，关闭后所有接口返回 1004
+    enabled: true
+    # Redis 预算闸门。关掉或 Redis 不可用时降级为数据库条件扣减，功能不降级、性能降级
+    redis-budget-enabled: true
+    # 计费走消息异步化。关掉或发送失败时同步计费，保证消息中间件不是正确性的前提
+    mq-charge-enabled: true
+    # 同一用户同一计划每日最多看几次，Redis 计数带当日 TTL；不可用时跳过控频
+    frequency-cap-enabled: true
+    frequency-cap-per-day: 3
+    # 投放令牌有效期。过期的曝光与点击按无效流量丢弃，不计费
+    trace-ttl-minutes: 30
+    # 无效流量：点击距曝光太短判为机器行为，太长判为跨会话归因失效
+    min-click-delay-ms: 200
+    click-window-seconds: 1800
+    # UA 关键字与 IP 前缀黑名单，逗号分隔，空表示不启用该项
+    blocked-ua-keywords: bot,spider,crawler
+    blocked-ip-prefixes:
+    # CPM 是千次曝光价格，单次事件按这个除数摊销，保证一条事件一条流水
+    cpm-divisor: 1000
+    # 定时对账：以计费流水重算日汇总、重建 Redis 配额副本、补投超时待计费事件
+    reconcile-enabled: true
+    reconcile-interval-ms: 300000
+    reconcile-initial-delay-ms: 60000
+    reconcile-lookback-days: 2
+    # 待计费事件超过这个分钟数仍无流水，视为消息丢失并重投
+    charge-pending-minutes: 5
+    charge-resend-limit: 100

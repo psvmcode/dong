@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdUnitMapper">
+
+    <resultMap id="unitMap" type="com.dong.ad.entity.AdUnit">
+        <id column="id" property="id"/>
+        <result column="unit_no" property="unitNo"/>
+        <result column="campaign_id" property="campaignId"/>
+        <result column="name" property="name"/>
+        <result column="targeting" property="targeting"/>
+        <result column="bid_type" property="bidType"/>
+        <result column="bid_cents" property="bidCents"/>
+        <result column="floor_cents" property="floorCents"/>
+        <result column="pctr" property="pctr"/>
+        <result column="status" property="status"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="unitColumns">
+        id, unit_no, campaign_id, name, targeting, bid_type, bid_cents, floor_cents, pctr, status, version,
+        create_time, update_time
+    </sql>
+
+    <!-- 按主键查单元 -->
+    <select id="selectById" resultMap="unitMap">
+        select
+        <include refid="unitColumns"/>
+        from ad_unit
+        where id = #{id}
+    </select>
+
+    <!-- 批量取候选计划下的启用单元 -->
+    <select id="selectByCampaignIds" resultMap="unitMap">
+        select
+        <include refid="unitColumns"/>
+        from ad_unit
+        where status = #{status}
+        and campaign_id in
+        <foreach collection="campaignIds" item="campaignId" open="(" separator="," close=")">
+            #{campaignId}
+        </foreach>
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 分页查单元 -->
+    <select id="selectByPage" resultMap="unitMap">
+        select
+        <include refid="unitColumns"/>
+        from ad_unit
+        <where>
+            <if test="campaignId != null">
+                and campaign_id = #{campaignId}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (name like concat('%', #{keyword}, '%') or unit_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+        order by id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 统计分页总数 -->
+    <select id="countByPage" resultType="java.lang.Long">
+        select count(*)
+        from ad_unit
+        <where>
+            <if test="campaignId != null">
+                and campaign_id = #{campaignId}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (name like concat('%', #{keyword}, '%') or unit_no like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计计划下的启用单元数 -->
+    <select id="countByCampaign" resultType="java.lang.Long">
+        select count(*)
+        from ad_unit
+        where campaign_id = #{campaignId}
+        and status = #{status}
+    </select>
+
+    <!-- 查计划下全部单元 -->
+    <select id="selectByCampaign" resultMap="unitMap">
+        select
+        <include refid="unitColumns"/>
+        from ad_unit
+        where campaign_id = #{campaignId}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 新建单元 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdUnit"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_unit (unit_no, campaign_id, name, targeting, bid_type, bid_cents, floor_cents, pctr, status, version)
+        values (#{unitNo}, #{campaignId}, #{name}, #{targeting}, #{bidType}, #{bidCents}, #{floorCents}, #{pctr},
+        #{status}, #{version})
+    </insert>
+
+    <!-- 条件更新可配置项，定向 JSON 整体替换避免拼接出半截条件 -->
+    <update id="updateConfig">
+        update ad_unit
+        <set>
+            <if test="unit.name != null">
+                name = #{unit.name},
+            </if>
+            <if test="unit.targeting != null">
+                targeting = #{unit.targeting},
+            </if>
+            <if test="unit.bidCents != null">
+                bid_cents = #{unit.bidCents},
+            </if>
+            <if test="unit.floorCents != null">
+                floor_cents = #{unit.floorCents},
+            </if>
+            <if test="unit.pctr != null">
+                pctr = #{unit.pctr},
+            </if>
+            version = version + 1
+        </set>
+        where id = #{unit.id}
+        and version = #{expectedVersion}
+    </update>
+
+    <!-- 条件更新启用状态 -->
+    <update id="updateStatus">
+        update ad_unit
+        set status = #{status},
+        version = version + 1
+        where id = #{id}
+        and version = #{expectedVersion}
+    </update>
+
+</mapper>
