@@ -79,6 +79,20 @@ public class AdManageController {
     }
 
     /**
+     * 调整账户日限额。
+     */
+    @PostMapping("/advertiser/update-limit")
+    @Operation(summary = "调整账户日限额，0 表示不限")
+    public Result<Void> updateDailyLimit(@Valid @RequestBody AdActionRequest request) {
+        checkAvailable();
+        if (request.getAmountCents() == null) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "amountCents is required as the new limit");
+        }
+        adManageService.updateAdvertiserDailyLimit(request.getId(), request.getAmountCents());
+        return Result.success();
+    }
+
+    /**
      * 创建推广计划。
      */
     @PostMapping("/campaign/create")

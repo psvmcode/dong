@@ -68,8 +68,8 @@
     <!-- 开立账户 -->
     <insert id="insert" parameterType="com.dong.ad.entity.AdAdvertiser"
             useGeneratedKeys="true" keyProperty="id">
-        insert into ad_advertiser (advertiser_no, name, balance_cents, status, version)
-        values (#{advertiserNo}, #{name}, #{balanceCents}, #{status}, #{version})
+        insert into ad_advertiser (advertiser_no, name, balance_cents, daily_limit_cents, status, version)
+        values (#{advertiserNo}, #{name}, #{balanceCents}, #{dailyLimitCents}, #{status}, #{version})
     </insert>
 
     <!-- 充值，冻结账户不接受 -->
@@ -89,6 +89,15 @@
         where id = #{id}
         and status = #{status}
         and balance_cents >= #{amountCents}
+    </update>
+
+    <!-- 条件更新账户日限额，带版本号 -->
+    <update id="updateDailyLimit">
+        update ad_advertiser
+        set daily_limit_cents = #{dailyLimitCents},
+        version = version + 1
+        where id = #{id}
+        and version = #{expectedVersion}
     </update>
 
 </mapper>

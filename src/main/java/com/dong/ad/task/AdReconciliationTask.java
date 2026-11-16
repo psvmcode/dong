@@ -58,7 +58,7 @@ public class AdReconciliationTask {
                                 response.getCorrectedStats(), response.getResentEvents(), response.getOverspendCents());
                     }
                 } catch (BusinessException ex) {
-                    // 1007 是容量保护，截断对账会得出错误结论，跳过这一天比算错好
+                    // 确定性错误跳过这一天，下一轮再试，不把错账写进汇总
                     log.warn("ad reconcile skipped date={} code={} message={}", date, ex.getCode(), ex.getMessage());
                 } catch (Exception ex) {
                     log.error("ad reconcile failed date={}", date, ex);

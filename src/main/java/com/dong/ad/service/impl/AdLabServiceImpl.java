@@ -17,6 +17,8 @@ import com.dong.ad.service.AdLabService;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.util.Snowflake;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,10 +27,14 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -45,6 +51,16 @@ import java.util.concurrent.atomic.LongAdder;
 @Service
 @RequiredArgsConstructor
 public class AdLabServiceImpl implements AdLabService {
+
+    /**
+     * 共享工作线程上限。实验本身是压测工具，不能无限吃应用线程。
+     */
+    private static final int MAX_EXPERIMENT_THREADS = 64;
+
+    /**
+     * 线程名序号。
+     */
+    private final AtomicInteger threadSeq = new AtomicInteger();
 
     /**
      * adDeliveryService，业务服务层。
@@ -73,6 +89,46 @@ public class AdLabServiceImpl implements AdLabService {
     private boolean redisBudgetEnabled;
 
     /**
+     * 同时允许运行的实验数。
+     */
+    @Value("${dong.ad.lab-max-concurrent-experiments:2}")
+    private int maxConcurrentExperiments;
+
+    /**
+     * 全局实验闸门。
+     */
+    private Semaphore experimentGate;
+
+    /**
+     * 共享工作线程池，有界队列防止任务堆积吃光内存。
+     */
+    private ExecutorService executor;
+
+    /**
+     * 初始化闸门与共享线程池。@Value 在构造之后才注入，必须在 init 里构建。
+     */
+    @PostConstruct
+    public void init() {
+        experimentGate = new Semaphore(Math.max(1, Math.min(maxConcurrentExperiments, Constants.MAX_THREADS)));
+        ThreadFactory factory = runnable -> {
+            Thread thread = new Thread(runnable, "ad-lab-" + threadSeq.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
+        executor = new ThreadPoolExecutor(4, MAX_EXPERIMENT_THREADS, 30L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(Constants.MAX_BATCH_SIZE), factory, new ThreadPoolExecutor.AbortPolicy());
+        log.info("ad lab executor initialized gate={} threads<={}", experimentGate.availablePermits(), MAX_EXPERIMENT_THREADS);
+    }
+
+    /**
+     * 关闭共享线程池，避免上下文重启后残留线程。
+     */
+    @PreDestroy
+    public void shutdown() {
+        executor.shutdownNow();
+    }
+
+    /**
      * 执行并发对照实验。
      */
     @Override
@@ -98,7 +154,9 @@ public class AdLabServiceImpl implements AdLabService {
         LongAdder rejected = new LongAdder();
         LongAdder filtered = new LongAdder();
         LongAdder errors = new LongAdder();
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(request.getThreads(), total));
+        if (!experimentGate.tryAcquire()) {
+            throw new BusinessException(Constants.CODE_TOO_MANY_REQUESTS, "too many concurrent ad experiments");
+        }
         CountDownLatch latch = new CountDownLatch(total);
         long started = System.nanoTime();
         try {
@@ -124,8 +182,14 @@ public class AdLabServiceImpl implements AdLabService {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "burst lab interrupted");
+        } catch (RuntimeException ex) {
+            errors.increment();
+            log.warn("ad burst lab submit failed", ex);
         } finally {
-            executor.shutdownNow();
+            while (latch.getCount() > 0L) {
+                latch.countDown();
+            }
+            experimentGate.release();
         }
         long elapsedMillis = (System.nanoTime() - started) / 1_000_000L;
         BurstLabResponse response = new BurstLabResponse();

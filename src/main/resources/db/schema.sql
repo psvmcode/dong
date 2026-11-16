@@ -822,7 +822,8 @@ create table if not exists ad_advertiser
     id            bigint unsigned not null auto_increment                  comment '主键',
     advertiser_no varchar(32)     not null                                 comment '广告主编号',
     name          varchar(128)    not null default ''                      comment '广告主名称',
-    balance_cents bigint          not null default 0                       comment '账户可用余额，单位分',
+    balance_cents     bigint      not null default 0                       comment '账户可用余额，单位分',
+    daily_limit_cents bigint      not null default 0                       comment '账户日限额，单位分，0 表示不限制；多计划共用一个账户时必须卡',
     status        tinyint         not null default 1                       comment '状态：0 冻结 1 正常',
     version       int             not null default 0                       comment '乐观锁版本号',
     create_time   datetime        not null default current_timestamp       comment '创建时间',
@@ -921,6 +922,8 @@ create table if not exists ad_event
     reject_reason  varchar(64)     not null default ''                      comment '无效或拒绝原因，便于排查与对账',
     charge_mode    varchar(8)      not null default 'db'                    comment '预算闸门路径：redis 预扣 或 db 条件扣减降级',
     expire_time    datetime        null                                     comment '令牌过期时间，仅 event_type=0 有值',
+    resend_count   int             not null default 0                       comment '计费消息补投次数，用于指数退避与判定死信',
+    next_resend_time datetime       null                                     comment '下次允许补投的时间，未到点不重复投递',
     create_time    datetime        not null default current_timestamp       comment '创建时间',
     primary key (id),
     unique key uk_trace_type (trace_id, event_type)                          comment '同一链路同一类型事件只能有一次，防换 eventId 重放刷量',
@@ -973,3 +976,58 @@ create table if not exists ad_daily_stat
 ) engine = innodb
   default charset = utf8mb4
   comment = '投放日汇总。按天分行，跨日不重置任何字段，日切不再需要定时任务';
+
+create table if not exists ad_advertiser_daily
+(
+    id                bigint unsigned not null auto_increment                  comment '主键',
+    stat_date         date            not null                                 comment '统计日期',
+    advertiser_id     bigint unsigned not null                                 comment '广告主 id',
+    daily_limit_cents bigint          not null default 0                       comment '账户日限额快照，单位分，0 表示不限',
+    charge_cents      bigint          not null default 0                       comment '当日已计费金额，单位分',
+    create_time       datetime        not null default current_timestamp       comment '创建时间',
+    update_time       datetime        not null default current_timestamp on update current_timestamp comment '更新时间',
+    primary key (id),
+    unique key uk_date_advertiser (stat_date, advertiser_id)                    comment '一天一个广告主一行，账户日限额靠它做原子扣减',
+    key idx_date (stat_date)                                                 comment '按日期归档与查询'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '广告主账户日汇总。计划预算管节奏，账户日限额管总门，防止多计划把账户一起花穿';
+
+create table if not exists ad_audit_log
+(
+    id          bigint unsigned not null auto_increment                  comment '主键',
+    operator    varchar(64)     not null default 'system'                comment '操作人，接口暂无登录态时写 system',
+    action      varchar(64)     not null                                 comment '动作：recharge/update_campaign/transition/update_unit/review_creative/reconcile',
+    target_type varchar(32)     not null                                 comment '目标类型：advertiser/campaign/unit/creative',
+    target_id   bigint unsigned not null                                 comment '目标记录 id',
+    before_json varchar(4096)   not null default ''                      comment '变更前关键字段快照 JSON',
+    after_json  varchar(4096)   not null default ''                      comment '变更后关键字段快照 JSON',
+    reason      varchar(512)    not null default ''                      comment '操作原因、驳回理由或放量实验标记',
+    create_time datetime        not null default current_timestamp       comment '创建时间',
+    primary key (id),
+    key idx_target (target_type, target_id)                                 comment '按目标查完整变更轨迹',
+    key idx_action_time (action, create_time)                               comment '按动作与时间排查谁在什么时候改了预算'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '配置变更审计。预算和状态是钱相关的操作，只写当前值无法回答「谁把日预算从 20 改成 20000」';
+
+create table if not exists ad_charge_archive
+(
+    id            bigint unsigned not null auto_increment                  comment '主键',
+    event_id      varchar(64)     not null                                 comment '事件幂等键，归档仍保持唯一',
+    trace_id      varchar(64)     not null                                 comment '投放链路 id',
+    stat_date     date            not null                                 comment '原归属日期',
+    campaign_id   bigint unsigned not null                                 comment '计划 id',
+    advertiser_id bigint unsigned not null                                 comment '广告主 id',
+    event_type    tinyint         not null                                 comment '原事件类型',
+    amount_cents  bigint          not null default 0                       comment '原金额，单位分',
+    status        tinyint         not null                                 comment '原流水状态：2 已入账 3 已拒绝',
+    charge_mode   varchar(8)      not null default 'db'                    comment '原预算闸门路径',
+    archived_at   datetime        not null default current_timestamp       comment '归档落库时间',
+    create_time   datetime        not null                                 comment '原流水创建时间',
+    primary key (id),
+    unique key uk_archive_event (event_id)                                   comment '重复归档同一事件不会生成第二条',
+    key idx_stat_date (stat_date)                                           comment '按归属日追溯历史账'
+) engine = innodb
+  default charset = utf8mb4
+  comment = '计费流水归档。在线表只留最近若干天，超期流水搬到这里，避免幂等表无限膨胀拖慢在线查询';

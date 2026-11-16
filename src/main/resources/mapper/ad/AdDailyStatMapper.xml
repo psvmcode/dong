@@ -68,6 +68,18 @@
         </where>
     </select>
 
+    <!-- 批量取多个计划某天的汇总，替代列表接口的 N+1 查询 -->
+    <select id="selectByCampaignIdsAndDate" resultMap="statMap">
+        select
+        <include refid="statColumns"/>
+        from ad_daily_stat
+        where stat_date = #{statDate}
+        and campaign_id in
+        <foreach collection="campaignIds" item="campaignId" open="(" separator="," close=")">
+            #{campaignId}
+        </foreach>
+    </select>
+
     <!-- 初始化当天汇总行，重复初始化不覆盖已有计数 -->
     <insert id="insertIfAbsent">
         insert into ad_daily_stat (stat_date, campaign_id, budget_cents)

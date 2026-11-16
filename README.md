@@ -63,7 +63,7 @@
 | Agent 工程实验室 | `/api/agent` | MySQL + LLM（OpenAI 兼容） | 工具调用循环、五道停止闸门、轨迹落库、SSE 流式、幂等、八组对照实验 | 并行调用省 27% 耗时；按需注入省 59% prompt token；无闸门时 token 涨 4 倍仍未答出 |
 | 日志检索（ELK） | `/api/logs` | Logback + Elasticsearch | 有界缓冲采集、按天索引与别名、回填续传、上下文查询、仪表盘聚合 | 采集零丢失（2438/2438），回填按天归档，过期整块删除 |
 | RPC 框架 | `/api/rpc` | Netty + Redis + 自研 protobuf | 自研 wire format、Netty 长连接、ZSet 注册发现、本地缓存与降级、远程/本地对照 | 远程 0.29ms vs 本地 0.00006ms；protobuf 110B vs JSON 233B |
-| 广告投放 | `/api/ad` | MySQL + Redis Lua + MQ | 双层预算与审核状态机、定向召回与广义二价、曝光点击幂等、预算防超投、频次与无效流量、异步计费、日终对账、并发对照 | Redis 预扣与纯 DB 条件扣减可切换对照；流水为权威源，对账可重算，重投幂等 |
+| 广告投放 | `/api/ad` | MySQL + Redis Lua + MQ | 四层预算护栏与审核状态机、预算平滑投放、定向召回与广义二价、曝光点击幂等、限流熔断与超时预算、异步计费与分片对账、审计归档与健康检查 | Redis 预扣与纯 DB 条件扣减可切换对照；流水为权威源，对账分片加锁可重跑，重投幂等且指数退避 |
 
 > 全站接口统一为 POST：写操作仍可用 query 参数，查询类参数一律走 JSON body，分页参数见 `PageQuery`。
 
@@ -94,7 +94,7 @@ mvn spring-boot:run                                  # 端口 8090
 curl http://127.0.0.1:8090/actuator/health           # 返回 UP 即成功
 ```
 
-接口文档 `http://127.0.0.1:8090/doc.html`（Knife4j），162 个接口，支持中文、搜索、在线调试；原始数据 `/v3/api-docs` 可导入 Apifox / Postman。
+接口文档 `http://127.0.0.1:8090/doc.html`（Knife4j），166 个接口，支持中文、搜索、在线调试；原始数据 `/v3/api-docs` 可导入 Apifox / Postman。
 
 ### 建表
 

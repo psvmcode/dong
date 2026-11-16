@@ -35,6 +35,11 @@ public class AdAdvertiser {
     private Long balanceCents;
 
     /**
+     * 账户日限额，单位分，0 表示不限。多计划共用一个账户时的最后一道总门
+     */
+    private Long dailyLimitCents;
+
+    /**
      * 状态，与 AdSwitchStatus 编码对齐：0 冻结 1 正常
      */
     private Integer status;

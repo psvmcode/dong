@@ -35,6 +35,7 @@
 - **rpc** `com.dong.rpc` `/api/rpc`：9090 独立端口、真实 TCP、进程内直调对照。自研协议 varint/zigzag(等价官方 sint32/64，**不与官方 int32 互通**)/TLV/repeated/fixed 小端；`@ProtoMessage`+`@ProtoField`，反射缓存 + 未知字段按线类型跳过；Netty 4 字节长度帧 + requestId 挂起 + 超时/最大帧长；绑定失败只记 error。注册发现 Redis ZSet(score=心跳时间戳，TTL 续约+定时清区间)，本地缓存服务列表但**空结果不缓存**，Redis 挂了降级 `dong.rpc.default-addresses`；rpc 不依赖业务模块。教训：首调 33ms 全是注册中心 RTT，缓存后 0.29ms；protobuf 110B vs JSON 233B
 - **crossborder**：开户默认 `singleLimit=50000` 等于 AML 阈值，要看人工审核需显式调大
 - **ad（2026-11-15 新增）** `com.dong.ad` `/api/ad`，页面 `/ad/index.html`，7 张 `ad_*` 表：开户→计划审核状态机→定向召回 + GSP 二价→令牌签发→曝光/点击→异步计费→流水对账。`ad_event` 令牌与事件合一（`uk_trace_type` 防换 key 刷量 + `uk_event_id` 防重试），成交价服务端签发不可由客户端传；CPC 只点击扣费、CPM 只曝光扣费，0 元效果事件也写流水；`ad_charge_record` 是金额与效果唯一权威源，`ad_daily_stat` 按天分行天然日切（今日花费不进计划表）；Redis Lua 预算闸门只是副本，配额不足时切回 DB 三条件更新裁定，副本由对账重建；对账重算汇总、回写累计、补投超时 PENDING，流水超 1000 抛 1007；**新 MQ 主题必须自带监听器**（既有 `RocketMqListener` 只订阅 `demo-order-event`）→ `AdChargeRocketMqListener`；降级链 Redis→DB、MQ→同步、消息丢→对账；`/api/ad/report/lab/burst` 做 redis/db 并发对照并回读库内金额验超投。文档 `doc/scenario/ad.md` 有 30 项边界情况清单。**线上库尚未执行新增表 DDL，端到端跑之前要先建表**
+  - 2026-11-16 增强到 44 项边界情况：新增广告位级限流 + Redis/MQ 双熔断 + 200ms 请求预算 + 实验全局闸门、pacing 预算平滑 + 账户日限额第四护栏 + 候选缓存写失效 + 变更审计、对账按计划分片 + 分布式锁 + 账户汇总 SQL sum 重算、PENDING 指数退避与 DEAD 死信、先归档后删除的保留期任务、健康检查端点。新增 `ad_advertiser_daily`/`ad_audit_log`/`ad_charge_archive` 三表（主库 53 表），接口 166 个。**新增表与 ad_event 两字段仍需在线上库执行 DDL**
 
 ### 前端 dong-web
 - `/Users/dong/items/java/dong-web`（独立仓库，远端 `git@github.com:psvmcode/dong-web.git`）；Vue3+TS+Vite6+Element Plus+Pinia+ECharts

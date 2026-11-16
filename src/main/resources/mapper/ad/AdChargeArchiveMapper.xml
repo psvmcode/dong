@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdChargeArchiveMapper">
+
+    <resultMap id="archiveMap" type="com.dong.ad.entity.AdChargeArchive">
+        <id column="id" property="id"/>
+        <result column="event_id" property="eventId"/>
+        <result column="trace_id" property="traceId"/>
+        <result column="stat_date" property="statDate"/>
+        <result column="campaign_id" property="campaignId"/>
+        <result column="advertiser_id" property="advertiserId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="amount_cents" property="amountCents"/>
+        <result column="status" property="status"/>
+        <result column="charge_mode" property="chargeMode"/>
+        <result column="archived_at" property="archivedAt"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="archiveColumns">
+        id, event_id, trace_id, stat_date, campaign_id, advertiser_id, event_type, amount_cents,
+        status, charge_mode, archived_at, create_time
+    </sql>
+
+    <!-- 写入归档行，幂等键兜住重复搬运 -->
+    <insert id="insert" parameterType="com.dong.ad.entity.AdChargeArchive"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ad_charge_archive (event_id, trace_id, stat_date, campaign_id, advertiser_id,
+        event_type, amount_cents, status, charge_mode, create_time)
+        values (#{eventId}, #{traceId}, #{statDate}, #{campaignId}, #{advertiserId},
+        #{eventType}, #{amountCents}, #{status}, #{chargeMode}, #{createTime})
+    </insert>
+
+    <!-- 按幂等键统计归档行 -->
+    <select id="countByEventId" resultType="java.lang.Long">
+        select count(*)
+        from ad_charge_archive
+        where event_id = #{eventId}
+    </select>
+
+</mapper>

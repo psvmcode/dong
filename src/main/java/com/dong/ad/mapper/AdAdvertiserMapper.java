@@ -77,4 +77,14 @@ public interface AdAdvertiserMapper {
      */
     int deductBalance(@Param("id") Long id, @Param("amountCents") long amountCents, @Param("status") int status);
 
+    /**
+     * 条件更新账户日限额，带版本号防并发覆盖。
+     *
+     * @param id              账户 id
+     * @param dailyLimitCents 新的日限额，单位分，0 表示不限
+     * @param expectedVersion 期望版本号
+     * @return 影响行数
+     */
+    int updateDailyLimit(@Param("id") Long id, @Param("dailyLimitCents") long dailyLimitCents, @Param("expectedVersion") int expectedVersion);
+
 }

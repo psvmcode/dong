@@ -1,6 +1,7 @@
 package com.dong.ad.service.impl;
 
 import com.dong.ad.service.AdBudgetService;
+import com.dong.ad.support.AdDependencyBreaker;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.framework.redis.RedisService;
@@ -40,12 +41,15 @@ public class AdBudgetServiceImpl implements AdBudgetService {
      * 返回值约定：非负数表示扣减后剩余配额，-2 表示配额不足。
      */
     private static final String RESERVE_SCRIPT = """
+            local amount = tonumber(ARGV[1])
+            if amount == nil or amount <= 0 then
+                return -3
+            end
             local left = tonumber(redis.call('get', KEYS[1]))
             if left == nil then
                 left = tonumber(ARGV[2])
                 redis.call('set', KEYS[1], left, 'ex', ARGV[3])
             end
-            local amount = tonumber(ARGV[1])
             if left < amount then
                 return -2
             end
@@ -80,16 +84,17 @@ public class AdBudgetServiceImpl implements AdBudgetService {
     private final RedisService redisService;
 
     /**
+     * breaker，依赖熔断器。
+     */
+    private final AdDependencyBreaker breaker;
+
+    /**
      * 原子预扣当日预算配额。
      */
     @Override
     public long reserve(Long campaignId, LocalDate date, long dailyBudgetCents, long spentTodayCents, long amountCents) {
         long initial = Math.max(0L, dailyBudgetCents - spentTodayCents);
-        Long result = redisService.execute(RESERVE, List.of(budgetKey(campaignId, date)), amountCents, initial, ttlSeconds(date));
-        if (result == null) {
-            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "ad budget reserve script returned nothing");
-        }
-        return result;
+        return executeGuarded(RESERVE, List.of(budgetKey(campaignId, date)), amountCents, initial, ttlSeconds(date));
     }
 
     /**
@@ -97,7 +102,7 @@ public class AdBudgetServiceImpl implements AdBudgetService {
      */
     @Override
     public void restore(Long campaignId, LocalDate date, long amountCents) {
-        redisService.execute(RESTORE, List.of(budgetKey(campaignId, date)), amountCents);
+        executeGuarded(RESTORE, List.of(budgetKey(campaignId, date)), amountCents);
     }
 
     /**
@@ -114,12 +119,23 @@ public class AdBudgetServiceImpl implements AdBudgetService {
      */
     @Override
     public long frequencyCount(Long campaignId, Long userId, LocalDate date) {
-        String value = redisService.get(freqKey(campaignId, userId, date)).orElse("0");
+        if (!breaker.allowRedis()) {
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "ad redis breaker is open");
+        }
         try {
-            return Math.max(0L, Long.parseLong(value));
-        } catch (NumberFormatException ex) {
-            log.warn("invalid ad frequency value campaign={} user={} value={}", campaignId, userId, value);
-            return 0L;
+            String value = redisService.get(freqKey(campaignId, userId, date)).orElse("0");
+            long count;
+            try {
+                count = Math.max(0L, Long.parseLong(value));
+            } catch (NumberFormatException ex) {
+                log.warn("invalid ad frequency value campaign={} user={} value={}", campaignId, userId, value);
+                count = 0L;
+            }
+            breaker.redisSuccess();
+            return count;
+        } catch (RuntimeException ex) {
+            breaker.redisFailure(ex);
+            throw ex;
         }
     }
 
@@ -128,9 +144,32 @@ public class AdBudgetServiceImpl implements AdBudgetService {
      */
     @Override
     public void incrementFrequency(Long campaignId, Long userId, LocalDate date) {
-        Long result = redisService.execute(FREQ_INCR, List.of(freqKey(campaignId, userId, date)), ttlSeconds(date));
-        if (result == null) {
-            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "ad frequency script returned nothing");
+        executeGuarded(FREQ_INCR, List.of(freqKey(campaignId, userId, date)), ttlSeconds(date));
+    }
+
+    /**
+     * 统一执行 Redis 脚本并维护熔断状态。
+     * 脚本返回的负数（配额不足、金额非法）是业务结果，不算依赖失败，不触发熔断。
+     *
+     * @param script Lua 脚本
+     * @param keys   键列表
+     * @param args   参数
+     * @return 脚本返回值
+     */
+    private long executeGuarded(RedisScript<Long> script, List<String> keys, Object... args) {
+        if (!breaker.allowRedis()) {
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "ad redis breaker is open");
+        }
+        try {
+            Long result = redisService.execute(script, keys, args);
+            if (result == null) {
+                throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "ad redis script returned nothing");
+            }
+            breaker.redisSuccess();
+            return result;
+        } catch (RuntimeException ex) {
+            breaker.redisFailure(ex);
+            throw ex;
         }
     }
 

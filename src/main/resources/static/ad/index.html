@@ -61,6 +61,7 @@
     <h1>广告投放实验台</h1>
     <span class="sub">开户 / 计划审核 → 定向召回与二价竞价 → 曝光点击 → 预算护栏 → 异步计费 → 流水对账</span>
     <span class="badge" id="moduleState">未检查</span>
+    <button onclick="health()">健康检查</button>
     <button onclick="openDrawer()">内部链路</button>
 </div>
 
@@ -76,9 +77,11 @@
             <div class="field"><label>出价（分）</label><input id="bid" type="number" value="300"></div>
             <div class="field"><label>地域定向（逗号分隔，空为不限）</label><input id="regions" value=""></div>
             <div class="field"><label>关键词定向（逗号分隔，空为不限）</label><input id="keywords" value=""></div>
+            <div class="field"><label>账户日限额（元，0 不限）</label><input id="accountLimit" type="number" value="0"></div>
         </div>
         <div class="acts">
             <button class="primary" id="buildBtn" onclick="buildAll()">一键搭建并上线</button>
+            <button onclick="updateLimit()">设置账户日限额</button>
             <button onclick="campaignDetail()">查看计划详情</button>
             <button onclick="runtime()">运行时状态</button>
         </div>
@@ -114,6 +117,8 @@
         <div class="acts">
             <button class="primary" onclick="daily()">查询日报表</button>
             <button onclick="reconcile()">手动对账</button>
+            <button onclick="audit()">审计轨迹</button>
+            <button onclick="cleanup()">归档清理</button>
             <button onclick="budgetProbe()">换 eventId 重放探测</button>
         </div>
         <div id="reportTable"></div>
@@ -390,6 +395,44 @@
             const notes = Object.values(d.notes || {}).join(' / ');
             show('burstMsg', notes, d.overspend ? 'error' : 'ok');
         } finally { btn.disabled = false; }
+    }
+
+    async function updateLimit() {
+        if (!state.advertiserId) { return show('buildMsg', '请先搭建计划', 'error'); }
+        const value = document.getElementById('accountLimit').value;
+        const json = await call('/manage/advertiser/update-limit', { id: state.advertiserId, amountCents: yuan(value) });
+        show('buildMsg', json.code === 0 ? ('账户日限额已设为 ' + value + ' 元，0 表示不限') : json.message, json.code === 0 ? 'ok' : 'error');
+    }
+
+    async function health() {
+        const json = await call('/report/health', {});
+        if (json.code !== 0) { return show('reportMsg', json.message, 'error'); }
+        const d = json.data;
+        const badge = document.getElementById('moduleState');
+        badge.textContent = d.healthy ? '依赖正常' : '依赖异常';
+        badge.className = 'badge ' + (d.healthy ? 'ok' : 'err');
+        kvs([['数据库', String(d.db)], ['Redis', String(d.redis)], ['MQ', String(d.mq)],
+            ['待补偿', d.pendingEvents], ['死信', d.deadLetters],
+            ['Redis 熔断', JSON.stringify((d.breaker || {}).redis || {})]]);
+        show('reportMsg', JSON.stringify(d, null, 2), d.healthy ? 'ok' : 'error');
+    }
+
+    async function audit() {
+        const json = await call('/report/audit/query', { pageNum: 1, pageSize: 20 });
+        if (json.code !== 0) { return show('reportMsg', json.message, 'error'); }
+        table('reportTable', [
+            { label: '时间', key: 'createTime' }, { label: '动作', key: 'action' },
+            { label: '目标', render: r => r.targetType + ' / ' + r.targetId },
+            { label: '变更前', key: 'beforeJson' }, { label: '变更后', key: 'afterJson' },
+            { label: '原因', key: 'reason' }
+        ], json.data.list);
+        show('reportMsg', '共 ' + json.data.total + ' 条配置变更', 'ok');
+    }
+
+    async function cleanup() {
+        const json = await call('/report/cleanup', { beforeDate: null, limit: 200 });
+        if (json.code !== 0) { return show('reportMsg', json.message, 'error'); }
+        show('reportMsg', '归档 ' + json.data.chargeArchived + ' 条流水，清理 ' + json.data.eventsRemoved + ' 条过期事件（截止 ' + json.data.beforeDate + '）', 'ok');
     }
 
     document.getElementById('eventId').value = newEventId();

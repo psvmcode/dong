@@ -5,6 +5,7 @@ import com.dong.ad.dto.DailyReportQuery;
 import com.dong.ad.dto.DailyReportResponse;
 import com.dong.ad.dto.ReconcileResponse;
 import com.dong.ad.entity.AdAdvertiser;
+import com.dong.ad.entity.AdAdvertiserDaily;
 import com.dong.ad.entity.AdCampaign;
 import com.dong.ad.entity.AdChargeRecord;
 import com.dong.ad.entity.AdDailyStat;
@@ -13,13 +14,16 @@ import com.dong.ad.enums.AdChargeMode;
 import com.dong.ad.enums.AdChargeStatus;
 import com.dong.ad.enums.AdEventType;
 import com.dong.ad.enums.AdSwitchStatus;
+import com.dong.ad.mapper.AdAdvertiserDailyMapper;
 import com.dong.ad.mapper.AdAdvertiserMapper;
 import com.dong.ad.mapper.AdCampaignMapper;
 import com.dong.ad.mapper.AdChargeRecordMapper;
 import com.dong.ad.mapper.AdDailyStatMapper;
 import com.dong.ad.mapper.AdEventMapper;
 import com.dong.ad.service.AdBudgetService;
+import com.dong.ad.service.AdAuditService;
 import com.dong.ad.service.AdSettlementService;
+import com.dong.ad.support.AdDependencyBreaker;
 import com.dong.ad.support.AdRuntimeStats;
 import com.dong.ad.support.AdTopics;
 import com.dong.common.constant.Constants;
@@ -28,20 +32,28 @@ import com.dong.common.result.PageRequest;
 import com.dong.common.result.PageResult;
 import com.dong.common.util.JsonUtils;
 import com.dong.framework.mq.MessageProducer;
+import com.dong.framework.lock.DistributedLockService;
+import com.dong.framework.lock.LockHandle;
+import com.dong.framework.mq.MqFacade;
+import com.dong.framework.redis.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * 计费结算与对账实现。
@@ -79,6 +91,11 @@ public class AdSettlementServiceImpl implements AdSettlementService {
     private final AdAdvertiserMapper adAdvertiserMapper;
 
     /**
+     * adAdvertiserDailyMapper，MyBatis Mapper 数据访问层。
+     */
+    private final AdAdvertiserDailyMapper adAdvertiserDailyMapper;
+
+    /**
      * adEventMapper，MyBatis Mapper 数据访问层。
      */
     private final AdEventMapper adEventMapper;
@@ -99,6 +116,31 @@ public class AdSettlementServiceImpl implements AdSettlementService {
     private final MessageProducer messageProducer;
 
     /**
+     * mqFacade，消息通道状态查询。与 messageProducer 是同一个 @Primary Bean。
+     */
+    private final MqFacade mqFacade;
+
+    /**
+     * redisService，健康检查探针。
+     */
+    private final RedisService redisService;
+
+    /**
+     * breaker，依赖熔断状态。
+     */
+    private final AdDependencyBreaker breaker;
+
+    /**
+     * adAuditService，对账修正审计。
+     */
+    private final AdAuditService adAuditService;
+
+    /**
+     * distributedLockService，对账分布式锁，防止多实例重复重算。
+     */
+    private final DistributedLockService distributedLockService;
+
+    /**
      * 待计费事件超过多少分钟算消息丢失。
      */
     @Value("${dong.ad.charge-pending-minutes:5}")
@@ -109,6 +151,30 @@ public class AdSettlementServiceImpl implements AdSettlementService {
      */
     @Value("${dong.ad.charge-resend-limit:100}")
     private int chargeResendLimit;
+
+    /**
+     * 对账分片大小，单片流水超限只跳过这片而不是整批放弃。
+     */
+    @Value("${dong.ad.reconcile-shard-size:200}")
+    private int reconcileShardSize;
+
+    /**
+     * 对账锁持有时间，单位毫秒。
+     */
+    @Value("${dong.ad.reconcile-lock-lease-ms:60000}")
+    private long reconcileLockLeaseMs;
+
+    /**
+     * 补投超过这么多次就转死信。
+     */
+    @Value("${dong.ad.pending-max-resend:5}")
+    private int pendingMaxResend;
+
+    /**
+     * 补投退避基数，单位毫秒，逐次翻倍。
+     */
+    @Value("${dong.ad.pending-resend-backoff-ms:300000}")
+    private long pendingResendBackoffMs;
 
     /**
      * 处理一条计费命令。
@@ -139,12 +205,18 @@ public class AdSettlementServiceImpl implements AdSettlementService {
         if (stat == null || advertiser == null) {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "campaign stat or advertiser not found");
         }
-        String reason = precheck(campaign, stat, advertiser, amount);
+        long accountLimit = advertiser.getDailyLimitCents() == null ? 0L : advertiser.getDailyLimitCents();
+        adAdvertiserDailyMapper.insertIfAbsent(statDate, advertiser.getId(), accountLimit);
+        AdAdvertiserDaily accountDaily = adAdvertiserDailyMapper.selectByDateAndAdvertiser(statDate, advertiser.getId());
+        if (accountDaily == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "advertiser daily stat not found");
+        }
+        String reason = precheck(campaign, stat, advertiser, accountDaily, amount);
         if (reason != null) {
             reject(command, statDate, amount, impressions, clicks, reason);
             return true;
         }
-        // 总预算先扣：这一步失败没有任何副作用，后面的补偿链最短
+        // 四道护栏按补偿链从短到长执行：任一步失败都逆序回退已经成功的步骤
         if (adCampaignMapper.addSpent(command.campaignId(), amount) == 0) {
             reject(command, statDate, amount, impressions, clicks, "total budget exhausted");
             return true;
@@ -154,8 +226,15 @@ public class AdSettlementServiceImpl implements AdSettlementService {
             reject(command, statDate, amount, impressions, clicks, "no balance");
             return true;
         }
+        if (adAdvertiserDailyMapper.accumulateCharged(statDate, advertiser.getId(), amount) == 0) {
+            adAdvertiserMapper.addBalance(advertiser.getId(), amount, AdSwitchStatus.ON.getCode());
+            adCampaignMapper.subtractSpent(command.campaignId(), amount);
+            reject(command, statDate, amount, impressions, clicks, "account daily limit exhausted");
+            return true;
+        }
         if (adDailyStatMapper.accumulateCharged(statDate, command.campaignId(), amount, impressions, clicks) == 0) {
-            adAdvertiserMapper.addBalance(command.advertiserId(), amount, AdSwitchStatus.ON.getCode());
+            adAdvertiserDailyMapper.subtractCharged(statDate, advertiser.getId(), amount);
+            adAdvertiserMapper.addBalance(advertiser.getId(), amount, AdSwitchStatus.ON.getCode());
             adCampaignMapper.subtractSpent(command.campaignId(), amount);
             reject(command, statDate, amount, impressions, clicks, "daily budget exhausted");
             return true;
@@ -167,21 +246,133 @@ public class AdSettlementServiceImpl implements AdSettlementService {
     }
 
     /**
-     * 以流水为权威源重算某天的日汇总，并重建 Redis 副本、补投漏单。
+     * 以流水为权威源分片重算某天汇总，并重建 Redis 副本、补投漏单。
+     *
+     * <p>分片的意义：大促当天流水可能是几十万条，整批读进来既慢又受安全容量限制。
+     * 按计划一片一片对，单片超限只跳过这一片，其他片照常收敛。
+     *
+     * <p>分布式锁保证多实例只有一个在重算，避免两份汇总互相覆盖。
      */
     @Override
     public ReconcileResponse reconcile(LocalDate statDate, boolean resendPending) {
         long started = System.currentTimeMillis();
         LocalDate date = statDate == null ? LocalDate.now() : statDate;
-        long count = adChargeRecordMapper.countByStatDate(date);
-        if (count > Constants.MAX_BATCH_SIZE) {
-            // 截断会把没查到的流水当成多余数据，得出「金额少了」的错误结论并覆盖正确汇总
-            throw new BusinessException(Constants.CODE_CAPACITY_EXCEEDED, "charge records exceed safe capacity for " + date);
+        ReconcileResponse response = new ReconcileResponse();
+        response.setStatDate(date);
+        List<String> details = new ArrayList<>();
+        String lockKey = "lab:ad:reconcile:" + date;
+        try (LockHandle handle = distributedLockService.tryLock(lockKey,
+                Duration.ofMillis(Math.max(1000L, reconcileLockLeaseMs)), Duration.ZERO)) {
+            if (!handle.isAcquired()) {
+                details.add("skipped: another instance is reconciling");
+                response.setDetails(List.copyOf(details));
+                response.setElapsedMillis(System.currentTimeMillis() - started);
+                return response;
+            }
+            int shard = Math.min(Math.max(1, reconcileShardSize), Constants.MAX_BATCH_SIZE);
+            int offset = 0;
+            int campaigns = 0;
+            int records = 0;
+            int corrected = 0;
+            int rebuilt = 0;
+            long overspend = 0L;
+            Set<Long> advertisers = new HashSet<>();
+            while (true) {
+                List<Long> ids = adChargeRecordMapper.selectCampaignIdsByStatDate(date, offset, shard);
+                if (ids.isEmpty()) {
+                    break;
+                }
+                for (Long campaignId : ids) {
+                    try {
+                        long count = adChargeRecordMapper.countByStatDateAndCampaign(date, campaignId);
+                        if (count > Constants.MAX_BATCH_SIZE) {
+                            details.add("campaign " + campaignId + " skipped: " + count + " records exceed safe capacity");
+                            log.warn("ad reconcile shard skipped campaign={} count={}", campaignId, count);
+                            continue;
+                        }
+                        List<AdChargeRecord> list = adChargeRecordMapper.selectByStatDateAndCampaign(date, campaignId, Constants.MAX_BATCH_SIZE);
+                        records += list.size();
+                        campaigns++;
+                        AdDailyStat expected = aggregate(date, campaignId, list);
+                        AdCampaign campaign = adCampaignMapper.selectById(campaignId);
+                        if (campaign != null) {
+                            advertisers.add(campaign.getAdvertiserId());
+                        }
+                        long budget = campaign == null ? 0L : campaign.getDailyBudgetCents();
+                        adDailyStatMapper.insertIfAbsent(date, campaignId, budget);
+                        AdDailyStat current = adDailyStatMapper.selectByDateAndCampaign(date, campaignId);
+                        if (current != null && differs(current, expected)) {
+                            adDailyStatMapper.overwrite(expected);
+                            corrected++;
+                            details.add("campaign " + campaignId + " stat corrected: charge " + current.getChargeCents() + " -> " + expected.getChargeCents());
+                            adAuditService.write("system", "reconcile", "campaign", campaignId,
+                                    JsonUtils.toJson(Map.of("chargeCents", current.getChargeCents(), "impressions", current.getImpressions())),
+                                    JsonUtils.toJson(Map.of("chargeCents", expected.getChargeCents(), "impressions", expected.getImpressions())),
+                                    date.toString());
+                        }
+                        if (campaign != null) {
+                            long total = adChargeRecordMapper.sumByCampaign(campaignId);
+                            if (total != campaign.getSpentTotalCents()) {
+                                adCampaignMapper.overwriteSpent(campaignId, total);
+                                details.add("campaign " + campaignId + " spent total corrected -> " + total);
+                            }
+                            try {
+                                adBudgetService.rebuild(campaignId, date, budget, expected.getChargeCents());
+                                rebuilt++;
+                            } catch (Exception ex) {
+                                log.warn("rebuild ad budget replica failed campaign={}", campaignId, ex);
+                            }
+                        }
+                        if (expected.getChargeCents() > budget) {
+                            long gap = expected.getChargeCents() - budget;
+                            overspend += gap;
+                            details.add("campaign " + campaignId + " overspend " + gap + " cents");
+                        }
+                    } catch (BusinessException ex) {
+                        details.add("campaign " + campaignId + " skipped: " + ex.getMessage());
+                        log.warn("ad reconcile campaign failed campaign={}", campaignId, ex);
+                    } catch (Exception ex) {
+                        details.add("campaign " + campaignId + " failed: " + ex.getClass().getSimpleName());
+                        log.error("ad reconcile campaign failed campaign={}", campaignId, ex);
+                    }
+                }
+                offset += ids.size();
+                if (ids.size() < shard) {
+                    break;
+                }
+            }
+            for (Long advertiserId : advertisers) {
+                reconcileAccount(date, advertiserId, details);
+            }
+            response.setChargeRecords(records);
+            response.setStats(campaigns);
+            response.setCorrectedStats(corrected);
+            response.setRebuiltBudgets(rebuilt);
+            response.setOverspendCents(overspend);
+            if (corrected > 0 || overspend > 0L) {
+                log.warn("ad reconcile date={} corrected={} overspend={}", date, corrected, overspend);
+            }
         }
-        List<AdChargeRecord> records = adChargeRecordMapper.selectByStatDate(date, Constants.MAX_BATCH_SIZE);
-        Map<Long, AdDailyStat> aggregates = new LinkedHashMap<>();
+        if (resendPending) {
+            response.setResentEvents(resendPending(date));
+        }
+        response.setDetails(List.copyOf(details));
+        response.setElapsedMillis(System.currentTimeMillis() - started);
+        return response;
+    }
+
+    /**
+     * 从单片流水中聚合成一条日汇总。金额与效果都来自权威流水，
+     * 拒绝流水也计入曝光点击，因为那些流量确实发生了，只是没有扣钱。
+     *
+     * @param date       归属日期
+     * @param campaignId 计划 id
+     * @param records    该计划的流水
+     * @return 重算后的日汇总
+     */
+    private AdDailyStat aggregate(LocalDate date, Long campaignId, List<AdChargeRecord> records) {
+        AdDailyStat stat = newStat(date, campaignId);
         for (AdChargeRecord record : records) {
-            AdDailyStat stat = aggregates.computeIfAbsent(record.getCampaignId(), id -> newStat(date, id));
             if (record.getEventType() == AdEventType.IMPRESSION.getCode()) {
                 stat.setImpressions(stat.getImpressions() + 1L);
             }
@@ -195,57 +386,31 @@ public class AdSettlementServiceImpl implements AdSettlementService {
                 stat.setRejectedCount(stat.getRejectedCount() + 1L);
             }
         }
-        ReconcileResponse response = new ReconcileResponse();
-        response.setStatDate(date);
-        response.setChargeRecords(records.size());
-        response.setStats(aggregates.size());
-        List<String> details = new ArrayList<>();
-        int corrected = 0;
-        int rebuilt = 0;
-        long overspend = 0L;
-        for (Map.Entry<Long, AdDailyStat> entry : aggregates.entrySet()) {
-            Long campaignId = entry.getKey();
-            AdDailyStat expected = entry.getValue();
-            AdCampaign campaign = adCampaignMapper.selectById(campaignId);
-            long budget = campaign == null ? 0L : campaign.getDailyBudgetCents();
-            adDailyStatMapper.insertIfAbsent(date, campaignId, budget);
-            AdDailyStat current = adDailyStatMapper.selectByDateAndCampaign(date, campaignId);
-            if (current != null && differs(current, expected)) {
-                adDailyStatMapper.overwrite(expected);
-                corrected++;
-                details.add("campaign " + campaignId + " stat corrected: charge " + current.getChargeCents() + " -> " + expected.getChargeCents());
-            }
-            if (campaign != null) {
-                long total = adChargeRecordMapper.sumByCampaign(campaignId);
-                if (total != campaign.getSpentTotalCents()) {
-                    adCampaignMapper.overwriteSpent(campaignId, total);
-                    details.add("campaign " + campaignId + " spent total corrected -> " + total);
-                }
-                try {
-                    adBudgetService.rebuild(campaignId, date, budget, expected.getChargeCents());
-                    rebuilt++;
-                } catch (Exception ex) {
-                    log.warn("rebuild ad budget replica failed campaign={}", campaignId, ex);
-                }
-            }
-            if (expected.getChargeCents() > budget) {
-                long gap = expected.getChargeCents() - budget;
-                overspend += gap;
-                details.add("campaign " + campaignId + " overspend " + gap + " cents");
-            }
+        return stat;
+    }
+
+    /**
+     * 以流水为准重算账户日汇总。用 SQL sum 而不是把流水读进内存，
+     * 因为一个广告主可能有很多计划、几十万条流水。
+     *
+     * @param date         归属日期
+     * @param advertiserId 广告主 id
+     * @param details      对账明细
+     */
+    private void reconcileAccount(LocalDate date, Long advertiserId, List<String> details) {
+        AdAdvertiser advertiser = adAdvertiserMapper.selectById(advertiserId);
+        long limit = advertiser == null || advertiser.getDailyLimitCents() == null ? 0L : advertiser.getDailyLimitCents();
+        adAdvertiserDailyMapper.insertIfAbsent(date, advertiserId, limit);
+        AdAdvertiserDaily current = adAdvertiserDailyMapper.selectByDateAndAdvertiser(date, advertiserId);
+        long expected = adChargeRecordMapper.sumByAdvertiserAndDate(date, advertiserId);
+        if (current != null && (current.getChargeCents() == null || current.getChargeCents() != expected)) {
+            long before = current.getChargeCents() == null ? 0L : current.getChargeCents();
+            adAdvertiserDailyMapper.overwrite(date, advertiserId, expected);
+            details.add("advertiser " + advertiserId + " daily charge corrected " + before + " -> " + expected);
+            adAuditService.write("system", "reconcile", "advertiser", advertiserId,
+                    JsonUtils.toJson(Map.of("chargeCents", before)),
+                    JsonUtils.toJson(Map.of("chargeCents", expected)), date.toString());
         }
-        if (resendPending) {
-            response.setResentEvents(resendPending(date));
-        }
-        response.setCorrectedStats(corrected);
-        response.setRebuiltBudgets(rebuilt);
-        response.setOverspendCents(overspend);
-        response.setDetails(List.copyOf(details));
-        response.setElapsedMillis(System.currentTimeMillis() - started);
-        if (corrected > 0 || overspend > 0L) {
-            log.warn("ad reconcile date={} corrected={} overspend={}", date, corrected, overspend);
-        }
-        return response;
     }
 
     /**
@@ -278,16 +443,75 @@ public class AdSettlementServiceImpl implements AdSettlementService {
     }
 
     /**
+     * 探针式健康检查。每个依赖单独捕获，一个探针失败不影响整份报告。
+     * Redis 熔断打开时直接跳过探活，不为一次已知故障再等满客户端超时。
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> health() {
+        Map<String, Object> report = new LinkedHashMap<>();
+        boolean db = false;
+        boolean redis = false;
+        boolean mq = false;
+        try {
+            adChargeRecordMapper.countByStatDate(LocalDate.now());
+            db = true;
+        } catch (Exception ex) {
+            report.put("dbError", ex.getClass().getSimpleName());
+        }
+        Map<String, Object> breakerSnapshot = breaker.snapshot();
+        Map<String, Object> redisBreaker = (Map<String, Object>) breakerSnapshot.get("redis");
+        if (Boolean.TRUE.equals(redisBreaker.get("open"))) {
+            report.put("redisSkipped", "breaker open");
+        } else {
+            try {
+                redisService.hasKey("lab:ad:health");
+                redis = true;
+            } catch (Exception ex) {
+                report.put("redisError", ex.getClass().getSimpleName());
+            }
+        }
+        try {
+            Map<String, Object> status = mqFacade.status();
+            report.put("mqStatus", status);
+            mq = status.containsKey("active");
+        } catch (Exception ex) {
+            report.put("mqError", ex.getClass().getSimpleName());
+        }
+        long pending;
+        long dead;
+        try {
+            pending = adEventMapper.countByChargeStatus(AdChargeStatus.PENDING.getCode());
+        } catch (Exception ex) {
+            pending = -1L;
+        }
+        try {
+            dead = adEventMapper.countByChargeStatus(AdChargeStatus.DEAD.getCode());
+        } catch (Exception ex) {
+            dead = -1L;
+        }
+        report.put("healthy", db && redis);
+        report.put("db", db);
+        report.put("redis", redis);
+        report.put("mq", mq);
+        report.put("pendingEvents", pending);
+        report.put("deadLetters", dead);
+        report.put("breaker", breakerSnapshot);
+        return report;
+    }
+
+    /**
      * 三道护栏的预检。真正的裁定仍是后面的条件更新，
      * 预检只是为了把绝大多数拒绝挡在任何写操作之前。
      *
-     * @param campaign   计划
-     * @param stat       当日汇总
-     * @param advertiser 广告主
-     * @param amount     本笔金额，单位分
+     * @param campaign     计划
+     * @param stat         当日汇总
+     * @param advertiser   广告主
+     * @param accountDaily 账户当日汇总
+     * @param amount       本笔金额，单位分
      * @return 拒绝原因，null 表示通过
      */
-    private String precheck(AdCampaign campaign, AdDailyStat stat, AdAdvertiser advertiser, long amount) {
+    private String precheck(AdCampaign campaign, AdDailyStat stat, AdAdvertiser advertiser, AdAdvertiserDaily accountDaily, long amount) {
         if (stat.getChargeCents() + amount > stat.getBudgetCents()) {
             return "daily budget exhausted";
         }
@@ -296,6 +520,11 @@ public class AdSettlementServiceImpl implements AdSettlementService {
         }
         if (advertiser.getStatus() != AdSwitchStatus.ON.getCode() || advertiser.getBalanceCents() < amount) {
             return "no balance";
+        }
+        long limit = accountDaily.getDailyLimitCents() == null ? 0L : accountDaily.getDailyLimitCents();
+        long charged = accountDaily.getChargeCents() == null ? 0L : accountDaily.getChargeCents();
+        if (limit > 0L && charged + amount > limit) {
+            return "account daily limit exhausted";
         }
         return null;
     }
@@ -338,7 +567,16 @@ public class AdSettlementServiceImpl implements AdSettlementService {
         int limit = Math.min(Math.max(1, chargeResendLimit), Constants.MAX_BATCH_SIZE);
         List<AdEvent> pending = adEventMapper.selectPending(AdChargeStatus.PENDING.getCode(), before, limit);
         int resent = 0;
+        int dead = 0;
+        long maxResend = Math.max(1L, pendingMaxResend);
+        long baseBackoff = Math.max(1000L, pendingResendBackoffMs);
         for (AdEvent event : pending) {
+            int count = event.getResendCount() == null ? 0 : event.getResendCount();
+            if (count >= maxResend) {
+                adEventMapper.updateChargeStatus(event.getId(), AdChargeStatus.DEAD.getCode(), "resend limit exceeded");
+                dead++;
+                continue;
+            }
             try {
                 LocalDate eventDate = event.getCreateTime() == null ? date : event.getCreateTime().toLocalDate();
                 AdChargeCommand command = new AdChargeCommand(event.getEventId(), event.getTraceId(), eventDate.toString(),
@@ -349,9 +587,17 @@ public class AdSettlementServiceImpl implements AdSettlementService {
             } catch (Exception ex) {
                 log.error("resend ad charge failed eventId={}", event.getEventId(), ex);
             }
+            long backoff = Math.min(TimeUnit.SECONDS.toMillis(Constants.MAX_WINDOW_SECONDS),
+                    baseBackoff * (1L << Math.min(4, count)));
+            try {
+                adEventMapper.markRescheduled(event.getId(), count + 1,
+                        LocalDateTime.now().plusNanos(TimeUnit.MILLISECONDS.toNanos(backoff)));
+            } catch (Exception ex) {
+                log.error("mark ad reschedule failed eventId={}", event.getEventId(), ex);
+            }
         }
-        if (resent > 0) {
-            log.warn("ad charge resent {} pending events, charge dedup relies on uk_charge_event", resent);
+        if (resent > 0 || dead > 0) {
+            log.warn("ad charge resent={} dead={} dedup relies on uk_charge_event", resent, dead);
         }
         return resent;
     }

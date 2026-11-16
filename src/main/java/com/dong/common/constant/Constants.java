@@ -156,6 +156,17 @@ public final class Constants {
      */
     public static final int MAX_FREQUENCY_CAP = 100;
 
+    /**
+     * 广告请求返回的候选明细条数上限。明细只用于诊断，
+     * 返回全量候选会让一次普通曝光请求拖回几万字节。
+     */
+    public static final int MAX_CANDIDATES = 20;
+
+    /**
+     * 审计快照字段长度上限，与 ad_audit_log.before_json/after_json 的 varchar(4096) 对齐。
+     */
+    public static final int MAX_AUDIT_SNAPSHOT = 4096;
+
     private Constants() {
     }
 

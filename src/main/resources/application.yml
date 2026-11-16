@@ -352,3 +352,43 @@ dong:
     # 待计费事件超过这个分钟数仍无流水，视为消息丢失并重投
     charge-pending-minutes: 5
     charge-resend-limit: 100
+
+    # ---- 稳定性与代码防御 ----
+    # 广告请求独立限流。全局 IP 限流挡的是整体洪水，这一层按广告位挡单个热点广告位
+    request-rate-limit-enabled: true
+    request-rate-limit-per-second: 100
+    # 依赖熔断器：连续失败这么多次就断路，避免每次请求都白等 5 秒中间件超时
+    breaker-failure-threshold: 5
+    breaker-open-duration-ms: 10000
+    # 广告请求的整体时间预算。剩余时间不足时跳过频次、候选明细等可降级步骤
+    request-timeout-ms: 300
+    # 并发实验全局闸门，防止多个实验同时把线程占满
+    lab-max-concurrent-experiments: 2
+    # 候选明细只用于诊断，封顶返回条数，避免一次请求拖回整个候选集
+    max-candidates: 10
+
+    # ---- 实战业务 ----
+    # 预算平滑投放：早上不能把一天的钱烧光。按小时释放预算，超前就先刹车
+    pacing-enabled: true
+    pacing-factor: 1.0
+    pacing-tolerance: 0.2
+    # 召回候选短 TTL 缓存 + 写操作主动失效，兜住高频读；TTL 是暂停后残留的上限
+    candidate-cache-enabled: true
+    candidate-cache-ttl-seconds: 30
+    candidate-cache-max-size: 5000
+    # 预算与状态变更写审计
+    audit-enabled: true
+
+    # ---- 容灾与数据治理 ----
+    # 对账按计划分片，单片流水超限不再整批放弃；多实例用分布式锁保证单实例执行
+    reconcile-shard-size: 200
+    reconcile-lock-lease-ms: 60000
+    # 在线事件与流水保留天数，超期搬到归档表
+    retention-days: 7
+    retention-batch-size: 200
+    retention-task-enabled: true
+    # 计费补投退避：初次 5 分钟，失败后逐级放大，超过上限标记死信等人工介入
+    pending-max-resend: 5
+    pending-resend-backoff-ms: 300000
+    # 健康检查探针
+    health-enabled: true

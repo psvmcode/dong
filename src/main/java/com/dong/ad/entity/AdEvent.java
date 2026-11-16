@@ -108,6 +108,16 @@ public class AdEvent {
     private String chargeMode;
 
     /**
+     * 计费消息补投次数，用于退避与死信判定
+     */
+    private Integer resendCount;
+
+    /**
+     * 下次允许补投的时间，未到点不重复投递
+     */
+    private LocalDateTime nextResendTime;
+
+    /**
      * 令牌过期时间，仅 REQUEST 行有值
      */
     private LocalDateTime expireTime;

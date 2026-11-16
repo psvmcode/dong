@@ -22,6 +22,8 @@
         <result column="valid" property="valid"/>
         <result column="reject_reason" property="rejectReason"/>
         <result column="charge_mode" property="chargeMode"/>
+        <result column="resend_count" property="resendCount"/>
+        <result column="next_resend_time" property="nextResendTime"/>
         <result column="expire_time" property="expireTime"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
@@ -29,7 +31,7 @@
     <sql id="eventColumns">
         id, trace_id, event_id, event_type, campaign_id, unit_id, creative_id, advertiser_id, user_id,
         region, device, ip, bid_cents, clearing_cents, charge_status, valid, reject_reason, charge_mode,
-        expire_time, create_time
+        resend_count, next_resend_time, expire_time, create_time
     </sql>
 
     <!-- 按幂等键查事件，重放判定入口 -->
@@ -102,6 +104,7 @@
         where charge_status = #{chargeStatus}
         and valid = 1
         and create_time &lt; #{before}
+        and (next_resend_time is null or next_resend_time &lt;= current_timestamp)
         order by id
         limit #{limit}
     </select>
@@ -121,10 +124,10 @@
             useGeneratedKeys="true" keyProperty="id">
         insert into ad_event (trace_id, event_id, event_type, campaign_id, unit_id, creative_id, advertiser_id,
         user_id, region, device, ip, bid_cents, clearing_cents, charge_status, valid, reject_reason,
-        charge_mode, expire_time)
+        charge_mode, resend_count, next_resend_time, expire_time)
         values (#{traceId}, #{eventId}, #{eventType}, #{campaignId}, #{unitId}, #{creativeId}, #{advertiserId},
         #{userId}, #{region}, #{device}, #{ip}, #{bidCents}, #{clearingCents}, #{chargeStatus}, #{valid},
-        #{rejectReason}, #{chargeMode}, #{expireTime})
+        #{rejectReason}, #{chargeMode}, coalesce(#{resendCount}, 0), #{nextResendTime}, #{expireTime})
     </insert>
 
     <!-- 回写计费处置结论 -->
@@ -141,5 +144,39 @@
         set charge_status = #{chargeStatus}
         where id = #{id}
     </update>
+
+    <!-- 记录补投次数与退避时间，失败越多间隔越久 -->
+    <update id="markRescheduled">
+        update ad_event
+        set resend_count = #{resendCount},
+        next_resend_time = #{nextResendTime}
+        where id = #{id}
+    </update>
+
+    <!-- 统计某计费状态的事件数，健康检查用 -->
+    <select id="countByChargeStatus" resultType="java.lang.Long">
+        select count(*)
+        from ad_event
+        where charge_status = #{chargeStatus}
+    </select>
+
+    <!-- 查询过期事件 id，归档清理用 -->
+    <select id="selectIdsBefore" resultType="java.lang.Long">
+        select id
+        from ad_event
+        where create_time &lt; #{before}
+        and charge_status &lt;&gt; 1
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 按 id 批量删除过期事件 -->
+    <delete id="deleteByIds">
+        delete from ad_event
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
 
 </mapper>

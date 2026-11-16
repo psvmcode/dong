@@ -8,6 +8,7 @@ import com.dong.ad.dto.DeliveryRequest;
 import com.dong.ad.dto.DeliveryResponse;
 import com.dong.ad.entity.AdAdvertiser;
 import com.dong.ad.entity.AdCampaign;
+import com.dong.ad.entity.AdAdvertiserDaily;
 import com.dong.ad.entity.AdCreative;
 import com.dong.ad.entity.AdDailyStat;
 import com.dong.ad.entity.AdEvent;
@@ -19,6 +20,7 @@ import com.dong.ad.enums.AdChargeStatus;
 import com.dong.ad.enums.AdCreativeStatus;
 import com.dong.ad.enums.AdEventType;
 import com.dong.ad.enums.AdSwitchStatus;
+import com.dong.ad.mapper.AdAdvertiserDailyMapper;
 import com.dong.ad.mapper.AdAdvertiserMapper;
 import com.dong.ad.mapper.AdCampaignMapper;
 import com.dong.ad.mapper.AdCreativeMapper;
@@ -28,7 +30,11 @@ import com.dong.ad.mapper.AdUnitMapper;
 import com.dong.ad.service.AdBudgetService;
 import com.dong.ad.service.AdDeliveryService;
 import com.dong.ad.service.AdSettlementService;
+import com.dong.ad.support.AdCandidateCache;
+import com.dong.ad.support.AdDependencyBreaker;
+import com.dong.ad.support.AdPacingSupport;
 import com.dong.ad.support.AdPricingSupport;
+import com.dong.ad.support.AdRateLimitSupport;
 import com.dong.ad.support.AdRuntimeStats;
 import com.dong.ad.support.AdTargetingSupport;
 import com.dong.ad.support.AdTopics;
@@ -55,6 +61,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 投放链路实现：召回过滤、定向匹配、广义二价竞价、令牌签发、事件上报。
@@ -97,6 +104,11 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
     private final AdAdvertiserMapper adAdvertiserMapper;
 
     /**
+     * adAdvertiserDailyMapper，MyBatis Mapper 数据访问层。
+     */
+    private final AdAdvertiserDailyMapper adAdvertiserDailyMapper;
+
+    /**
      * adDailyStatMapper，MyBatis Mapper 数据访问层。
      */
     private final AdDailyStatMapper adDailyStatMapper;
@@ -125,6 +137,26 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
      * pricingSupport，竞价与计费计算。
      */
     private final AdPricingSupport pricingSupport;
+
+    /**
+     * rateLimitSupport，广告位级限流。
+     */
+    private final AdRateLimitSupport rateLimitSupport;
+
+    /**
+     * pacingSupport，预算平滑投放判定。
+     */
+    private final AdPacingSupport pacingSupport;
+
+    /**
+     * candidateCache，召回候选本地缓存。
+     */
+    private final AdCandidateCache candidateCache;
+
+    /**
+     * breaker，Redis 与 MQ 熔断器。
+     */
+    private final AdDependencyBreaker breaker;
 
     /**
      * runtimeStats，链路计数。
@@ -202,6 +234,18 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
     private int cpmDivisor;
 
     /**
+     * 广告请求整体时间预算。不是硬性中断，而是剩余时间不足时跳过可降级步骤。
+     */
+    @Value("${dong.ad.request-timeout-ms:300}")
+    private long requestTimeoutMs;
+
+    /**
+     * 单次返回的最大候选明细条数。
+     */
+    @Value("${dong.ad.max-candidates:10}")
+    private int maxCandidates;
+
+    /**
      * 处理一次广告位请求。
      */
     @Override
@@ -210,7 +254,13 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
         int hour = now.getHour();
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Math.max(50L, requestTimeoutMs));
         Map<String, Object> diagnostics = new LinkedHashMap<>();
+        if (!rateLimitSupport.allow(request.getPlacement())) {
+            diagnostics.put("rateLimited", true);
+            runtimeStats.getFiltered().increment();
+            return DeliveryResponse.empty("rate limited", diagnostics);
+        }
         if (isBlocked(request)) {
             diagnostics.put("blockedTraffic", true);
             runtimeStats.getFiltered().increment();
@@ -219,12 +269,20 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         List<AdCampaign> campaigns = adCampaignMapper.selectDeliverable(AdCampaignStatus.DELIVERING.getCode(), today, Constants.MAX_QUERY_LIMIT);
         diagnostics.put("campaignsInWindow", campaigns.size());
         Map<Long, AdAdvertiser> advertisers = new LinkedHashMap<>();
+        Map<Long, AdAdvertiserDaily> accountDailies = new LinkedHashMap<>();
         List<AdCampaign> eligible = new ArrayList<>();
         int hoursFiltered = 0;
         int balanceFiltered = 0;
         int budgetFiltered = 0;
+        int pacingFiltered = 0;
+        int accountFiltered = 0;
         int frequencyFiltered = 0;
+        boolean deadlineSkipped = false;
         for (AdCampaign campaign : campaigns) {
+            if (System.nanoTime() >= deadline) {
+                deadlineSkipped = true;
+                break;
+            }
             if (!hourAllowed(campaign.getDeliveryHours(), hour)) {
                 hoursFiltered++;
                 continue;
@@ -240,6 +298,18 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
                 budgetFiltered++;
                 continue;
             }
+            if (pacingSupport.aheadOfSchedule(campaign.getDailyBudgetCents(), todayCharge, now)) {
+                pacingFiltered++;
+                continue;
+            }
+            AdAdvertiserDaily accountDaily = accountDailies.computeIfAbsent(campaign.getAdvertiserId(),
+                    id -> adAdvertiserDailyMapper.selectByDateAndAdvertiser(today, id));
+            long accountLimit = advertiser.getDailyLimitCents() == null ? 0L : advertiser.getDailyLimitCents();
+            long accountCharge = accountDaily == null ? 0L : accountDaily.getChargeCents();
+            if (accountLimit > 0L && accountCharge >= accountLimit) {
+                accountFiltered++;
+                continue;
+            }
             if (frequencyCapEnabled && overFrequency(campaign.getId(), request.getUserId(), today)) {
                 frequencyFiltered++;
                 continue;
@@ -249,23 +319,22 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         diagnostics.put("hoursFiltered", hoursFiltered);
         diagnostics.put("balanceFiltered", balanceFiltered);
         diagnostics.put("budgetFiltered", budgetFiltered);
+        diagnostics.put("pacingFiltered", pacingFiltered);
+        diagnostics.put("accountFiltered", accountFiltered);
         diagnostics.put("frequencyFiltered", frequencyFiltered);
+        diagnostics.put("deadlineSkipped", deadlineSkipped);
         diagnostics.put("eligibleCampaigns", eligible.size());
         if (eligible.isEmpty()) {
             return DeliveryResponse.empty("no eligible campaign", diagnostics);
         }
         List<Long> campaignIds = eligible.stream().map(AdCampaign::getId).toList();
-        List<AdUnit> units = adUnitMapper.selectByCampaignIds(campaignIds, AdSwitchStatus.ON.getCode(), Constants.MAX_QUERY_LIMIT);
+        AdCandidateCache.Snapshot snapshot = candidateCache.get(() -> loadCandidates(campaignIds));
+        List<AdUnit> units = snapshot == null ? List.of() : snapshot.units();
         diagnostics.put("enabledUnits", units.size());
         if (units.isEmpty()) {
             return DeliveryResponse.empty("no enabled unit", diagnostics);
         }
-        List<Long> unitIds = units.stream().map(AdUnit::getId).toList();
-        List<AdCreative> creatives = adCreativeMapper.selectApprovedByUnitIds(unitIds, AdCreativeStatus.APPROVED.getCode(), Constants.MAX_QUERY_LIMIT);
-        Map<Long, AdCreative> creativeByUnit = new LinkedHashMap<>();
-        for (AdCreative creative : creatives) {
-            creativeByUnit.putIfAbsent(creative.getUnitId(), creative);
-        }
+        Map<Long, AdCreative> creativeByUnit = snapshot == null ? Map.of() : new LinkedHashMap<>(snapshot.creativesByUnit());
         Map<Long, AdCampaign> campaignById = new LinkedHashMap<>();
         for (AdCampaign campaign : eligible) {
             campaignById.put(campaign.getId(), campaign);
@@ -307,7 +376,10 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         String traceId = TRACE_PREFIX + snowflake.nextId();
         LocalDateTime expireTime = now.plusMinutes(Math.max(1, traceTtlMinutes));
         insertToken(traceId, winner, request, charge, expireTime);
-        List<DeliveryResponse.Candidate> candidates = ranked.stream().limit(request.getMaxCandidates())
+        int candidateLimit = Math.min(Math.max(1, request.getMaxCandidates()),
+                Math.min(Math.max(1, maxCandidates), Constants.MAX_CANDIDATES));
+        diagnostics.put("candidateLimit", candidateLimit);
+        List<DeliveryResponse.Candidate> candidates = ranked.stream().limit(candidateLimit)
                 .map(item -> new DeliveryResponse.Candidate(item.campaign().getId(), item.unit().getId(),
                         item.creative().getId(), item.creative().getTitle(),
                         AdBidType.of(item.unit().getBidType()).name(), item.unit().getBidCents(),
@@ -381,13 +453,19 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         boolean chargeable = pricingSupport.chargeable(type, bidType);
         long amount = chargeable ? Math.max(0L, token.getClearingCents()) : 0L;
         LocalDate statDate = now.toLocalDate();
+        AdDailyStat stat = adDailyStatMapper.selectByDateAndCampaign(statDate, campaign.getId());
+        long todayCharge = stat == null ? 0L : stat.getChargeCents();
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        if (!syncCharge && chargeable && pacingSupport.aheadOfSchedule(campaign.getDailyBudgetCents(), todayCharge, now)) {
+            // 软闸门：钱还没花完，但花得比时间节奏快太多，先不投。数据库日预算仍是硬闸门
+            insertEvent(request, token, type, 0L, AdChargeStatus.NONE, 0, "pacing throttled", AdChargeMode.DB.text(), null);
+            runtimeStats.getFiltered().increment();
+            return AdEventResponse.filtered(request.getEventId(), request.getTraceId(), type, "pacing throttled");
+        }
         AdChargeMode mode = explicitMode == null
                 ? (redisBudgetEnabled && amount > 0L ? AdChargeMode.REDIS : AdChargeMode.DB)
                 : explicitMode;
-        Map<String, Object> diagnostics = new LinkedHashMap<>();
         if (amount > 0L && mode == AdChargeMode.REDIS) {
-            AdDailyStat stat = adDailyStatMapper.selectByDateAndCampaign(statDate, campaign.getId());
-            long todayCharge = stat == null ? 0L : stat.getChargeCents();
             try {
                 long left = adBudgetService.reserve(campaign.getId(), statDate, campaign.getDailyBudgetCents(), todayCharge, amount);
                 if (left < 0L) {
@@ -420,11 +498,18 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
                 event.getCampaignId(), event.getUnitId(), event.getCreativeId(), event.getAdvertiserId(),
                 type.getCode(), unit.getBidType(), amount, modeText);
         boolean async = mqChargeEnabled && !syncCharge && chargeable;
+        if (async && !breaker.allowMq()) {
+            async = false;
+            runtimeStats.getMqFallbacks().increment();
+            diagnostics.put("mqBreakerOpen", true);
+        }
         if (async) {
             try {
                 messageProducer.send(AdTopics.CHARGE, event.getEventId(), JsonUtils.toJson(command));
+                breaker.mqSuccess();
                 diagnostics.put("chargePath", "mq");
             } catch (Exception ex) {
+                breaker.mqFailure(ex);
                 runtimeStats.getMqFallbacks().increment();
                 log.warn("ad charge mq degraded eventId={}", event.getEventId(), ex);
                 safeCharge(command, diagnostics, "sync-fallback");
@@ -496,7 +581,35 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         runtime.put("frequencyCapPerDay", frequencyCapPerDay);
         runtime.put("traceTtlMinutes", traceTtlMinutes);
         runtime.put("cpmDivisor", cpmDivisor);
+        runtime.put("requestTimeoutMs", requestTimeoutMs);
+        runtime.put("rateLimit", rateLimitSupport.snapshot());
+        runtime.put("breaker", breaker.snapshot());
+        runtime.put("candidateCache", candidateCache.snapshot());
         return runtime;
+    }
+
+    /**
+     * 回源加载全部候选并组装不可变快照。只在缓存未命中时调用。
+     * 空结果返回 null，让缓存层不缓存空窗——新广告上线后应立即能被召回。
+     *
+     * @param campaignIds 参与召回的计划 id
+     * @return 候选快照
+     */
+    private AdCandidateCache.Snapshot loadCandidates(List<Long> campaignIds) {
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return null;
+        }
+        List<AdUnit> units = adUnitMapper.selectByCampaignIds(campaignIds, AdSwitchStatus.ON.getCode(), Constants.MAX_QUERY_LIMIT);
+        if (units.isEmpty()) {
+            return null;
+        }
+        List<Long> unitIds = units.stream().map(AdUnit::getId).toList();
+        List<AdCreative> creatives = adCreativeMapper.selectApprovedByUnitIds(unitIds, AdCreativeStatus.APPROVED.getCode(), Constants.MAX_QUERY_LIMIT);
+        Map<Long, AdCreative> creativeByUnit = new LinkedHashMap<>();
+        for (AdCreative creative : creatives) {
+            creativeByUnit.putIfAbsent(creative.getUnitId(), creative);
+        }
+        return new AdCandidateCache.Snapshot(List.copyOf(units), Map.copyOf(creativeByUnit));
     }
 
     /**

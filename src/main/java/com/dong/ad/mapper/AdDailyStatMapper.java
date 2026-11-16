@@ -45,6 +45,15 @@ public interface AdDailyStatMapper {
     long countByPage(@Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo, @Param("campaignId") Long campaignId);
 
     /**
+     * 批量查询多个计划某天的汇总行，替代列表接口的 N+1 逐条查询。
+     *
+     * @param campaignIds 计划 id 列表
+     * @param statDate    统计日期
+     * @return 汇总列表
+     */
+    List<AdDailyStat> selectByCampaignIdsAndDate(@Param("campaignIds") List<Long> campaignIds, @Param("statDate") LocalDate statDate);
+
+    /**
      * 初始化当天汇总行。重复初始化不覆盖已有数据，避免并发首笔计费互相重置计数。
      *
      * @param statDate    统计日期

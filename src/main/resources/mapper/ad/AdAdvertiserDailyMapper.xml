@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dong.ad.mapper.AdAdvertiserDailyMapper">
+
+    <resultMap id="advertiserDailyMap" type="com.dong.ad.entity.AdAdvertiserDaily">
+        <id column="id" property="id"/>
+        <result column="stat_date" property="statDate"/>
+        <result column="advertiser_id" property="advertiserId"/>
+        <result column="daily_limit_cents" property="dailyLimitCents"/>
+        <result column="charge_cents" property="chargeCents"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="dailyColumns">
+        id, stat_date, advertiser_id, daily_limit_cents, charge_cents, create_time, update_time
+    </sql>
+
+    <!-- 查某广告主某天的账户汇总 -->
+    <select id="selectByDateAndAdvertiser" resultMap="advertiserDailyMap">
+        select
+        <include refid="dailyColumns"/>
+        from ad_advertiser_daily
+        where stat_date = #{statDate}
+        and advertiser_id = #{advertiserId}
+    </select>
+
+    <!-- 初始化当天账户汇总行，重复初始化不覆盖金额 -->
+    <insert id="insertIfAbsent">
+        insert into ad_advertiser_daily (stat_date, advertiser_id, daily_limit_cents)
+        values (#{statDate}, #{advertiserId}, #{dailyLimitCents})
+        on duplicate key update id = id
+    </insert>
+
+    <!-- 条件累加账户当日花费，限额为 0 表示不限 -->
+    <update id="accumulateCharged">
+        update ad_advertiser_daily
+        set charge_cents = charge_cents + #{amountCents}
+        where stat_date = #{statDate}
+        and advertiser_id = #{advertiserId}
+        and (daily_limit_cents = 0 or charge_cents + #{amountCents} &lt;= daily_limit_cents)
+    </update>
+
+    <!-- 并发补偿：回退账户当日花费，带充足条件防减成负数 -->
+    <update id="subtractCharged">
+        update ad_advertiser_daily
+        set charge_cents = charge_cents - #{amountCents}
+        where stat_date = #{statDate}
+        and advertiser_id = #{advertiserId}
+        and charge_cents &gt;= #{amountCents}
+    </update>
+
+    <!-- 调整账户日限额后刷新当天快照 -->
+    <update id="updateLimitSnapshot">
+        update ad_advertiser_daily
+        set daily_limit_cents = #{dailyLimitCents}
+        where stat_date = #{statDate}
+        and advertiser_id = #{advertiserId}
+    </update>
+
+    <!-- 对账后以流水覆盖账户当日花费，限额快照保留原值 -->
+    <update id="overwrite">
+        update ad_advertiser_daily
+        set charge_cents = #{chargeCents}
+        where stat_date = #{statDate}
+        and advertiser_id = #{advertiserId}
+    </update>
+
+</mapper>

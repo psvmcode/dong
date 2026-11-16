@@ -7,6 +7,7 @@ import com.dong.ad.dto.ReconcileResponse;
 import com.dong.common.result.PageResult;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * 计费结算与对账。
@@ -50,5 +51,12 @@ public interface AdSettlementService {
      * @return 今日已计费金额
      */
     long todayCharge(Long campaignId);
+
+    /**
+     * 探针式健康检查。每个依赖单独捕获，避免一个探针失败吞掉整份报告。
+     *
+     * @return 健康状态与各依赖细节
+     */
+    Map<String, Object> health();
 
 }

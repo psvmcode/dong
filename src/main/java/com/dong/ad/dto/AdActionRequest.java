@@ -44,9 +44,9 @@ public class AdActionRequest {
     private String decision;
 
     /**
-     * 充值金额，单位分，仅账户充值使用。
+     * 充值金额或新的账户日限额，单位分。0 只在日限额接口表示不限，充值由服务层校验必须为正。
      */
-    @Min(1)
+    @Min(0)
     @Max(Constants.MAX_MONEY_CENTS)
     private Long amountCents;
 

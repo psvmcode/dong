@@ -15,26 +15,31 @@ import com.dong.ad.dto.CampaignUpdateRequest;
 import com.dong.ad.entity.AdAdvertiser;
 import com.dong.ad.entity.AdCampaign;
 import com.dong.ad.entity.AdCreative;
+import com.dong.ad.entity.AdDailyStat;
 import com.dong.ad.entity.AdUnit;
 import com.dong.ad.enums.AdBidType;
 import com.dong.ad.enums.AdCampaignEvent;
 import com.dong.ad.enums.AdCampaignStatus;
 import com.dong.ad.enums.AdCreativeStatus;
 import com.dong.ad.enums.AdSwitchStatus;
+import com.dong.ad.mapper.AdAdvertiserDailyMapper;
 import com.dong.ad.mapper.AdAdvertiserMapper;
 import com.dong.ad.mapper.AdCampaignMapper;
 import com.dong.ad.mapper.AdCreativeMapper;
 import com.dong.ad.mapper.AdDailyStatMapper;
 import com.dong.ad.mapper.AdUnitMapper;
 import com.dong.ad.service.AdBudgetService;
+import com.dong.ad.service.AdAuditService;
 import com.dong.ad.service.AdManageService;
 import com.dong.ad.service.AdSettlementService;
+import com.dong.ad.support.AdCandidateCache;
 import com.dong.ad.support.AdRuntimeStats;
 import com.dong.ad.support.AdTargetingSupport;
 import com.dong.common.constant.Constants;
 import com.dong.common.exception.BusinessException;
 import com.dong.common.result.PageRequest;
 import com.dong.common.result.PageResult;
+import com.dong.common.util.JsonUtils;
 import com.dong.common.util.Snowflake;
 import com.dong.framework.mq.MqFacade;
 import lombok.RequiredArgsConstructor;
@@ -97,6 +102,11 @@ public class AdManageServiceImpl implements AdManageService {
     private final AdDailyStatMapper adDailyStatMapper;
 
     /**
+     * adAdvertiserDailyMapper，MyBatis Mapper 数据访问层。
+     */
+    private final AdAdvertiserDailyMapper adAdvertiserDailyMapper;
+
+    /**
      * adSettlementService，业务服务层。
      */
     private final AdSettlementService adSettlementService;
@@ -105,6 +115,16 @@ public class AdManageServiceImpl implements AdManageService {
      * adBudgetService，业务服务层。
      */
     private final AdBudgetService adBudgetService;
+
+    /**
+     * adAuditService，配置变更审计。
+     */
+    private final AdAuditService adAuditService;
+
+    /**
+     * candidateCache，召回候选缓存，配置变更后必须失效。
+     */
+    private final AdCandidateCache candidateCache;
 
     /**
      * targetingSupport，定向条件工具。
@@ -142,6 +162,7 @@ public class AdManageServiceImpl implements AdManageService {
         advertiser.setAdvertiserNo(ADVERTISER_NO_PREFIX + snowflake.nextId());
         advertiser.setName(request.getName().trim());
         advertiser.setBalanceCents(request.getBalanceCents());
+        advertiser.setDailyLimitCents(0L);
         advertiser.setStatus(AdSwitchStatus.ON.getCode());
         advertiser.setVersion(0);
         adAdvertiserMapper.insert(advertiser);
@@ -158,13 +179,38 @@ public class AdManageServiceImpl implements AdManageService {
         if (request.getAmountCents() == null || request.getAmountCents() <= 0L) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "amountCents must be positive");
         }
-        requireAdvertiser(request.getId());
+        AdAdvertiser before = requireAdvertiser(request.getId());
         int updated = adAdvertiserMapper.addBalance(request.getId(), request.getAmountCents(), AdSwitchStatus.ON.getCode());
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "advertiser is frozen");
         }
+        long after = adAdvertiserMapper.selectById(request.getId()).getBalanceCents();
+        adAuditService.write("system", "recharge", "advertiser", request.getId(),
+                JsonUtils.toJson(Map.of("balanceCents", before.getBalanceCents())),
+                JsonUtils.toJson(Map.of("balanceCents", after)), request.getRemark());
         log.info("ad advertiser recharged id={} amount={}", request.getId(), request.getAmountCents());
-        return adAdvertiserMapper.selectById(request.getId()).getBalanceCents();
+        return after;
+    }
+
+    /**
+     * 调整账户日限额。0 表示不限，当天快照同步刷新，避免条件扣减仍按旧限额挡着。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateAdvertiserDailyLimit(Long id, long dailyLimitCents) {
+        if (dailyLimitCents < 0L || dailyLimitCents > Constants.MAX_MONEY_CENTS) {
+            throw new BusinessException(Constants.CODE_PARAM_INVALID, "invalid daily limit");
+        }
+        AdAdvertiser before = requireAdvertiser(id);
+        int updated = adAdvertiserMapper.updateDailyLimit(id, dailyLimitCents, before.getVersion());
+        if (updated == 0) {
+            throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "advertiser was modified by someone else");
+        }
+        adAdvertiserDailyMapper.updateLimitSnapshot(LocalDate.now(), id, dailyLimitCents);
+        adAuditService.write("system", "update_daily_limit", "advertiser", id,
+                JsonUtils.toJson(Map.of("dailyLimitCents", before.getDailyLimitCents())),
+                JsonUtils.toJson(Map.of("dailyLimitCents", dailyLimitCents)), "");
+        log.info("ad advertiser daily limit updated id={} limit={}", id, dailyLimitCents);
     }
 
     /**
@@ -237,6 +283,9 @@ public class AdManageServiceImpl implements AdManageService {
                 log.warn("rebuild ad budget replica failed campaign={}", request.getId(), ex);
             }
         }
+        candidateCache.invalidate();
+        adAuditService.write("system", "update_campaign", "campaign", request.getId(),
+                campaignSnapshot(current), campaignSnapshot(requireCampaign(request.getId())), "");
         log.info("ad campaign config updated id={}", request.getId());
     }
 
@@ -270,6 +319,9 @@ public class AdManageServiceImpl implements AdManageService {
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "campaign was modified by someone else");
         }
+        candidateCache.invalidate();
+        adAuditService.write("system", "transition:" + event.name(), "campaign", request.getId(),
+                campaignSnapshot(current), campaignSnapshot(requireCampaign(request.getId())), request.getRemark());
         log.info("ad campaign transition id={} from={} to={} event={}", request.getId(), current.getStatus(), target, event);
         return CampaignResponse.from(requireCampaign(request.getId()), adSettlementService.todayCharge(request.getId()));
     }
@@ -294,6 +346,9 @@ public class AdManageServiceImpl implements AdManageService {
         unit.setStatus(AdSwitchStatus.ON.getCode());
         unit.setVersion(0);
         adUnitMapper.insert(unit);
+        candidateCache.invalidate();
+        adAuditService.write("system", "create_unit", "unit", unit.getId(), "",
+                JsonUtils.toJson(Map.of("campaignId", unit.getCampaignId(), "bidType", unit.getBidType(), "bidCents", unit.getBidCents())), "");
         log.info("ad unit created id={} campaign={} bidType={} bid={}", unit.getId(), unit.getCampaignId(), unit.getBidType(), unit.getBidCents());
         return unit.getId();
     }
@@ -318,6 +373,10 @@ public class AdManageServiceImpl implements AdManageService {
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "unit was modified by someone else");
         }
+        candidateCache.invalidate();
+        adAuditService.write("system", "update_unit", "unit", request.getId(),
+                JsonUtils.toJson(Map.of("bidCents", current.getBidCents(), "pctr", current.getPctr())),
+                JsonUtils.toJson(Map.of("bidCents", String.valueOf(request.getBidCents()), "pctr", String.valueOf(request.getPctr()))), "");
         log.info("ad unit config updated id={}", request.getId());
     }
 
@@ -336,6 +395,10 @@ public class AdManageServiceImpl implements AdManageService {
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "unit was modified by someone else");
         }
+        candidateCache.invalidate();
+        adAuditService.write("system", "toggle_unit", "unit", request.getId(),
+                JsonUtils.toJson(Map.of("status", AdSwitchStatus.of(unit.getStatus()).name())),
+                JsonUtils.toJson(Map.of("status", status.name())), request.getRemark());
         log.info("ad unit toggled id={} status={}", request.getId(), status);
     }
 
@@ -356,6 +419,9 @@ public class AdManageServiceImpl implements AdManageService {
         creative.setRejectReason("");
         creative.setVersion(0);
         adCreativeMapper.insert(creative);
+        candidateCache.invalidate();
+        adAuditService.write("system", "create_creative", "creative", creative.getId(), "",
+                JsonUtils.toJson(Map.of("unitId", creative.getUnitId(), "title", creative.getTitle())), "");
         log.info("ad creative created id={} unit={}", creative.getId(), creative.getUnitId());
         return creative.getId();
     }
@@ -384,6 +450,10 @@ public class AdManageServiceImpl implements AdManageService {
         if (updated == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "creative was modified by someone else");
         }
+        candidateCache.invalidate();
+        adAuditService.write("system", "review_creative", "creative", request.getId(),
+                JsonUtils.toJson(Map.of("status", AdCreativeStatus.of(creative.getStatus()).name())),
+                JsonUtils.toJson(Map.of("status", target.name())), request.getRemark());
         log.info("ad creative reviewed id={} status={}", request.getId(), target);
     }
 
@@ -432,7 +502,7 @@ public class AdManageServiceImpl implements AdManageService {
     }
 
     /**
-     * 分页查询推广计划。列表也回查今日消耗，单页最多 200 条，N+1 可控。
+     * 分页查询推广计划。今日消耗用一次批量查询拿回，避免单页 200 条打 200 次数据库。
      *
      * @param query 查询条件
      * @param page  分页请求
@@ -444,8 +514,15 @@ public class AdManageServiceImpl implements AdManageService {
         }
         List<AdCampaign> list = adCampaignMapper.selectByPage(query.getStatus(), query.getParentId(), query.getKeyword(), page.getOffset(), page.getPageSize());
         long total = adCampaignMapper.countByPage(query.getStatus(), query.getParentId(), query.getKeyword());
+        Map<Long, Long> todayCharges = new LinkedHashMap<>();
+        if (!list.isEmpty()) {
+            List<Long> ids = list.stream().map(AdCampaign::getId).toList();
+            for (AdDailyStat stat : adDailyStatMapper.selectByCampaignIdsAndDate(ids, LocalDate.now())) {
+                todayCharges.put(stat.getCampaignId(), stat.getChargeCents());
+            }
+        }
         return PageResult.of(list, total, page)
-                .map(entity -> CampaignResponse.from(entity, adSettlementService.todayCharge(entity.getId())))
+                .map(entity -> CampaignResponse.from(entity, todayCharges.getOrDefault(entity.getId(), 0L)))
                 .map(item -> (Object) item);
     }
 
@@ -533,6 +610,22 @@ public class AdManageServiceImpl implements AdManageService {
             throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "advertiser " + id + " not found");
         }
         return advertiser;
+    }
+
+    /**
+     * 生成计划关键字段快照，用于审计「改前改后」。
+     *
+     * @param campaign 计划
+     * @return 快照 JSON
+     */
+    private String campaignSnapshot(AdCampaign campaign) {
+        return JsonUtils.toJson(Map.of(
+                "dailyBudgetCents", campaign.getDailyBudgetCents(),
+                "totalBudgetCents", campaign.getTotalBudgetCents(),
+                "spentTotalCents", campaign.getSpentTotalCents(),
+                "endDate", String.valueOf(campaign.getEndDate()),
+                "deliveryHours", campaign.getDeliveryHours(),
+                "status", campaign.getStatus().name()));
     }
 
     /**

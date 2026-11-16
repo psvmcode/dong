@@ -39,6 +39,14 @@ public interface AdManageService {
     Long recharge(AdActionRequest request);
 
     /**
+     * 调整广告主账户日限额。0 表示不限，非零时同步刷新当天快照。
+     *
+     * @param id              广告主 id
+     * @param dailyLimitCents 新的日限额，单位分
+     */
+    void updateAdvertiserDailyLimit(Long id, long dailyLimitCents);
+
+    /**
      * 创建推广计划。
      *
      * @param request 创建请求

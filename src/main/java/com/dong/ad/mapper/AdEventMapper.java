@@ -107,4 +107,39 @@ public interface AdEventMapper {
      */
     int markPending(@Param("id") Long id, @Param("chargeStatus") int chargeStatus);
 
+    /**
+     * 记录补投次数与下次允许补投时间，失败越多退避越久。
+     *
+     * @param id             事件 id
+     * @param resendCount    累计补投次数
+     * @param nextResendTime 下次允许补投时间
+     * @return 影响行数
+     */
+    int markRescheduled(@Param("id") Long id, @Param("resendCount") int resendCount, @Param("nextResendTime") LocalDateTime nextResendTime);
+
+    /**
+     * 统计某计费状态的事件数，健康检查用。
+     *
+     * @param chargeStatus 计费状态编码
+     * @return 事件数
+     */
+    long countByChargeStatus(@Param("chargeStatus") int chargeStatus);
+
+    /**
+     * 查询创建时间早于指定时点的事件 id，归档清理用。
+     *
+     * @param before 时间上界
+     * @param limit  最大条数
+     * @return 事件 id 列表
+     */
+    List<Long> selectIdsBefore(@Param("before") LocalDateTime before, @Param("limit") int limit);
+
+    /**
+     * 按 id 批量删除过期事件。
+     *
+     * @param ids 事件 id 列表
+     * @return 影响行数
+     */
+    int deleteByIds(@Param("ids") List<Long> ids);
+
 }

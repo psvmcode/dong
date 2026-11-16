@@ -66,4 +66,60 @@
         and status = 2
     </select>
 
+    <!-- 按广告主汇总某天金额，SQL 聚合避免把大促流水读进内存 -->
+    <select id="sumByAdvertiserAndDate" resultType="java.lang.Long">
+        select coalesce(sum(amount_cents), 0)
+        from ad_charge_record
+        where stat_date = #{statDate}
+        and advertiser_id = #{advertiserId}
+        and status = 2
+    </select>
+
+    <!-- 分页取某天有流水的计划 id，对账按计划分片 -->
+    <select id="selectCampaignIdsByStatDate" resultType="java.lang.Long">
+        select distinct campaign_id
+        from ad_charge_record
+        where stat_date = #{statDate}
+        order by campaign_id
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 取某计划某天的流水，单片按上限截断 -->
+    <select id="selectByStatDateAndCampaign" resultMap="chargeMap">
+        select
+        <include refid="chargeColumns"/>
+        from ad_charge_record
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 统计某计划某天流水数，超限必须报错而不是截断 -->
+    <select id="countByStatDateAndCampaign" resultType="java.lang.Long">
+        select count(*)
+        from ad_charge_record
+        where stat_date = #{statDate}
+        and campaign_id = #{campaignId}
+    </select>
+
+    <!-- 取过期流水搬去归档表 -->
+    <select id="selectExpired" resultMap="chargeMap">
+        select
+        <include refid="chargeColumns"/>
+        from ad_charge_record
+        where create_time &lt; #{before}
+        order by id
+        limit #{limit}
+    </select>
+
+    <!-- 批量删除已归档的在线流水 -->
+    <delete id="deleteByIds">
+        delete from ad_charge_record
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
 </mapper>
