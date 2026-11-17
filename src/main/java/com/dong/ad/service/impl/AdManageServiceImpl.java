@@ -208,7 +208,7 @@ public class AdManageServiceImpl implements AdManageService {
         }
         adAdvertiserDailyMapper.updateLimitSnapshot(LocalDate.now(), id, dailyLimitCents);
         adAuditService.write("system", "update_daily_limit", "advertiser", id,
-                JsonUtils.toJson(Map.of("dailyLimitCents", before.getDailyLimitCents())),
+                JsonUtils.toJson(Map.of("dailyLimitCents", String.valueOf(before.getDailyLimitCents()))),
                 JsonUtils.toJson(Map.of("dailyLimitCents", dailyLimitCents)), "");
         log.info("ad advertiser daily limit updated id={} limit={}", id, dailyLimitCents);
     }

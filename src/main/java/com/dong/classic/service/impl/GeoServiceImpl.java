@@ -88,6 +88,10 @@ public class GeoServiceImpl implements GeoService {
         RGeo<String> geo = geoOf(city);
         Map<String, Double> distances =
                 geo.radiusWithDistance(longitude, latitude, radiusKm, GeoUnit.KILOMETERS, GeoOrder.ASC, limit);
+        if (distances.isEmpty()) {
+            // 空成员数组调 GEOPOS 会触发 Redis 参数个数错误，范围内没人时应直接返回空集
+            return List.of();
+        }
         Map<String, GeoPosition> positions = geo.pos(distances.keySet().toArray(new String[0]));
         List<NearbyPlaceResponse> places = new ArrayList<>(distances.size());
         for (Map.Entry<String, Double> entry : distances.entrySet()) {

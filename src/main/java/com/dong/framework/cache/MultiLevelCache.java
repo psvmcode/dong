@@ -300,6 +300,11 @@ public class MultiLevelCache implements SmartInitializingSingleton {
             return distributedLockService.tryLock(REBUILD_LOCK_PREFIX + key, properties.getRebuildLease(), properties.getRebuildWait());
         } catch (Exception ex) {
             log.warn("rebuild lock unavailable key={}, rebuilding without lock: {}", key, ex.getMessage());
+            if (Thread.currentThread().isInterrupted()) {
+                // 线程已被中断，继续无锁回源只会让中断期间的数据库查询全部失败
+                throw new com.dong.common.exception.BusinessException(
+                        com.dong.common.constant.Constants.CODE_DEPENDENCY_UNAVAILABLE, "cache rebuild interrupted");
+            }
             return null;
         }
     }

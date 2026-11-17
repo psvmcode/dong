@@ -1,5 +1,7 @@
 package com.dong.upload.task;
 
+import com.dong.framework.lock.DistributedLockService;
+import com.dong.framework.lock.LockHandle;
 import com.dong.upload.service.UploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 /**
  * 清理过期未完成的上传任务。
@@ -28,6 +32,11 @@ public class UploadCleanupTask {
     private final UploadService uploadService;
 
     /**
+     * distributedLockService，多实例部署时保证只有一个实例清理磁盘。
+     */
+    private final DistributedLockService distributedLockService;
+
+    /**
      * 超过多少小时未完成算过期。
      */
     @Value("${dong.upload.cleanup-expire-hours:24}")
@@ -45,7 +54,10 @@ public class UploadCleanupTask {
     @Scheduled(fixedDelayString = "${dong.upload.cleanup-interval-ms:3600000}",
             initialDelayString = "${dong.upload.cleanup-initial-delay-ms:60000}")
     public void cleanup() {
-        try {
+        try (LockHandle handle = distributedLockService.tryLock("lab:upload:cleanup", Duration.ofMinutes(5L), Duration.ZERO)) {
+            if (!handle.isAcquired()) {
+                return;
+            }
             int removed = uploadService.cleanupExpired(expireHours, limit);
             if (removed > 0) {
                 log.info("upload cleanup task removed={} expireHours={}", removed, expireHours);

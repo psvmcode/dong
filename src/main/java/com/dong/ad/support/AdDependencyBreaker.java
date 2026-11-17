@@ -171,6 +171,8 @@ public class AdDependencyBreaker {
                 log.warn("ad breaker {} opened until={} failures={} probe={} cause={}", name, until, failures, probing,
                         ex == null ? "" : ex.toString());
             }
+            // 半开探针失败后必须复位，否则下一轮 CAS 永远拿不到探针名额，熔断器再也无法自愈
+            state.probing.set(false);
         }
     }
 

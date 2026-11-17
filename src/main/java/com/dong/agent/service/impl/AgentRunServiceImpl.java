@@ -407,11 +407,17 @@ public class AgentRunServiceImpl implements AgentRunService {
         String runNo = createRun(request, sessionNo);
         enterConcurrency();
         SseEmitter emitter = new SseEmitter(runTimeout.plusSeconds(10).toMillis());
+        // SseEmitter 非线程安全：主循环与并行工具回调都会推送事件，必须串行化
+        final Object emitterLock = new Object();
         try {
             List<ChatMessage> history = loadHistory(sessionNo);
             int startSeq = sessionService.nextSeq(sessionNo);
             saveUserMessage(sessionNo, runNo, startSeq, request.getPrompt());
-            AgentEventSink sink = (event, data) -> emitter.send(SseEmitter.event().name(event).data(data));
+            AgentEventSink sink = (event, data) -> {
+                synchronized (emitterLock) {
+                    emitter.send(SseEmitter.event().name(event).data(data));
+                }
+            };
             AgentRunRecorder recorder = new AgentRunRecorder(messageMapper, toolCallMapper, toolRegistry,
                     runNo, sessionNo, startSeq + 1, sink);
             // 连接断开必须置取消标记：否则循环在后台继续跑，是最浪费的一种泄漏。
@@ -446,7 +452,9 @@ public class AgentRunServiceImpl implements AgentRunService {
                 } finally {
                     activeRuns.decrementAndGet();
                     closedNormally.set(true);
-                    emitter.complete();
+                    synchronized (emitterLock) {
+                        emitter.complete();
+                    }
                 }
             });
             return emitter;
@@ -454,7 +462,9 @@ public class AgentRunServiceImpl implements AgentRunService {
             // 名额已被占用而任务未成功提交（查库失败或线程池拒绝），
             // 必须在这里释放，否则每次泄漏一个名额，8 个名额耗尽后整个模块持续拒绝服务
             activeRuns.decrementAndGet();
-            emitter.completeWithError(e);
+            synchronized (emitterLock) {
+                emitter.completeWithError(e);
+            }
             throw e;
         }
     }

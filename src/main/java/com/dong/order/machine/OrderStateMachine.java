@@ -48,7 +48,7 @@ public class OrderStateMachine {
         });
         builder.externalTransition().from(OrderStatus.WAIT_SHIP).to(OrderStatus.WAIT_RECEIVE).on(OrderEvent.SHIP).when((OrderContext ctx) -> ctx.getTrackingNo() != null && !ctx.getTrackingNo().isBlank()).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
         builder.externalTransition().from(OrderStatus.WAIT_RECEIVE).to(OrderStatus.FINISHED).on(OrderEvent.RECEIVE).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
-        builder.externalTransition().from(OrderStatus.REFUNDING).to(OrderStatus.REFUNDED).on(OrderEvent.REFUND_SUCCESS).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
+        builder.externalTransition().from(OrderStatus.REFUNDING).to(OrderStatus.REFUNDED).on(OrderEvent.REFUND_SUCCESS).when(this::refundAmountValid).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));
         // 同一个事件配两条迁移，靠守卫分流：退款失败要退回发起退款前的那个状态，
         // 而不是固定退回某一个。COLA 要求这种情况下每条迁移都必须带 when，否则装配期就报错
         builder.externalTransition().from(OrderStatus.REFUNDING).to(OrderStatus.WAIT_SHIP).on(OrderEvent.REFUND_FAIL).when((OrderContext ctx) -> ctx.getRefundFrom() == OrderStatus.WAIT_SHIP).perform((OrderStatus from, OrderStatus to, OrderEvent event, OrderContext ctx) -> accept(ctx, to));

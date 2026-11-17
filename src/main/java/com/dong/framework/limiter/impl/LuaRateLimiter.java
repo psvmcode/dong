@@ -1,5 +1,7 @@
 package com.dong.framework.limiter.impl;
 
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;
 import com.dong.framework.redis.RedisService;
 import com.dong.framework.limiter.RateLimitAlgorithm;
 import com.dong.framework.limiter.RateLimitRule;
@@ -179,6 +181,26 @@ public class LuaRateLimiter implements RateLimiter {
      */
     @Override
     public boolean tryAcquire(String key, RateLimitRule rule, long permits) {
+        try {
+            return doTryAcquire(key, rule, permits);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            // Redis 故障必须转成业务错误码。限流组件自己抛 500 会让被保护的接口先死在切面里
+            log.warn("distributed rate limiter degraded key={}", key, ex);
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "rate limiter dependency unavailable", ex);
+        }
+    }
+
+    /**
+     * 执行 Lua 限流脚本。
+     *
+     * @param key     业务键
+     * @param rule    限流规则
+     * @param permits 请求配额
+     * @return 是否放行
+     */
+    private boolean doTryAcquire(String key, RateLimitRule rule, long permits) {
         long windowMs = Math.max(1L, rule.window().toMillis());
         String base = KEY_PREFIX + rule.algorithm().name().toLowerCase() + ":" + key + ":" + rule.limit() + ":" + windowMs;
         switch (rule.algorithm()) {

@@ -39,6 +39,13 @@ public interface FxQuoteService {
     void markUsed(String quoteNo);
 
     /**
+     * 释放已锁定但没能完成扣款的报价，避免永久悬挂占用。
+     *
+     * @param quoteNo 报价编号
+     */
+    void release(String quoteNo);
+
+    /**
      * 当前牌价，用于展示与对比锁定汇率。
      */
     BigDecimal currentRate(String sourceCurrency, String targetCurrency);

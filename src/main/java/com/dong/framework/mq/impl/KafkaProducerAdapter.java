@@ -1,5 +1,7 @@
 package com.dong.framework.mq.impl;
 
+import com.dong.common.constant.Constants;
+import com.dong.common.exception.BusinessException;
 import com.dong.common.util.JsonUtils;
 import com.dong.framework.mq.MessageProducer;
 import lombok.RequiredArgsConstructor;
@@ -103,11 +105,17 @@ public class KafkaProducerAdapter implements MessageProducer {
         }
 
         Message<String> message = builder.build();
-        kafkaTemplate.send(message).whenComplete((result, ex) -> {
-            if (ex != null) {
-                log.error("kafka send failed topic={} key={}", topic, key, ex);
-            }
-        });
+        try {
+            kafkaTemplate.send(message).whenComplete((result, ex) -> {
+                if (ex != null) {
+                    log.error("kafka send failed topic={} key={}", topic, key, ex);
+                }
+            });
+        } catch (RuntimeException ex) {
+            // 元数据拉取超时、序列化失败等同步异常不能穿透成 500
+            log.error("kafka send failed synchronously topic={} key={}", topic, key, ex);
+            throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "kafka send failed", ex);
+        }
     }
 
     /**

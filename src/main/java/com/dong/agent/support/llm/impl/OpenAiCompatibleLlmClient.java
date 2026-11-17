@@ -189,12 +189,13 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
                 .build();
         HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() != 200) {
-            String detail = readFully(response.body());
+            String detail = readFully(new LimitedInputStream(response.body(), Constants.MAX_TEXT_LENGTH * 16L));
             log.warn("agent llm bad status={} detail={}", response.statusCode(), detail);
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "llm returned status " + response.statusCode());
         }
         try (InputStream in = response.body();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(
+                     new LimitedInputStream(in, Constants.MAX_TEXT_LENGTH * 16L), StandardCharsets.UTF_8))) {
             String line;
             long deadline = System.nanoTime() + readTimeout.toNanos();
             while ((line = reader.readLine()) != null) {
@@ -402,6 +403,42 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
          * 入参累积。
          */
         private final StringBuilder arguments = new StringBuilder();
+
+    }
+
+    /**
+     * 限额输入流。readLine 会先把整行读进内存才返回，
+     * 之后再检查长度已经太晚；必须在流层面截断才能防住异常上游的超大单行。
+     */
+    private static final class LimitedInputStream extends java.io.FilterInputStream {
+
+        private long remaining;
+
+        private LimitedInputStream(InputStream in, long limit) {
+            super(in);
+            this.remaining = Math.max(1L, limit);
+        }
+
+        @Override
+        public int read() throws java.io.IOException {
+            if (remaining-- <= 0L) {
+                throw new java.io.IOException("llm stream limit exceeded");
+            }
+            return super.read();
+        }
+
+        @Override
+        public int read(byte[] bytes, int off, int len) throws java.io.IOException {
+            int allowed = (int) Math.min(len, Math.max(0L, remaining));
+            if (allowed <= 0) {
+                throw new java.io.IOException("llm stream limit exceeded");
+            }
+            int count = super.read(bytes, off, allowed);
+            if (count > 0) {
+                remaining -= count;
+            }
+            return count;
+        }
 
     }
 

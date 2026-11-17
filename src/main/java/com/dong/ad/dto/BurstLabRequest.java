@@ -47,6 +47,7 @@ public class BurstLabRequest {
     /**
      * 触达用户 id 起始值，各任务在它上面递增，模拟不同用户。
      */
+    @NotNull
     @Positive
     private Long userId = 9_000_000L;
 

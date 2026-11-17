@@ -74,6 +74,7 @@ public class RedPacketStockServiceImpl implements RedPacketStockService {
             end
             local seq, amount = string.match(item, '^(%d+):(%d+)$')
             if seq == nil then
+                redis.call('lpush', KEYS[3], item)
                 return '-2'
             end
             redis.call('decr', KEYS[1])

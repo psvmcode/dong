@@ -303,10 +303,27 @@ public class LogSearchServiceImpl implements LogSearchService {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "fromMillis must not be greater than toMillis");
         }
         if (from != null || to != null) {
-            bool.filter(RangeQuery.of(range -> range.date(date -> date.field("timestamp").gte(from == null ? null : Instant.ofEpochMilli(from).toString()).lte(to == null ? null : Instant.ofEpochMilli(to).toString())))._toQuery());
+            bool.filter(RangeQuery.of(range -> range.date(date -> date.field("timestamp")
+                    .gte(from == null ? null : instantOf(from))
+                    .lte(to == null ? null : instantOf(to))))._toQuery());
         }
         // 一个条件都没有时返回空的 bool，语义等价于 match_all
         return new Query.Builder().bool(bool.build()).build();
+    }
+
+    /**
+     * 毫秒时间戳转 ES 时间字符串。极端值会让 Instant 抛异常，转成参数错误而不是 500。
+     *
+     * @param millis 毫秒时间戳
+     * @return ES 时间字符串
+     */
+    private String instantOf(long millis) {
+        try {
+            return Instant.ofEpochMilli(millis).toString();
+        } catch (RuntimeException ex) {
+            throw new com.dong.common.exception.BusinessException(
+                    com.dong.common.constant.Constants.CODE_PARAM_INVALID, "invalid time range");
+        }
     }
 
     /**

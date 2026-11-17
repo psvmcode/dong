@@ -64,8 +64,8 @@ public class ChannelRouterImpl implements ChannelRouter {
         // 只遍历启用渠道，停用的渠道等同熔断，不能作为候选
         for (ChannelConfig config : channelConfigMapper.selectEnabled()) {
             SettlementChannel channel = SettlementChannel.of(config.getChannel());
-            if (sourceAmount.compareTo(config.getPerTxLimit()) > 0) {
-                reasons.add(channel + " excluded, amount exceeds per tx limit " + config.getPerTxLimit());
+            if (sourceAmount.compareTo(nz(config.getPerTxLimit())) > 0) {
+                reasons.add(channel + " excluded, amount exceeds per tx limit " + nz(config.getPerTxLimit()));
                 continue;
             }
             BigDecimal fee = feeOf(config, sourceAmount);
@@ -96,10 +96,10 @@ public class ChannelRouterImpl implements ChannelRouter {
         for (ChannelConfig config : channelConfigMapper.selectAll(com.dong.common.constant.Constants.MAX_BATCH_SIZE)) {
             SettlementChannel channel = SettlementChannel.of(config.getChannel());
             // 停用渠道展示出来但标记为不合格，便于运营看到熔断状态
-            boolean qualified = config.getEnabled() == 1 && sourceAmount.compareTo(config.getPerTxLimit()) <= 0;
+            boolean qualified = config.getEnabled() == 1 && sourceAmount.compareTo(nz(config.getPerTxLimit())) <= 0;
             BigDecimal fee = feeOf(config, sourceAmount);
             BigDecimal etaCost = BigDecimal.valueOf(config.getEtaMinutes()).multiply(weight).setScale(2, RoundingMode.HALF_UP);
-            scores.put(channel.name(), Map.of("qualified", qualified, "enabled", config.getEnabled() == 1, "fee", fee, "etaMinutes", config.getEtaMinutes(), "etaCost", etaCost, "score", fee.add(etaCost), "perTxLimit", config.getPerTxLimit()));
+            scores.put(channel.name(), Map.of("qualified", qualified, "enabled", config.getEnabled() == 1, "fee", fee, "etaMinutes", config.getEtaMinutes(), "etaCost", etaCost, "score", fee.add(etaCost), "perTxLimit", nz(config.getPerTxLimit())));
         }
         return scores;
     }
@@ -109,7 +109,17 @@ public class ChannelRouterImpl implements ChannelRouter {
      * 这里直接用，不再按渠道号回表——否则一次路由就是 1+N 次查询。
      */
     private BigDecimal feeOf(ChannelConfig config, BigDecimal sourceAmount) {
-        return config.getFixedFee().add(sourceAmount.multiply(config.getRateFee())).setScale(2, RoundingMode.HALF_UP);
+        return nz(config.getFixedFee()).add(sourceAmount.multiply(nz(config.getRateFee()))).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 渠道配置金额空值归一。历史数据可能留下 NULL，路由不能因此整个失败。
+     *
+     * @param value 原始金额
+     * @return 非空金额
+     */
+    private static BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
 }

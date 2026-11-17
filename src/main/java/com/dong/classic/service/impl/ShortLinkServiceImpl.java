@@ -135,6 +135,19 @@ public class ShortLinkServiceImpl implements ShortLinkService {
             if (NULL_MARKER.equals(cached)) {
                 throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "short link " + code + " not found");
             }
+            ShortLinkSnapshot snapshot = parseSnapshot(cached);
+            if (snapshot != null) {
+                if (snapshot.enabled() != null && snapshot.enabled() == DISABLED) {
+                    throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "short link " + code + " is disabled");
+                }
+                if (snapshot.expireTime() != null && !snapshot.expireTime().isBlank()
+                        && LocalDateTime.parse(snapshot.expireTime()).isBefore(LocalDateTime.now())) {
+                    throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "short link " + code + " expired");
+                }
+                countHit(code);
+                return snapshot.url();
+            }
+            // 兼容旧版本写入的纯 URL 缓存
             countHit(code);
             return cached;
         }
@@ -146,7 +159,9 @@ public class ShortLinkServiceImpl implements ShortLinkService {
         // 缓存未命中才走数据库，状态校验放在这里：
         // 停用时会主动删缓存，所以停用能立即生效，不会因缓存继续跳转
         ensureUsable(shortLink);
-        redisService.set(CODE_CACHE + code, shortLink.getOriginUrl(), resolveTtl(shortLink.getExpireTime()));
+        redisService.set(CODE_CACHE + code,
+                com.dong.common.util.JsonUtils.toJson(ShortLinkSnapshot.of(shortLink)),
+                resolveTtl(shortLink.getExpireTime()));
         countHit(code);
         return shortLink.getOriginUrl();
     }
@@ -343,6 +358,46 @@ public class ShortLinkServiceImpl implements ShortLinkService {
         }
         Duration left = Duration.between(LocalDateTime.now(), expireTime);
         return left.isNegative() || left.isZero() ? Duration.ofSeconds(1) : left;
+    }
+
+    /**
+     * 解析缓存里的状态快照。旧版本缓存的是纯 URL，解析失败时返回 null 走兼容分支。
+     *
+     * @param cached 缓存值
+     * @return 状态快照
+     */
+    private ShortLinkSnapshot parseSnapshot(String cached) {
+        if (cached == null || !cached.startsWith("{")) {
+            return null;
+        }
+        try {
+            return com.dong.common.util.JsonUtils.fromJson(cached, ShortLinkSnapshot.class);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    /**
+     * 缓存中的短链状态快照。把状态与过期时间随 URL 一起缓存，
+     * 命中时仍做轻量校验，避免缓存 TTL 与业务状态不一致时继续跳转。
+     *
+     * @param url        原始链接
+     * @param enabled    启用状态
+     * @param expireTime 过期时间字符串
+     */
+    private record ShortLinkSnapshot(String url, Integer enabled, String expireTime) {
+
+        /**
+         * 由实体构造快照。
+         *
+         * @param link 短链实体
+         * @return 快照
+         */
+        private static ShortLinkSnapshot of(ShortLink link) {
+            return new ShortLinkSnapshot(link.getOriginUrl(), link.getEnabled(),
+                    link.getExpireTime() == null ? "" : link.getExpireTime().toString());
+        }
+
     }
 
 }

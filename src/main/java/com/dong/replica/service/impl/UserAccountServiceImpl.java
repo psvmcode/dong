@@ -77,16 +77,14 @@ public class UserAccountServiceImpl implements UserAccountService {
         if (fromUserId != null && fromUserId.equals(toUserId)) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "cannot transfer to the same account");
         }
-        UserAccount from = requireAccount(fromUserId);
-        UserAccount to = requireAccount(toUserId);
-        if (from.getBalance() < amount) {
+        requireAccount(fromUserId);
+        requireAccount(toUserId);
+        if (userAccountMapper.deductBalance(fromUserId, amount) == 0) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "balance not enough");
         }
-        if (to.getBalance() > Long.MAX_VALUE - amount) {
-            throw new BusinessException(Constants.CODE_PARAM_INVALID, "target balance overflow");
+        if (userAccountMapper.addBalance(toUserId, amount) == 0) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "target account not found");
         }
-        userAccountMapper.updateBalance(fromUserId, from.getBalance() - amount);
-        userAccountMapper.updateBalance(toUserId, to.getBalance() + amount);
         log.info("transfer on replica instance from={} to={} amount={}", fromUserId, toUserId, amount);
         return amount;
     }

@@ -116,7 +116,9 @@ public class UniqueVisitorServiceImpl implements UniqueVisitorService {
         if (keys.size() == 1) {
             return counter(page, from).count();
         }
-        RHyperLogLog<String> merged = redissonClient.getHyperLogLog(UV + page + ":merged:" + from + "_" + to);
+        // 请求级随机后缀：固定 key 会被并发请求互相 delete，导致 count 读到 0 或不完整结果
+        String suffix = java.util.UUID.randomUUID().toString().replace("-", "");
+        RHyperLogLog<String> merged = redissonClient.getHyperLogLog(UV + page + ":merged:" + from + "_" + to + ":" + suffix);
         merged.mergeWith(keys.toArray(new String[0]));
         long count = merged.count();
         // 用完即删：merged 只是中间结果，按 (page, from, to) 组合无限累积会撑爆键空间

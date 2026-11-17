@@ -43,6 +43,9 @@ public class DistributedLockServiceImpl implements DistributedLockService {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new com.dong.common.exception.BusinessException(com.dong.common.constant.Constants.CODE_OPERATION_CONFLICT, "interrupted while waiting for lock " + key);
+        } catch (RuntimeException ex) {
+            // Redis 不可用时转成业务错误码，不让锁组件自己制造 500
+            throw new com.dong.common.exception.BusinessException(com.dong.common.constant.Constants.CODE_DEPENDENCY_UNAVAILABLE, "lock service unavailable: " + key, ex);
         }
 
         if (!acquired) {

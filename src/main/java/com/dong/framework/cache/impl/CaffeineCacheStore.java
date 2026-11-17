@@ -81,6 +81,11 @@ public class CaffeineCacheStore implements CacheStore {
             return entry.expired() ? new CacheLookup.Miss<>() : new CacheLookup.Empty<>();
         }
         T value = convert(entry.value(), type);
+        if (value == null) {
+            // 类型不匹配时按未命中处理：让调用方回源自愈，而不是把反序列化异常抛成 500
+            cache.invalidate(key);
+            return new CacheLookup.Miss<>();
+        }
         return entry.expired() ? new CacheLookup.Stale<>(value) : new CacheLookup.Hit<>(value);
     }
 
@@ -101,7 +106,17 @@ public class CaffeineCacheStore implements CacheStore {
         if (entry.value() == CacheEmpty.INSTANCE) {
             return entry.expired() ? new CacheLookup.Miss<>() : new CacheLookup.Empty<>();
         }
-        T value = JsonUtils.fromJson(JsonUtils.toJson(entry.value()), type);
+        T value;
+        try {
+            value = JsonUtils.fromJson(JsonUtils.toJson(entry.value()), type);
+        } catch (Exception ex) {
+            cache.invalidate(key);
+            return new CacheLookup.Miss<>();
+        }
+        if (value == null) {
+            cache.invalidate(key);
+            return new CacheLookup.Miss<>();
+        }
         return entry.expired() ? new CacheLookup.Stale<>(value) : new CacheLookup.Hit<>(value);
     }
 
@@ -186,7 +201,17 @@ public class CaffeineCacheStore implements CacheStore {
      */
     @SuppressWarnings("unchecked")
     private static <T> T convert(Object value, Class<T> type) {
-        return type.isInstance(value) ? (T) value : JsonUtils.fromJson(JsonUtils.toJson(value), type);
+        if (value == null) {
+            return null;
+        }
+        if (type.isInstance(value)) {
+            return (T) value;
+        }
+        try {
+            return JsonUtils.fromJson(JsonUtils.toJson(value), type);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     /**

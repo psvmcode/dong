@@ -35,4 +35,22 @@ public interface UserAccountMapper {
      */
     int updateBalance(@Param("userId") Long userId, @Param("balance") long balance);
 
+    /**
+     * 原子扣减余额。充足条件写进 where，靠影响行数判定，避免读后写丢失更新。
+     *
+     * @param userId 用户 id
+     * @param amount 扣减金额
+     * @return 影响行数
+     */
+    int deductBalance(@Param("userId") Long userId, @Param("amount") long amount);
+
+    /**
+     * 原子增加余额。
+     *
+     * @param userId 用户 id
+     * @param amount 增加金额
+     * @return 影响行数
+     */
+    int addBalance(@Param("userId") Long userId, @Param("amount") long amount);
+
 }

@@ -8,6 +8,7 @@
         <result column="advertiser_no" property="advertiserNo"/>
         <result column="name" property="name"/>
         <result column="balance_cents" property="balanceCents"/>
+        <result column="daily_limit_cents" property="dailyLimitCents"/>
         <result column="status" property="status"/>
         <result column="version" property="version"/>
         <result column="create_time" property="createTime"/>
@@ -15,7 +16,7 @@
     </resultMap>
 
     <sql id="advertiserColumns">
-        id, advertiser_no, name, balance_cents, status, version, create_time, update_time
+        id, advertiser_no, name, balance_cents, daily_limit_cents, status, version, create_time, update_time
     </sql>
 
     <!-- 按主键查账户 -->

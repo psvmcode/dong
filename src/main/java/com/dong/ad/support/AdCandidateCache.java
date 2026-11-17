@@ -41,12 +41,6 @@ public class AdCandidateCache {
     }
 
     /**
-     * 全局快照键。召回本来就是一次查全部候选，按计划拆 key 会变成 N 次回源，
-     * 反而比不缓存更慢。
-     */
-    private static final String GLOBAL_KEY = "global";
-
-    /**
      * 缓存开关。
      */
     @Value("${dong.ad.candidate-cache-enabled:true}")
@@ -98,11 +92,11 @@ public class AdCandidateCache {
      * @param loader 回源加载器
      * @return 候选快照
      */
-    public Snapshot get(Supplier<Snapshot> loader) {
+    public Snapshot get(String key, Supplier<Snapshot> loader) {
         if (!enabled) {
             return loader.get();
         }
-        Snapshot hit = cache.getIfPresent(GLOBAL_KEY);
+        Snapshot hit = cache.getIfPresent(key);
         if (hit != null) {
             hits.increment();
             return hit;
@@ -110,7 +104,7 @@ public class AdCandidateCache {
         misses.increment();
         Snapshot loaded = loader.get();
         if (loaded != null && !loaded.units().isEmpty()) {
-            cache.put(GLOBAL_KEY, loaded);
+            cache.put(key, loaded);
         }
         return loaded;
     }
@@ -120,7 +114,7 @@ public class AdCandidateCache {
      * 否则暂停投放最多要等一个 TTL 才生效。
      */
     public void invalidate() {
-        cache.invalidate(GLOBAL_KEY);
+        cache.invalidateAll();
     }
 
     /**

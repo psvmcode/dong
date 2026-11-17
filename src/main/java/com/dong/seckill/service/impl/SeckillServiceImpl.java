@@ -106,6 +106,8 @@ public class SeckillServiceImpl implements SeckillService {
         soldOutFlag.clear(activityId);
         int updated = seckillActivityMapper.updateStatus(activityId, SeckillActivityStatus.ONLINE.getCode(), activity.getVersion());
         if (updated == 0) {
+            // Redis 预热不在 DB 事务内，乐观锁失败会回滚 DB 却留下已预热的库存
+            seckillStockService.clear(activityId);
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "activity was modified by someone else");
         }
         seckillActivityMapper.updateAvailableStock(activityId, activity.getTotalStock());
@@ -125,6 +127,9 @@ public class SeckillServiceImpl implements SeckillService {
         SeckillActivity activity = requireActivity(activityId);
         if (!isActive(activity)) {
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "activity is not open right now");
+        }
+        if (activity.getUnitPrice() == null) {
+            throw new BusinessException(Constants.CODE_DATA_NOT_FOUND, "activity price is broken");
         }
 
         if (soldOutFlag.isSoldOut(activityId)) {
@@ -250,7 +255,9 @@ public class SeckillServiceImpl implements SeckillService {
      */
     private boolean isActive(SeckillActivity activity) {
         LocalDateTime now = LocalDateTime.now();
-        return activity.getStatus() == SeckillActivityStatus.ONLINE && !now.isBefore(activity.getStartTime()) && !now.isAfter(activity.getEndTime());
+        return activity.getStatus() == SeckillActivityStatus.ONLINE
+                && activity.getStartTime() != null && activity.getEndTime() != null
+                && !now.isBefore(activity.getStartTime()) && !now.isAfter(activity.getEndTime());
     }
 
     /**

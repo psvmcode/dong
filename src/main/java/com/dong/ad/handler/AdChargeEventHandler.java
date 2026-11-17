@@ -72,7 +72,7 @@ public class AdChargeEventHandler implements MessageHandler {
         }
         if (command == null || command.eventId() == null || command.traceId() == null || command.statDate() == null
                 || command.campaignId() == null || command.advertiserId() == null || command.amountCents() == null
-                || command.chargeMode() == null) {
+                || command.eventType() == null || command.chargeMode() == null) {
             malformed.increment();
             log.error("ad charge message missing required fields dropped key={} payload={}", key, payload);
             return true;

@@ -210,7 +210,19 @@ public class FxQuoteServiceImpl implements FxQuoteService {
         if (config == null) {
             throw new BusinessException(Constants.CODE_PARAM_INVALID, "channel not configured " + channel);
         }
-        return config.getFixedFee().add(sourceAmount.multiply(config.getRateFee())).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal fixed = config.getFixedFee() == null ? BigDecimal.ZERO : config.getFixedFee();
+        BigDecimal rate = config.getRateFee() == null ? BigDecimal.ZERO : config.getRateFee();
+        return fixed.add(sourceAmount.multiply(rate)).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 释放已锁定但扣款失败的报价。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void release(String quoteNo) {
+        fxQuoteMapper.updateStatus(quoteNo, FxQuoteStatus.AVAILABLE);
+        log.warn("fx quote released after debit failure quoteNo={}", quoteNo);
     }
 
     /**

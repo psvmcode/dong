@@ -228,6 +228,14 @@ public class OrderServiceImpl implements OrderService {
         OrderEvent event = OrderEvent.ofName(request.getEvent());
         TradeOrder order = requireOrder(orderNo);
         OrderStatus from = order.getStatus();
+        if (event == OrderEvent.REFUND_SUCCESS && request.getRefundAmount() != null) {
+            BigDecimal remaining = order.getPayAmount() == null ? BigDecimal.ZERO
+                    : order.getPayAmount().subtract(refundedOf(order));
+            if (request.getRefundAmount().compareTo(BigDecimal.ZERO) <= 0
+                    || request.getRefundAmount().compareTo(remaining) > 0) {
+                throw new BusinessException(Constants.CODE_PARAM_INVALID, "refund amount out of range");
+            }
+        }
         OrderContext context = buildContext(order, request);
         if (!stateMachine.supports(from, event)) {
             reject(order, event, from, "当前状态不支持该事件", context.getOperator());

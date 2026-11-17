@@ -275,6 +275,9 @@ public class SearchServiceImpl implements SearchService {
             result.setHasMore(hits.size() == size && !hits.isEmpty());
             result.setNextAfter(hits.isEmpty() ? null : toCursor(hits.get(hits.size() - 1).sort()));
             return result;
+        } catch (BusinessException ex) {
+            // 参数错误（如畸形游标）必须保持 1000，不能被包装成依赖故障 1005
+            throw ex;
         } catch (Exception ex) {
             throw new BusinessException(Constants.CODE_DEPENDENCY_UNAVAILABLE, "deep search failed", ex);
         }

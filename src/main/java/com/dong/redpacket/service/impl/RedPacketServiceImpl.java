@@ -162,7 +162,10 @@ public class RedPacketServiceImpl implements RedPacketService {
         }
         if (!claimShare(packetNo, userId, reservation)) {
             metrics.staleShare();
-            log.warn("stale share discarded packetNo={} seq={}", packetNo, reservation.seq());
+            // Lua 已经弹出这份份额且把用户写进去重集合，不归还会让份额和用户同时卡死
+            redPacketStockService.restore(packetNo, userId, reservation.amount(), reservation.seq());
+            metrics.stockRestored();
+            log.warn("stale share restored packetNo={} seq={}", packetNo, reservation.seq());
             throw new BusinessException(Constants.CODE_OPERATION_CONFLICT, "share was stale, please retry");
         }
         try {
@@ -179,7 +182,8 @@ public class RedPacketServiceImpl implements RedPacketService {
         if (latest.getStatus() == RedPacketStatus.CREATED) {
             redPacketMapper.updateStatus(packetNo, RedPacketStatus.DISTRIBUTING.getCode());
         }
-        if (latest.getRemainCount() <= 0) {
+        Integer remainCount = latest.getRemainCount();
+        if (remainCount != null && remainCount <= 0) {
             redPacketMapper.updateStatus(packetNo, RedPacketStatus.FINISHED.getCode());
             soldOutFlag.mark(packetNo);
         }
@@ -368,11 +372,14 @@ public class RedPacketServiceImpl implements RedPacketService {
      */
     private void rollbackReservation(String packetNo, Long userId, GrabReservation reservation) {
         if (reservation.itemClaimed()) {
+            // DB 降级路径从未从 Redis 队列弹出过份额，归还就会凭空造出一份幽灵份额
             redPacketItemMapper.release(packetNo, reservation.seq(), userId);
+        } else {
+            redPacketStockService.restore(packetNo, userId, reservation.amount(), reservation.seq());
+            metrics.stockRestored();
         }
-        redPacketStockService.restore(packetNo, userId, reservation.amount(), reservation.seq());
-        metrics.stockRestored();
-        log.warn("red packet reservation rolled back packetNo={} user={} seq={}", packetNo, userId, reservation.seq());
+        log.warn("red packet reservation rolled back packetNo={} user={} seq={} degraded={}", packetNo, userId,
+                reservation.seq(), reservation.itemClaimed());
     }
 
     /**

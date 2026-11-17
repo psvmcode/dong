@@ -328,7 +328,8 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
             return DeliveryResponse.empty("no eligible campaign", diagnostics);
         }
         List<Long> campaignIds = eligible.stream().map(AdCampaign::getId).toList();
-        AdCandidateCache.Snapshot snapshot = candidateCache.get(() -> loadCandidates(campaignIds));
+        String cacheKey = String.join(",", campaignIds.stream().sorted().map(String::valueOf).toList());
+        AdCandidateCache.Snapshot snapshot = candidateCache.get(cacheKey, () -> loadCandidates(campaignIds));
         List<AdUnit> units = snapshot == null ? List.of() : snapshot.units();
         diagnostics.put("enabledUnits", units.size());
         if (units.isEmpty()) {
@@ -662,7 +663,8 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
             if (!allowFastClick && gapMillis >= 0L && gapMillis < minClickDelayMs) {
                 return "too fast click";
             }
-            if (gapMillis > clickWindowSeconds * 1000L) {
+            long windowMillis = Duration.ofSeconds(Math.min(Math.max(1L, clickWindowSeconds), Constants.MAX_WINDOW_SECONDS)).toMillis();
+            if (gapMillis > windowMillis) {
                 return "click out of window";
             }
         }

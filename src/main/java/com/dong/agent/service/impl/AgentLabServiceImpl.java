@@ -95,6 +95,32 @@ public class AgentLabServiceImpl implements AgentLabService {
     private final Executor executor;
 
     /**
+     * E8 父任务专用线程池。父任务内部还要向 agentToolExecutor 提交工具子任务，
+     * 两者共用同一个池会饥饿自锁：父任务占满 worker 后在 await 等子任务，子任务永远排在队列里。
+     */
+    private java.util.concurrent.ExecutorService e8Executor;
+
+    /**
+     * 初始化 E8 专用线程池。
+     */
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        e8Executor = java.util.concurrent.Executors.newFixedThreadPool(E8_CONCURRENCY, runnable -> {
+            Thread thread = new Thread(runnable, "agent-lab-e8");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    /**
+     * 关闭专用线程池，避免上下文重启后残留线程。
+     */
+    @jakarta.annotation.PreDestroy
+    public void shutdown() {
+        e8Executor.shutdownNow();
+    }
+
+    /**
      * 模型提供方，记录在实验数据里。
      */
     @Value("${dong.agent.llm.provider:mock}")
@@ -379,7 +405,7 @@ public class AgentLabServiceImpl implements AgentLabService {
                             log.warn("agent lab E8 run failed index={} code={}", index, e.getCode());
                         }
                     }
-                }, executor));
+                }, e8Executor));
             }
         } finally {
             // 提交过程中一旦抛异常，闸门必须照样放行，否则已提交的任务永远卡在 await

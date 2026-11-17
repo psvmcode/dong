@@ -148,7 +148,8 @@ public class AdLabServiceImpl implements AdLabService {
                 ? (redisBudgetEnabled ? AdChargeMode.REDIS : AdChargeMode.DB)
                 : AdChargeMode.ofName(request.getMode());
         int total = (int) totalTasks;
-        List<String> traces = prepareTraces(campaign.getId(), request.getUserId(), total, mode);
+        Long baseUserId = request.getUserId() == null ? 9_000_000L : request.getUserId();
+        List<String> traces = prepareTraces(campaign.getId(), baseUserId, total, mode);
         LongAdder accepted = new LongAdder();
         LongAdder duplicated = new LongAdder();
         LongAdder rejected = new LongAdder();
@@ -164,7 +165,7 @@ public class AdLabServiceImpl implements AdLabService {
                 final int seq = index;
                 executor.submit(() -> {
                     try {
-                        AdEventResponse response = adDeliveryService.track(clickEvent(traces.get(seq), request.getUserId() + seq),
+                        AdEventResponse response = adDeliveryService.track(clickEvent(traces.get(seq), baseUserId + seq),
                                 AdEventType.CLICK, mode, true);
                         classify(response, accepted, duplicated, rejected, filtered);
                     } catch (Exception ex) {
@@ -223,7 +224,7 @@ public class AdLabServiceImpl implements AdLabService {
     private List<String> prepareTraces(Long campaignId, Long baseUserId, int total, AdChargeMode mode) {
         List<String> traces = new ArrayList<>(total);
         for (int index = 0; index < total; index++) {
-            long userId = baseUserId + index;
+            long userId = (baseUserId == null ? 9_000_000L : baseUserId) + index;
             String traceId = adDeliveryService.issueTokenForLab(campaignId, userId);
             AdEventRequest impression = new AdEventRequest();
             impression.setTraceId(traceId);

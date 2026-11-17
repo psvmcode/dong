@@ -1,5 +1,6 @@
 package com.dong.order.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 
@@ -35,6 +36,7 @@ public class OrderFireRequest {
     /**
      * 退款金额，申请退款事件必填。
      */
+    @DecimalMin("0.01")
     @Digits(integer = 16, fraction = 2)
     private BigDecimal refundAmount;
 

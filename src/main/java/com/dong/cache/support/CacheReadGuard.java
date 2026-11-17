@@ -217,6 +217,12 @@ public class CacheReadGuard {
                     redisService.expire(key, Duration.ofSeconds(scanWindowSeconds));
                 } catch (Exception ttlEx) {
                     log.warn("cache guard expire failed key={}, falling back to local counter", key, ttlEx);
+                    try {
+                        // incr 已成功但 expire 失败会留下一个永不过期的 key，必须清掉再降级
+                        redisService.delete(key);
+                    } catch (Exception deleteEx) {
+                        log.warn("cache guard cleanup failed key={}", key, deleteEx);
+                    }
                     throw ttlEx;
                 }
             }

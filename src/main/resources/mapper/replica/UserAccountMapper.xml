@@ -41,4 +41,19 @@
         where user_id = #{userId}
     </update>
 
+    <!-- 原子扣减，余额充足条件写进 where -->
+    <update id="deductBalance">
+        update user_account
+        set balance = balance - #{amount}
+        where user_id = #{userId}
+        and balance &gt;= #{amount}
+    </update>
+
+    <!-- 原子增加 -->
+    <update id="addBalance">
+        update user_account
+        set balance = balance + #{amount}
+        where user_id = #{userId}
+    </update>
+
 </mapper>

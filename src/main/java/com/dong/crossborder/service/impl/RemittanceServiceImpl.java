@@ -281,6 +281,8 @@ public class RemittanceServiceImpl implements RemittanceService {
             ledgerService.debitAndPersist(remittance, payer, request.getSourceAmount().add(fee));
         } catch (RuntimeException ex) {
             complianceService.releaseDailyLimit(payer.getId(), request.getSourceAmount());
+            // 报价已锁但单子没落库，不复位就永远停在 LOCKED，expireOverdue 也清不到
+            fxQuoteService.release(remittance.getQuoteNo());
             // 扣款失败时单子没有落库，流转日志只能按单号记一笔被拒绝的尝试
             eventService.recordRejected(remittance.getRemittanceNo(), RemittanceStatus.QUOTE_LOCKED, "debit", ex.getMessage(), "system");
             throw ex;

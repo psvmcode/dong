@@ -89,6 +89,11 @@ public class CrossBorderSettlementHandler implements MessageHandler {
     private final LongAdder skipped = new LongAdder();
 
     /**
+     * 畸形消息数，永久畸形消息确认消费并留日志，避免毒消息堵死顺序队列。
+     */
+    private final LongAdder malformed = new LongAdder();
+
+    /**
      * topic。
      */
     @Override
@@ -103,15 +108,23 @@ public class CrossBorderSettlementHandler implements MessageHandler {
     public boolean handle(String key, String payload) {
         if (payload == null || payload.isBlank()) {
             log.error("settlement message payload is empty");
-            return false;
+            return true;
         }
-        Map<String, Object> message = JsonUtils.fromJson(payload, new TypeReference<>() {
-        });
+        Map<String, Object> message;
+        try {
+            message = JsonUtils.fromJson(payload, new TypeReference<>() {
+            });
+        } catch (Exception ex) {
+            malformed.increment();
+            // 永久畸形的消息重投一万次也不会变好，只会堵死顺序队列；确认消费并留日志告警
+            log.error("malformed settlement message dropped payload={}", payload, ex);
+            return true;
+        }
         Object remittanceNoValue = message == null ? null : message.get("remittanceNo");
         if (remittanceNoValue == null) {
-            // 非法消息不能当成「查不到单子」确认消费，否则这笔清算永久丢失
-            log.error("settlement message missing remittanceNo, payload={}", payload);
-            return false;
+            malformed.increment();
+            log.error("settlement message missing remittanceNo dropped payload={}", payload);
+            return true;
         }
         String remittanceNo = String.valueOf(remittanceNoValue);
         CrossBorderRemittance remittance = remittanceMapper.selectByRemittanceNo(remittanceNo);

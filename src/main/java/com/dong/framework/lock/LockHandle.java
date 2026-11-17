@@ -91,6 +91,9 @@ public class LockHandle implements AutoCloseable {
             }
         } catch (IllegalMonitorStateException ex) {
             log.warn("lock {} was already released, key={}", token, key);
+        } catch (RuntimeException ex) {
+            // isHeldByCurrentThread 与 unlock 都是 Redis 远程调用，连接故障不能覆盖业务结果
+            log.warn("lock {} release failed, key={}", token, key, ex);
         }
     }
 

@@ -37,6 +37,14 @@
 - **ad（2026-11-15 新增）** `com.dong.ad` `/api/ad`，页面 `/ad/index.html`，7 张 `ad_*` 表：开户→计划审核状态机→定向召回 + GSP 二价→令牌签发→曝光/点击→异步计费→流水对账。`ad_event` 令牌与事件合一（`uk_trace_type` 防换 key 刷量 + `uk_event_id` 防重试），成交价服务端签发不可由客户端传；CPC 只点击扣费、CPM 只曝光扣费，0 元效果事件也写流水；`ad_charge_record` 是金额与效果唯一权威源，`ad_daily_stat` 按天分行天然日切（今日花费不进计划表）；Redis Lua 预算闸门只是副本，配额不足时切回 DB 三条件更新裁定，副本由对账重建；对账重算汇总、回写累计、补投超时 PENDING，流水超 1000 抛 1007；**新 MQ 主题必须自带监听器**（既有 `RocketMqListener` 只订阅 `demo-order-event`）→ `AdChargeRocketMqListener`；降级链 Redis→DB、MQ→同步、消息丢→对账；`/api/ad/report/lab/burst` 做 redis/db 并发对照并回读库内金额验超投。文档 `doc/scenario/ad.md` 有 30 项边界情况清单。**线上库尚未执行新增表 DDL，端到端跑之前要先建表**
   - 2026-11-16 增强到 44 项边界情况：新增广告位级限流 + Redis/MQ 双熔断 + 200ms 请求预算 + 实验全局闸门、pacing 预算平滑 + 账户日限额第四护栏 + 候选缓存写失效 + 变更审计、对账按计划分片 + 分布式锁 + 账户汇总 SQL sum 重算、PENDING 指数退避与 DEAD 死信、先归档后删除的保留期任务、健康检查端点。新增 `ad_advertiser_daily`/`ad_audit_log`/`ad_charge_archive` 三表（主库 53 表），接口 166 个。**新增表与 ad_event 两字段仍需在线上库执行 DDL**
 
+### 稳定性雷区（2026-11-17 全项目排查后已修）
+- 框架组件（缓存 / 锁 / 限流 / MQ）必须先捕获 Redis、MQ 的运行时异常再转业务码（1005），否则切面阶段直接 500，被保护的业务逻辑根本没机会降级。
+- `SseEmitter` 非线程安全，主循环与并行工具回调必须串行化；同一线程池内「父任务同步等提交到同池的子任务」会饥饿自锁，必须用独立池。
+- LLM 流读取在 `readLine()` 之前就要限额（流层面），事后检查长度已经分配完内存。
+- Redis 降级到 DB 的路径不能归还「从未从 Redis 弹出过」的份额，否则造出幽灵库存；Lua 内脏元素要在脚本内放回队列。
+- 账户余额、库存、预算一律用 DB 条件更新 `where 充足条件`，靠影响行数判定，禁止读后写绝对值。
+- 畸形 MQ 消息确认消费 + 记日志告警，返回 false 重投只会让毒消息堵死顺序队列。
+
 ### 前端 dong-web
 - `/Users/dong/items/java/dong-web`（独立仓库，远端 `git@github.com:psvmcode/dong-web.git`）；Vue3+TS+Vite6+Element Plus+Pinia+ECharts
 - 不改后端配置；vite 代理 `/api` `/actuator` `/v3`→8090；`postQuery`=@RequestParam、`postJson`=@RequestBody；`unwrap()` 把失败也包成 ApiResult 让页面看到 1004/1005

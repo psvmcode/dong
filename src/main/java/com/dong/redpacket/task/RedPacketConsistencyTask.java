@@ -89,7 +89,8 @@ public class RedPacketConsistencyTask {
             }
             return;
         }
-        if (packet.getRemainCount() != pendingCount || packet.getRemainAmount() != pendingAmount) {
+        if (!java.util.Objects.equals(packet.getRemainCount(), pendingCount)
+                || !java.util.Objects.equals(packet.getRemainAmount(), pendingAmount)) {
             redPacketMapper.updateRemain(packetNo, pendingAmount, pendingCount);
             log.warn("red packet remain corrected to unclaimed shares packetNo={} count={} amount={}", packetNo, pendingCount, pendingAmount);
         }

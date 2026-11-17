@@ -70,7 +70,13 @@ public class CacheEventBus {
      */
     public void publishInvalidation(String key) {
         CacheInvalidationEvent event = new CacheInvalidationEvent(key, nodeId, System.currentTimeMillis());
-        redisService.publish(channel, JsonUtils.toJson(event));
+        try {
+            redisService.publish(channel, JsonUtils.toJson(event));
+        } catch (RuntimeException ex) {
+            // DB 更新已经提交，广播失败只会导致其他节点缓存多留一个 TTL，
+            // 绝不能因为通知失败让写请求返回 500
+            log.warn("cache invalidation publish failed key={}", key, ex);
+        }
     }
 
     /**

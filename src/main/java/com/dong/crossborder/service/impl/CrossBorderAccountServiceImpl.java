@@ -195,7 +195,8 @@ public class CrossBorderAccountServiceImpl implements CrossBorderAccountService 
             return BigDecimal.ZERO;
         }
         BigDecimal expected = initialBalance.add(credit).subtract(debit);
-        return account.getBalance().subtract(expected);
+        BigDecimal actual = account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
+        return actual.subtract(expected);
     }
 
     /**

@@ -65,6 +65,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
      * 重跑先清旧差异，保证对账是幂等的，不会越跑差异越多。
      */
     @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public ReconReportResponse reconcile(String batchNo, double simulatedErrorRate) {
         SettlementBatch batch = batchMapper.selectByBatchNo(batchNo);
         if (batch == null) {
@@ -92,14 +93,14 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         for (CrossBorderRemittance local : localItems) {
             Map<String, Object> channel = channelByNo.get(local.getRemittanceNo());
             if (channel == null) {
-                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.MISSING_IN_CHANNEL, local.getTargetAmount(), BigDecimal.ZERO));
+                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.MISSING_IN_CHANNEL, nz(local.getTargetAmount()), BigDecimal.ZERO));
                 continue;
             }
             BigDecimal channelAmount = new BigDecimal(String.valueOf(channel.get("amount")));
-            if (local.getTargetAmount().compareTo(channelAmount) == 0) {
+            if (nz(local.getTargetAmount()).compareTo(channelAmount) == 0) {
                 matched++;
             } else {
-                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.AMOUNT_MISMATCH, local.getTargetAmount(), channelAmount));
+                diffs.add(buildDiff(batchNo, local.getRemittanceNo(), ReconDiffType.AMOUNT_MISMATCH, nz(local.getTargetAmount()), channelAmount));
             }
             channelByNo.remove(local.getRemittanceNo());
         }
@@ -131,7 +132,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
             }
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("remittanceNo", local.getRemittanceNo());
-            BigDecimal amount = local.getTargetAmount();
+            BigDecimal amount = nz(local.getTargetAmount());
             if (errorRate > 0 && ThreadLocalRandom.current().nextDouble() < errorRate) {
                 amount = amount.multiply(new BigDecimal("1.001")).setScale(2, RoundingMode.HALF_UP);
             }
@@ -237,7 +238,7 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         report.setCurrency(batch.getCurrency());
         report.setReconTime(LocalDateTime.now());
         report.setLocalCount(localItems.size());
-        report.setLocalTotal(localItems.stream().map(CrossBorderRemittance::getTargetAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        report.setLocalTotal(localItems.stream().map(item -> nz(item.getTargetAmount())).reduce(BigDecimal.ZERO, BigDecimal::add));
         report.setChannelCount(channelStatement.size());
         report.setChannelTotal(channelStatement.isEmpty() ? BigDecimal.ZERO : channelStatement.stream().map(i -> new BigDecimal(String.valueOf(i.get("amount")))).reduce(BigDecimal.ZERO, BigDecimal::add));
         report.setMatchedCount(matched);
@@ -247,11 +248,22 @@ public class ReconciliationServiceImpl implements ReconciliationService {
         Map<String, Object> byType = new LinkedHashMap<>();
         for (ReconDiffType type : ReconDiffType.values()) {
             List<ReconDiff> of = diffs.stream().filter(d -> d.getDiffType() == type).toList();
-            byType.put(type.name(), Map.of("count", of.size(), "totalLocal", of.stream().map(ReconDiff::getLocalAmount).reduce(BigDecimal.ZERO, BigDecimal::add), "totalChannel", of.stream().map(ReconDiff::getChannelAmount).reduce(BigDecimal.ZERO, BigDecimal::add)));
+            byType.put(type.name(), Map.of("count", of.size(), "totalLocal", of.stream().map(diff -> nz(diff.getLocalAmount())).reduce(BigDecimal.ZERO, BigDecimal::add), "totalChannel", of.stream().map(diff -> nz(diff.getChannelAmount())).reduce(BigDecimal.ZERO, BigDecimal::add)));
         }
         report.setDiffByType(byType);
         report.setDiffs(diffs.stream().map(ReconDiffResponse::from).toList());
         return report;
+    }
+
+    /**
+     * 金额空值归一。历史迁移数据可能留下 NULL 金额，
+     * 对账聚合时若直接拆箱会在报表接口抛 NPE。
+     *
+     * @param value 原始金额
+     * @return 非空金额
+     */
+    private static BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
 }

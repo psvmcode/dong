@@ -1,6 +1,8 @@
 package com.dong.ad.task;
 
 import com.dong.ad.service.AdCleanupService;
+import com.dong.framework.lock.DistributedLockService;
+import com.dong.framework.lock.LockHandle;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDate;
 
 /**
@@ -31,6 +34,11 @@ public class AdDataRetentionTask {
     private final AdCleanupService adCleanupService;
 
     /**
+     * distributedLockService，多实例部署时保证只有一个实例执行清理。
+     */
+    private final DistributedLockService distributedLockService;
+
+    /**
      * 在线数据保留天数。
      */
     @Value("${dong.ad.retention-days:7}")
@@ -47,7 +55,10 @@ public class AdDataRetentionTask {
      */
     @Scheduled(fixedDelay = 3_600_000L, initialDelay = 120_000L)
     public void cleanup() {
-        try {
+        try (LockHandle handle = distributedLockService.tryLock("lab:ad:retention", Duration.ofMinutes(5L), Duration.ZERO)) {
+            if (!handle.isAcquired()) {
+                return;
+            }
             LocalDate before = LocalDate.now().minusDays(Math.max(1, retentionDays));
             int archived = adCleanupService.archiveExpiredCharge(before, batchSize);
             int removed = adCleanupService.deleteExpiredEvents(before, batchSize);
