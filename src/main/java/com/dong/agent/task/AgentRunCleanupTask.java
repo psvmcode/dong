@@ -61,6 +61,7 @@ public class AgentRunCleanupTask {
      */
     @Scheduled(fixedDelayString = "${dong.agent.lab.cleanup-interval-ms:300000}",
             initialDelayString = "${dong.agent.lab.cleanup-initial-delay-ms:60000}")
+    @com.dong.framework.lock.DistributedTaskLock(value = "agent-run-cleanup")
     public void cleanup() {
         try {
             int stuck = cleanupByStatus(RunStatus.RUNNING, stuckAfter, RunStatus.FAILED,

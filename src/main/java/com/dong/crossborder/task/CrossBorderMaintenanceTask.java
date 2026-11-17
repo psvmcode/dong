@@ -125,6 +125,7 @@ public class CrossBorderMaintenanceTask {
      * 是为了让可用报价列表始终干净。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "crossborder-expire-quotes", leaseMs = 60_000L)
     public void expireQuotes() {
         try {
             int expired = fxQuoteService.expireOverdue();
@@ -140,6 +141,7 @@ public class CrossBorderMaintenanceTask {
      * 关闭到期批次。渠道清算窗口关闭后批次不再接收新汇款。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 90_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "crossborder-close-batches", leaseMs = 60_000L)
     public void closeBatches() {
         try {
             int closed = settlementService.closeOverdue();
@@ -163,6 +165,7 @@ public class CrossBorderMaintenanceTask {
      * 只扫已扣款会把它漏掉，于是钱已出账却永远等不到确认。
      */
     @Scheduled(fixedDelay = 30_000, initialDelay = 45_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "crossborder-compensate", leaseMs = 30_000L)
     public void compensateSettlementMessages() {
         try {
             List<CrossBorderRemittance> pending = new ArrayList<>();
@@ -218,6 +221,7 @@ public class CrossBorderMaintenanceTask {
      * 但历史批次越积越多，每天全量重跑既无必要也会拖慢任务。
      */
     @Scheduled(cron = "0 0 3 * * *")
+    @com.dong.framework.lock.DistributedTaskLock(value = "crossborder-daily-reconcile", leaseMs = 600_000L)
     public void dailyReconcile() {
         try {
             LocalDateTime since = LocalDateTime.now().minusDays(RECON_WINDOW_DAYS);
@@ -253,6 +257,7 @@ public class CrossBorderMaintenanceTask {
      * 只覆盖已扣款与清算中：待审核要等人工，不作为卡单处理。
      */
     @Scheduled(fixedDelay = 300_000, initialDelay = 120_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "crossborder-detect-stuck", leaseMs = 300_000L)
     public void detectStuckRemittance() {
         try {
             LocalDateTime threshold = LocalDateTime.now().minus(STUCK_THRESHOLD);

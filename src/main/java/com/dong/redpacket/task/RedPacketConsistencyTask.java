@@ -60,6 +60,7 @@ public class RedPacketConsistencyTask {
      * 逐个 try/catch：一个红包的库或 Redis 异常不能中断本轮其余红包的对账。
      */
     @Scheduled(fixedDelayString = "${dong.redpacket.consistency-interval-ms:300000}", initialDelay = 60_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "redpacket-consistency", leaseMs = 300_000L)
     public void reconcile() {
         try {
             List<RedPacket> packets = redPacketMapper.selectUnfinished(scanLimit);

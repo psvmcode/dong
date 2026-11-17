@@ -27,6 +27,7 @@ public class TccRecoveryTask {
      * 定时恢复停留在中间状态的事务。
      */
     @Scheduled(fixedDelay = 30_000, initialDelay = 20_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "tcc-recovery", leaseMs = 30_000L)
     public void recover() {
         try {
             int recovered = tccCoordinatorService.recoverPending();

@@ -44,6 +44,9 @@
 - Redis 降级到 DB 的路径不能归还「从未从 Redis 弹出过」的份额，否则造出幽灵库存；Lua 内脏元素要在脚本内放回队列。
 - 账户余额、库存、预算一律用 DB 条件更新 `where 充足条件`，靠影响行数判定，禁止读后写绝对值。
 - 畸形 MQ 消息确认消费 + 记日志告警，返回 false 重投只会让毒消息堵死顺序队列。
+- 时钟回拨不能让写路径整体失败：小幅等待真实时间，大幅用逻辑时钟单调递增，绝不长期等待。
+- 维护类定时任务统一用 `@DistributedTaskLock` 注解 + 切面加锁；心跳与本地缓冲刷写刻意不加锁。
+- Java 全限定注解名必须写 `value = "x"`，简写会让注解解析失败并连带 Lombok 整体失效（表现为大量 getter/构造器找不到）。
 
 ### 前端 dong-web
 - `/Users/dong/items/java/dong-web`（独立仓库，远端 `git@github.com:psvmcode/dong-web.git`）；Vue3+TS+Vite6+Element Plus+Pinia+ECharts

@@ -68,6 +68,7 @@ public class ClassicMaintenanceTask {
      * 把缓存里的点击计数回写数据库。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "classic-flush-hits", leaseMs = 60_000L)
     public void flushShortLinkHits() {
         try {
             shortLinkService.flushHitCount();
@@ -85,6 +86,7 @@ public class ClassicMaintenanceTask {
      * 重投超限后标记失败终态，等待人工介入。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 90_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "classic-compensate-delay", leaseMs = 60_000L)
     public void compensateDelayTasks() {
         try {
             LocalDateTime threshold = LocalDateTime.now().minus(DELAY_GRACE);

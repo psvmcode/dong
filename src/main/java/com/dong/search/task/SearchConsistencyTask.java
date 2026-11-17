@@ -31,6 +31,7 @@ public class SearchConsistencyTask {
      * 定时任务抛出的异常会被调度线程直接吞掉，不打日志就只能看到任务「静默地不再工作」。
      */
     @Scheduled(fixedDelayString = "${dong.elasticsearch.reconcile-interval-ms:600000}", initialDelayString = "${dong.elasticsearch.reconcile-initial-delay-ms:60000}")
+    @com.dong.framework.lock.DistributedTaskLock(value = "search-consistency", leaseMs = 600_000L)
     public void reconcile() {
         try {
             searchSyncService.repairConsistency();

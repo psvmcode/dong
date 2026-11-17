@@ -51,6 +51,7 @@ public class SeckillTimeoutTask {
      * 逐条 try/catch：一条订单处理失败不能中断整批，否则后面的订单本轮全部不处理。
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
+    @com.dong.framework.lock.DistributedTaskLock(value = "seckill-timeout", leaseMs = 60_000L)
     public void releaseUnpaidOrders() {
         try {
             List<SeckillOrder> candidates = seckillOrderMapper.selectTimeoutCandidates(SeckillOrderStatus.PENDING_PAYMENT.getCode(), paymentTimeoutMinutes);

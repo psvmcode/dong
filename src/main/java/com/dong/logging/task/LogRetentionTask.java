@@ -32,6 +32,7 @@ public class LogRetentionTask {
      * 清理过期索引。
      */
     @Scheduled(fixedDelayString = "${dong.logging.retention-interval-ms:3600000}", initialDelayString = "${dong.logging.retention-initial-delay-ms:60000}")
+    @com.dong.framework.lock.DistributedTaskLock(value = "log-retention")
     public void cleanup() {
         try {
             int deleted = ingestService.cleanupExpired();
